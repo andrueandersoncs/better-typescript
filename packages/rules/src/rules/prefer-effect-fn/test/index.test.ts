@@ -2,6 +2,7 @@ import * as assert from "node:assert/strict"
 import * as path from "node:path"
 import { test } from "bun:test"
 import { Effect } from "effect"
+import * as ts from "typescript"
 import { lint } from "@better-typescript/core/linter"
 import { loadProject } from "@better-typescript/core/project/loadProject"
 import { assertRuleFixture } from "../../../../test/assertRuleFixture.js"
@@ -71,4 +72,48 @@ test("prefer-effect-fn owns Effect.gen wrappers without service rule overlap", a
       ruleName: "service-method-effect-fn"
     }
   ])
+})
+
+test("prefer-effect-fn tracks TypeScript symbols by identity", async () => {
+  const fixturePath = path.join(import.meta.dir, "../fixtures/rule")
+  const project = await Effect.runPromise(loadProject({ projectPath: fixturePath }))
+  const loadedProject = project.projects[0]
+
+  assert.ok(loadedProject)
+
+  const sourceFile = loadedProject.program
+    .getSourceFiles()
+    .find((file) => file.fileName.endsWith("/src/cases.ts"))
+
+  assert.ok(sourceFile)
+
+  const checker = loadedProject.program.getTypeChecker()
+  let effectSymbol: ts.Symbol | undefined
+
+  const visit = (node: ts.Node): void => {
+    if (effectSymbol === undefined && ts.isIdentifier(node) && node.text === "Effect") {
+      effectSymbol = checker.getSymbolAtLocation(node)
+    }
+
+    ts.forEachChild(node, visit)
+  }
+
+  visit(sourceFile)
+  assert.ok(effectSymbol)
+
+  Object.defineProperty(effectSymbol, "links", {
+    configurable: true,
+    enumerable: true,
+    value: {
+      iterationTypesOfIterable: {
+        get yieldType(): never {
+          throw new Error("TypeScript iteration type getter must not be read")
+        }
+      }
+    }
+  })
+
+  const violations = lint({ project, rules: [ruleNamed("prefer-effect-fn")] })
+
+  assert.ok(violations.length > 0)
 })

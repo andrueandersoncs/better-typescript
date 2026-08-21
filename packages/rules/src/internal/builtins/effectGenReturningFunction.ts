@@ -2,7 +2,6 @@ import {
   Array,
   Equivalence,
   Function,
-  HashSet,
   Match,
   Option,
   Predicate,
@@ -25,7 +24,8 @@ import { propertyNameText } from "../support/propertyNameText.js"
 import { unwrapCarrier } from "../support/unwrapCarrier.js"
 import { variableDeclarationInitializer } from "../support/variableDeclarationInitializer.js"
 
-const noSymbols: HashSet.HashSet<ts.Symbol> = HashSet.empty()
+// Use native reference identity because TypeScript symbols are unsafe to structurally hash.
+const noSymbols: globalThis.ReadonlySet<ts.Symbol> = new globalThis.Set()
 const noStrings: ReadonlyArray<string> = Array.empty()
 
 const modifierIsAsync = flow(
@@ -131,7 +131,7 @@ const expressionReferencesEffectGen = (checker: ts.TypeChecker) => {
     )
 
   const inspect =
-    (seen: HashSet.HashSet<ts.Symbol>) =>
+    (seen: globalThis.ReadonlySet<ts.Symbol>) =>
     (members: ReadonlyArray<string>) =>
     (expression: ts.Expression): boolean => {
       const current = unwrapEffectCarrier(expression)
@@ -161,11 +161,11 @@ const expressionReferencesEffectGen = (checker: ts.TypeChecker) => {
       const inspectIdentifier = (identifier: ts.Identifier) => {
         const imported = importedRootMatches(members)(identifier)
         const symbol = pipe(checker.getSymbolAtLocation(identifier), Option.fromNullishOr)
-        const symbolWasSeen = (candidate: ts.Symbol) => HashSet.has(seen, candidate)
+        const symbolWasSeen = (candidate: ts.Symbol) => seen.has(candidate)
         const unseenSymbol = pipe(symbol, Option.filter(Predicate.not(symbolWasSeen)))
 
         const inspectOrigin = (candidate: ts.Symbol) => {
-          const nextSeen = HashSet.add(seen, candidate)
+          const nextSeen = new globalThis.Set(seen).add(candidate)
 
           const originMatches = (origin: readonly [ts.Expression, ReadonlyArray<string>]) => {
             const originExpression = Tuple.get(origin, 0)
@@ -223,7 +223,7 @@ const effectGenCallFromExpression = (checker: ts.TypeChecker) => (owner: Functio
   const referencesEffectGen = expressionReferencesEffectGen(checker)
 
   const inspect =
-    (seen: HashSet.HashSet<ts.Symbol>) =>
+    (seen: globalThis.ReadonlySet<ts.Symbol>) =>
     (expression: ts.Expression): Option.Option<ts.CallExpression> => {
       const current = unwrapEffectCarrier(expression)
 
@@ -238,11 +238,11 @@ const effectGenCallFromExpression = (checker: ts.TypeChecker) => (owner: Functio
 
       const inspectIdentifier = (identifier: ts.Identifier) => {
         const symbol = pipe(checker.getSymbolAtLocation(identifier), Option.fromNullishOr)
-        const symbolWasSeen = (candidate: ts.Symbol) => HashSet.has(seen, candidate)
+        const symbolWasSeen = (candidate: ts.Symbol) => seen.has(candidate)
         const unseenSymbol = pipe(symbol, Option.filter(Predicate.not(symbolWasSeen)))
 
         const inspectInitializers = (candidate: ts.Symbol) => {
-          const nextSeen = HashSet.add(seen, candidate)
+          const nextSeen = new globalThis.Set(seen).add(candidate)
           const inspectInitializer = inspect(nextSeen)
 
           return pipe(

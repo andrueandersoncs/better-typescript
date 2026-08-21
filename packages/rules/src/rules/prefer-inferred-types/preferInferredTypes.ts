@@ -405,8 +405,7 @@ const makeShadowProgram =
       rootNames,
       options,
       projectReferences,
-      host,
-      oldProgram: program
+      host
     })
   }
 
