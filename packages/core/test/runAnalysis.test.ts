@@ -26,7 +26,7 @@ const makeFixtureRule = (visit: (program: ts.Program, projectRoot: string) => vo
   }
 })
 
-test("runAnalysis owns a complete ordered solution-workspace run", async () => {
+test("runAnalysis owns a complete ordered configured solution-workspace run", async () => {
   const programOrder: Array<WeakRef<ts.Program>> = []
   const projectOrder: Array<string> = []
   let currentProgram: WeakRef<ts.Program> | null = null
@@ -70,14 +70,6 @@ test("runAnalysis owns a complete ordered solution-workspace run", async () => {
       filePath: "packages/beta/src/beta.ts",
       line: 1,
       column: 1
-    },
-    {
-      ruleName: "fixture-rule",
-      level: "warn",
-      message: "Shared aggregate.",
-      filePath: "shared.ts",
-      line: 1,
-      column: 1
     }
   ])
 })
@@ -103,4 +95,24 @@ test("runAnalysis repeats without returning compiler state", async () => {
   assert.deepEqual(secondResult, firstResult)
   assert.deepEqual(secondRunProjects, firstRunProjects)
   assert.equal(firstRunProjects.length, 2)
+})
+
+test("runAnalysis checks only files selected by tsconfig", async () => {
+  const projectPath = new URL("fixtures/project-boundary", import.meta.url).pathname
+  const rule: Rule = {
+    name: "project-boundary-rule",
+    check: ({ sourceFile }) => {
+      const declaration = pipe(sourceFile.statements, Option.fromIterable, Option.getOrThrow)
+      const target = NodeTarget.make({ node: declaration })
+
+      return [RuleFinding.make({ message: "Checked source.", target })]
+    }
+  }
+
+  const result = await Effect.runPromise(runAnalysis({ projectPath, rules: [rule] }))
+
+  assert.deepEqual(
+    result.violations.map(({ filePath }) => filePath),
+    ["src/main.ts"]
+  )
 })

@@ -213,6 +213,39 @@ test("lint config leaves unmatched files unlinted", async () => {
   assert.deepEqual(lintConfigured(config)({ project, rules }), [])
 })
 
+test("lint config discards findings targeted outside the configured file", async () => {
+  const fixturePath = new URL("fixtures/linter-core", import.meta.url).pathname
+  const project = await Effect.runPromise(loadProject({ projectPath: fixturePath }))
+  const secondarySource = pipe(
+    project.projects,
+    Array.head,
+    Option.flatMap(({ program }) =>
+      pipe(
+        program.getSourceFiles(),
+        Array.findFirst(({ fileName }) => fileName.endsWith("/src/secondary.ts"))
+      )
+    ),
+    Option.getOrThrow
+  )
+  const secondaryDeclaration = pipe(secondarySource.statements, Array.head, Option.getOrThrow)
+  const rule: Rule = {
+    name: "cross-file-rule",
+    check: () => [
+      RuleFinding.make({
+        message: "node target outside configured file",
+        target: NodeTarget.make({ node: secondaryDeclaration })
+      }),
+      RuleFinding.make({
+        message: "position target outside configured file",
+        target: PositionTarget.make({ sourceFile: secondarySource, position: 0 })
+      })
+    ]
+  }
+  const config = defineConfig([{ files: ["src/main.ts"], rules: { "*": "error" } }])
+
+  assert.deepEqual(lintConfigured(config)({ project, rules: [rule] }), [])
+})
+
 test("defineConfig rejects non-kebab-case rule identifiers", () => {
   assert.throws(
     () => defineConfig([{ files: ["**/*.ts"], rules: { camelCaseRule: "error" } }]),

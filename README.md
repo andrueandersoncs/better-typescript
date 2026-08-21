@@ -74,6 +74,8 @@ project starts with every rule disabled. Matching entries apply in declaration o
 entries override earlier entries. `"*"` changes every rule at that point, while an explicit rule
 setting in the same entry takes precedence over `"*"`. `"error"` and `"warn"` enable a rule and set
 the reported violation level; `"off"` disables it. Files that match no enabled rule are not linted.
+Only root files selected by the TypeScript project's `files` or `include` are lint targets.
+Transitive imports remain available for type-aware analysis but are not linted.
 
 Rule identifiers must be unique kebab-case strings. Unknown configured rule names, invalid names,
 and malformed config exports are operational errors. Without a config file, the CLI enables every

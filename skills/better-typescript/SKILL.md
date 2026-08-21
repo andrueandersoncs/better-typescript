@@ -45,8 +45,9 @@ The unscoped npm package named `better-typescript` is a different project. Use
 
 ## Configure
 
-A project without `better-typescript.config.ts` runs every built-in rule against its project source
-files. Add a config only when file scopes or rule levels must differ:
+A project without `better-typescript.config.ts` runs every built-in rule against root files selected
+by the TypeScript project's `files` or `include`. Transitive imports remain available for type-aware
+analysis but are not linted. Add a config only when file scopes or rule levels must differ:
 
 ```ts
 import { defineConfig } from "@better-typescript/core/config"

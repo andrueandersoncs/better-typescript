@@ -1,6 +1,6 @@
 {
   "name": "@better-typescript/cli",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "type": "module",
   "bin": {
     "better-typescript": "dist/index.js"
@@ -16,9 +16,9 @@
     "test": "bun test --timeout 30000 test/*.test.ts"
   },
   "dependencies": {
-    "@better-typescript/core": "0.0.3",
+    "@better-typescript/core": "0.0.4",
     "@effect/platform-bun": "4.0.0-beta.98",
-    "@better-typescript/rules": "0.0.3"
+    "@better-typescript/rules": "0.0.4"
   },
   "peerDependencies": {
     "typescript": "^5.0.0 || ^6.0.0",

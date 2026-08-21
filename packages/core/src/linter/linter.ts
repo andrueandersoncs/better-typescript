@@ -83,6 +83,14 @@ export interface PositionTarget extends Schema.Schema.Type<typeof PositionTarget
 
 const FindingTarget = Schema.Union([NodeTarget, PositionTarget])
 
+const sourceFileForTarget = (target: typeof FindingTarget.Type) =>
+  pipe(
+    Match.value(target),
+    Match.tag("NodeTarget", ({ node }) => node.getSourceFile()),
+    Match.tag("PositionTarget", Struct.get<PositionTarget, "sourceFile">("sourceFile")),
+    Match.exhaustive
+  )
+
 // RuleFinding excludes report metadata because core owns final Violation materialization.
 export const RuleFinding = Schema.Struct({
   message: Schema.String,
@@ -153,10 +161,24 @@ const isProjectSourceFile = (sourceFile: ts.SourceFile) => {
   return isProjectFile && isOutsideDependencies
 }
 
+const sameSourceFile = Equivalence.strictEqual<ts.SourceFile>()
+
+const findingTargetsSource =
+  (sourceFile: ts.SourceFile) =>
+  ({ target }: RuleFinding) => {
+    const targetSourceFile = sourceFileForTarget(target)
+
+    return sameSourceFile(targetSourceFile, sourceFile)
+  }
+
 const violationsForRule =
   (context: RuleContext) =>
   ([rule, level]: readonly [Rule, EnabledRuleLevel]) => {
-    const findings = rule.check(context)
+    const findings = pipe(
+      rule.check(context),
+      Array.filter(findingTargetsSource(context.sourceFile))
+    )
+
     const materializeRuleFinding = materializeFinding(context.workspaceRoot)(rule.name)(level)
 
     return Array.map(findings, materializeRuleFinding)
@@ -339,8 +361,14 @@ const violationsForProject =
   (compiledConfig: Option.Option<ReadonlyArray<CompiledConfigEntry>>) =>
   (rules: ReadonlyArray<Rule>) =>
   ({ program, rootPath }: LoadedWorkspace["projects"][number]) => {
-    const programSourceFiles = program.getSourceFiles()
-    const sourceFiles = Array.filter(programSourceFiles, isProjectSourceFile)
+    const sourceFileForRootName = (fileName: string) => program.getSourceFile(fileName)
+
+    const sourceFiles = pipe(
+      program.getRootFileNames(),
+      Array.map(sourceFileForRootName),
+      Array.filter(Predicate.isNotNullish),
+      Array.filter(isProjectSourceFile)
+    )
 
     const runSource = pipe(
       workspaceRoot,

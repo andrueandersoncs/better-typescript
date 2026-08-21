@@ -54,7 +54,7 @@ const rootCommand = Command.make(
 )
 
 pipe(
-  Command.run(rootCommand, { version: "0.0.3" }),
+  Command.run(rootCommand, { version: "0.0.4" }),
   Effect.provide(BunServices.layer),
   BunRuntime.runMain
 )
