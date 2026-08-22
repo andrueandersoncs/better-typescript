@@ -109,6 +109,12 @@
       "skillPath": "skills/engineering/improve-codebase-architecture/SKILL.md",
       "computedHash": "2449db6ab1ded9581f69fcc56c1f64818112d05e271fd4c5da23c6523f9d3d9d"
     },
+    "llm-wiki": {
+      "source": "andrueandersoncs/skills",
+      "sourceType": "github",
+      "skillPath": "llm-wiki/SKILL.md",
+      "computedHash": "2b80b7fc6578d216267887df86030bb9edc1257fd92d6b05f5d291fbf493aec0"
+    },
     "loop-me": {
       "source": "mattpocock/skills",
       "sourceType": "github",
@@ -252,6 +258,12 @@
       "sourceType": "github",
       "skillPath": "workflow-to-skill/SKILL.md",
       "computedHash": "acdadbe6a14d37c57dbff609f869a174ee903c7cf81c411d4ac90a572a5d6f02"
+    },
+    "workflows": {
+      "source": "andrueandersoncs/skills",
+      "sourceType": "github",
+      "skillPath": "workflows/SKILL.md",
+      "computedHash": "52a6bc52b787157e779294a022cdda9dd4d2583c6ae8f271392d98b221433d56"
     },
     "writing-beats": {
       "source": "mattpocock/skills",
