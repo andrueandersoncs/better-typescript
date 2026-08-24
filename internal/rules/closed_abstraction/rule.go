@@ -14,7 +14,11 @@ type functionEntry struct {
 	file *ast.SourceFile
 }
 
+type functionIndexKey struct{}
+type referenceCountIndexKey struct{}
+
 var Rule = rule.Rule{Name: "closed-abstraction", Run: func(ctx rule.RuleContext, _ any) rule.RuleListeners {
+	functions := projectFunctions(ctx)
 	inspect := func(node *ast.Node) {
 		nameNode := node.Name()
 		if nameNode == nil {
@@ -22,7 +26,7 @@ var Rule = rule.Rule{Name: "closed-abstraction", Run: func(ctx rule.RuleContext,
 		}
 		name := nameNode.Text()
 		owners := []functionEntry{}
-		for _, fn := range projectFunctions(ctx) {
+		for _, fn := range functions {
 			if strings.Contains(nodeText(fn.file, fn.node), name) {
 				owners = append(owners, fn)
 			}
@@ -40,42 +44,96 @@ var Rule = rule.Rule{Name: "closed-abstraction", Run: func(ctx rule.RuleContext,
 }}
 
 func projectFunctions(ctx rule.RuleContext) []functionEntry {
-	var result []functionEntry
-	for _, file := range ctx.Program.SourceFiles() {
-		if strings.Contains(file.FileName(), "node_modules") || strings.HasSuffix(file.FileName(), ".d.ts") {
-			continue
-		}
-		walk(file.AsNode(), func(node *ast.Node) bool {
-			if !ast.IsFunctionLike(node) {
+	return rule.ProgramCacheValue(ctx, functionIndexKey{}, func() []functionEntry {
+		var result []functionEntry
+		for _, file := range ctx.Program.SourceFiles() {
+			if strings.Contains(file.FileName(), "node_modules") || strings.HasSuffix(file.FileName(), ".d.ts") {
+				continue
+			}
+			walk(file.AsNode(), func(node *ast.Node) bool {
+				if !ast.IsFunctionLike(node) {
+					return false
+				}
+				name := ""
+				if ast.IsFunctionDeclaration(node) && node.Name() != nil {
+					name = node.Name().Text()
+				}
+				if name == "" && node.Parent != nil && ast.IsVariableDeclaration(node.Parent) && node.Parent.Name() != nil {
+					name, _ = ast.TryGetTextOfPropertyName(node.Parent.Name())
+				}
+				if name != "" {
+					result = append(result, functionEntry{name: name, node: node, file: file})
+				}
 				return false
-			}
-			name := ""
-			if ast.IsFunctionDeclaration(node) && node.Name() != nil {
-				name = node.Name().Text()
-			}
-			if name == "" && node.Parent != nil && ast.IsVariableDeclaration(node.Parent) && node.Parent.Name() != nil {
-				name = node.Parent.Name().Text()
-			}
-			if name != "" {
-				result = append(result, functionEntry{name: name, node: node, file: file})
-			}
-			return false
-		})
-	}
-	return result
+			})
+		}
+		return result
+	})
 }
+
 func externalReferences(ctx rule.RuleContext, name string) int {
-	pattern := regexp.MustCompile(`\b` + regexp.QuoteMeta(name) + `\b`)
 	count := 0
-	for _, file := range ctx.Program.SourceFiles() {
-		if !strings.Contains(file.FileName(), "node_modules") && !strings.HasSuffix(file.FileName(), ".d.ts") {
-			count += len(pattern.FindAllStringIndex(file.Text(), -1))
+	if asciiWord(name) {
+		count = projectReferenceCounts(ctx)[name]
+	} else {
+		pattern := regexp.MustCompile(`\b` + regexp.QuoteMeta(name) + `\b`)
+		for _, file := range ctx.Program.SourceFiles() {
+			if !strings.Contains(file.FileName(), "node_modules") && !strings.HasSuffix(file.FileName(), ".d.ts") {
+				count += len(pattern.FindAllStringIndex(file.Text(), -1))
+			}
 		}
 	}
 	if count > 0 {
 		count--
 	}
 	return count
+}
+
+func projectReferenceCounts(ctx rule.RuleContext) map[string]int {
+	return rule.ProgramCacheValue(ctx, referenceCountIndexKey{}, func() map[string]int {
+		result := make(map[string]int)
+		for _, file := range ctx.Program.SourceFiles() {
+			if strings.Contains(file.FileName(), "node_modules") || strings.HasSuffix(file.FileName(), ".d.ts") {
+				continue
+			}
+			forEachWord(file.Text(), func(word string) {
+				result[word]++
+			})
+		}
+		return result
+	})
+}
+
+func asciiWord(text string) bool {
+	if text == "" {
+		return false
+	}
+	for index := range len(text) {
+		if !wordByte(text[index]) {
+			return false
+		}
+	}
+	return true
+}
+
+func forEachWord(text string, visit func(string)) {
+	start := -1
+	for index := 0; index <= len(text); index++ {
+		if index < len(text) && wordByte(text[index]) {
+			if start == -1 {
+				start = index
+			}
+			continue
+		}
+		if start != -1 {
+			visit(text[start:index])
+			start = -1
+		}
+	}
+}
+
+func wordByte(value byte) bool {
+	return value >= 'a' && value <= 'z' || value >= 'A' && value <= 'Z' || value >= '0' && value <= '9' || value == '_'
 }
 
 func unwrap(node *ast.Node) *ast.Node {

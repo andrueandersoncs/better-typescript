@@ -69,7 +69,10 @@ func policyIsBounded(ctx rule.RuleContext, policy *ast.Node) bool {
 		if !ast.IsPropertyAssignment(prop) {
 			continue
 		}
-		name := prop.Name().Text()
+		name, ok := ast.TryGetTextOfPropertyName(prop.Name())
+		if !ok {
+			continue
+		}
 		value := unwrap(prop.AsPropertyAssignment().Initializer)
 		switch name {
 		case "times":

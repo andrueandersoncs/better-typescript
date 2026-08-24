@@ -106,5 +106,5 @@ func unwrap(node *ast.Node) *ast.Node {
 }
 func isUndefinedExpression(node *ast.Node) bool {
 	node = unwrap(node)
-	return ast.IsIdentifier(node) && node.Text() == "undefined"
+	return node != nil && ast.IsIdentifier(node) && node.Text() == "undefined"
 }

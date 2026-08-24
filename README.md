@@ -32,7 +32,7 @@ The full fixed catalog is enabled at `error` level. There are no CLI options, pr
 ## Architecture
 
 - `cmd/better-typescript` owns the no-option CLI and NDJSON rendering.
-- `internal/analysis` loads `./tsconfig.json`, creates one `typescript-go` Program, and runs the linter on its root source files.
+- `internal/analysis` loads `./tsconfig.json` and its recursive project references, then runs one `typescript-go` Program per config.
 - `internal/linter` registers all rule listeners once per file and dispatches them in one traversal using checker workers.
 - `internal/rules/<rule_name>` owns each rule and its `testdata` project.
 - `internal/rules/catalog.go` registers all 129 rules once in sorted name order.

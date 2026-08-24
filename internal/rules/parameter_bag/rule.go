@@ -44,33 +44,42 @@ func calledFunction(ctx rule.RuleContext, expression *ast.Node) (string, []*ast.
 		return "", nil
 	}
 	for _, declaration := range symbol.Declarations {
-		if ast.IsFunctionDeclaration(declaration) {
-			return declaration.Name().Text(), declaration.AsFunctionDeclaration().Parameters.Nodes
+		name, named := declarationName(declaration)
+		if ast.IsFunctionDeclaration(declaration) && named {
+			return name, declaration.AsFunctionDeclaration().Parameters.Nodes
 		}
-		if ast.IsMethodDeclaration(declaration) {
-			return declaration.Name().Text(), declaration.AsMethodDeclaration().Parameters.Nodes
+		if ast.IsMethodDeclaration(declaration) && named {
+			return name, declaration.AsMethodDeclaration().Parameters.Nodes
 		}
-		if ast.IsVariableDeclaration(declaration) {
+		if ast.IsVariableDeclaration(declaration) && named {
 			initializer := declaration.AsVariableDeclaration().Initializer
 			if initializer == nil {
 				continue
 			}
 			initializer = unwrap(initializer)
 			if ast.IsArrowFunction(initializer) {
-				return declaration.Name().Text(), initializer.AsArrowFunction().Parameters.Nodes
+				return name, initializer.AsArrowFunction().Parameters.Nodes
 			}
 			if ast.IsFunctionExpression(initializer) {
-				return declaration.Name().Text(), initializer.AsFunctionExpression().Parameters.Nodes
+				return name, initializer.AsFunctionExpression().Parameters.Nodes
 			}
 		}
 	}
 	return "", nil
 }
+
+func declarationName(node *ast.Node) (string, bool) {
+	if node.Name() == nil {
+		return "", false
+	}
+	return ast.TryGetTextOfPropertyName(node.Name())
+}
+
 func referencedTypeName(node *ast.Node) string {
 	for node != nil && ast.IsParenthesizedTypeNode(node) {
 		node = node.AsParenthesizedTypeNode().Type
 	}
-	if !ast.IsTypeReferenceNode(node) {
+	if node == nil || !ast.IsTypeReferenceNode(node) {
 		return ""
 	}
 	name := node.AsTypeReferenceNode().TypeName

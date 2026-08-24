@@ -25,7 +25,11 @@ var UnboundedStreamBufferRule = rule.Rule{
 					continue
 				}
 				for _, property := range argument.AsObjectLiteralExpression().Properties.Nodes {
-					if !ast.IsPropertyAssignment(property) || property.Name() == nil || property.Name().Text() != "capacity" {
+					if !ast.IsPropertyAssignment(property) {
+						continue
+					}
+					propertyName, ok := ast.TryGetTextOfPropertyName(property.Name())
+					if !ok || propertyName != "capacity" {
 						continue
 					}
 					value := skipTransparent(property.AsPropertyAssignment().Initializer)

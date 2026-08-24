@@ -15,6 +15,7 @@ type dataEntry struct {
 }
 
 var Rule = rule.Rule{Name: "duplicate-shape", Run: func(ctx rule.RuleContext, _ any) rule.RuleListeners {
+	data := projectData(ctx)
 	inspect := func(node *ast.Node) {
 		name, shape, ok := dataShape(ctx.SourceFile, node)
 		if !ok {
@@ -22,7 +23,7 @@ var Rule = rule.Rule{Name: "duplicate-shape", Run: func(ctx rule.RuleContext, _ 
 		}
 		selfKey := ctx.SourceFile.FileName() + ":" + name
 		targetName, targetKey, count := "", "", 0
-		for _, entry := range projectData(ctx) {
+		for _, entry := range data {
 			if entry.shape == shape {
 				count++
 				if targetKey == "" || entry.key < targetKey {
@@ -55,20 +56,22 @@ func projectData(ctx rule.RuleContext) []dataEntry {
 	return result
 }
 func dataShape(file *ast.SourceFile, node *ast.Node) (string, string, bool) {
-	if node == nil || node.Name() == nil {
+	if node == nil || (!ast.IsInterfaceDeclaration(node) && !ast.IsTypeAliasDeclaration(node)) {
 		return "", "", false
 	}
-	name := node.Name().Text()
+	nameNode := node.Name()
+	if nameNode == nil || !ast.IsIdentifier(nameNode) {
+		return "", "", false
+	}
+	name := nameNode.Text()
 	content := ""
 	if ast.IsInterfaceDeclaration(node) {
 		content = nodeText(file, node)
 		if i := strings.Index(content, "{"); i >= 0 {
 			content = content[i:]
 		}
-	} else if ast.IsTypeAliasDeclaration(node) {
-		content = nodeText(file, node.AsTypeAliasDeclaration().Type)
 	} else {
-		return "", "", false
+		content = nodeText(file, node.AsTypeAliasDeclaration().Type)
 	}
 	return name, canonicalShape(content), true
 }

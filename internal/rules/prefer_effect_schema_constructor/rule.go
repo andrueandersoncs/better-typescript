@@ -174,9 +174,11 @@ func foreignType(ctx rule.RuleContext, typ *checker.Type, seen map[*checker.Type
 		}
 	}
 	if defaultLibrary {
-		for _, argument := range ctx.TypeChecker.GetTypeArguments(typ) {
-			if foreignType(ctx, argument, seen) {
-				return true
+		if checker.Type_flags(typ)&checker.TypeFlagsObject != 0 && checker.Type_objectFlags(typ)&checker.ObjectFlagsReference != 0 {
+			for _, argument := range ctx.TypeChecker.GetTypeArguments(typ) {
+				if foreignType(ctx, argument, seen) {
+					return true
+				}
 			}
 		}
 		return false

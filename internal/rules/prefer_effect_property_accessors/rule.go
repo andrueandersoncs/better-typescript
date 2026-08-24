@@ -18,7 +18,7 @@ var Rule = rule.Rule{Name: "prefer-effect-property-accessors", Run: func(ctx rul
 		}
 		expression := returnedExpression(node)
 		expression = unwrap(expression)
-		if !ast.IsPropertyAccessExpression(expression) || expression.AsPropertyAccessExpression().QuestionDotToken != nil {
+		if expression == nil || !ast.IsPropertyAccessExpression(expression) || expression.AsPropertyAccessExpression().QuestionDotToken != nil {
 			return
 		}
 		receiver := unwrap(expression.AsPropertyAccessExpression().Expression)

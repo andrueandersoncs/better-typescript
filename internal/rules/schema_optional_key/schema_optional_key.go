@@ -16,18 +16,23 @@ var SchemaOptionalKeyRule = rule.Rule{
 		imports := collectAPIImports(ctx.SourceFile.Text())
 		optionalFields := map[string]bool{}
 		walk(ctx.SourceFile.AsNode(), func(node *ast.Node) bool {
-			if node.Kind != ast.KindPropertySignature || node.Name() == nil || node.PostfixToken() == nil || node.PostfixToken().Kind != ast.KindQuestionToken {
+			if node.Kind != ast.KindPropertySignature || node.PostfixToken() == nil || node.PostfixToken().Kind != ast.KindQuestionToken {
+				return false
+			}
+			name, ok := ast.TryGetTextOfPropertyName(node.Name())
+			if !ok {
 				return false
 			}
 			typeNode := node.Type()
 			hasUndefined := typeNode != nil && walk(typeNode, func(current *ast.Node) bool { return current.Kind == ast.KindUndefinedKeyword })
 			if !hasUndefined {
-				optionalFields[node.Name().Text()] = true
+				optionalFields[name] = true
 			}
 			return false
 		})
 		return rule.RuleListeners{ast.KindPropertyAssignment: func(node *ast.Node) {
-			if node.Name() == nil || !optionalFields[node.Name().Text()] {
+			name, ok := ast.TryGetTextOfPropertyName(node.Name())
+			if !ok || !optionalFields[name] {
 				return
 			}
 			initializer := skipTransparent(node.AsPropertyAssignment().Initializer)

@@ -1,6 +1,8 @@
 package rule
 
 import (
+	"sync"
+
 	"github.com/andrueandersoncs/better-typescript/internal/utils"
 	"github.com/microsoft/typescript-go/shim/ast"
 	"github.com/microsoft/typescript-go/shim/checker"
@@ -115,9 +117,35 @@ func (d RuleDiagnostic) GetSuggestions() []RuleSuggestion {
 	return *d.Suggestions
 }
 
+type ProgramCache struct {
+	entries sync.Map
+}
+
+type programCacheEntry[T any] struct {
+	once  sync.Once
+	value T
+}
+
+func NewProgramCache() *ProgramCache {
+	return &ProgramCache{}
+}
+
+func ProgramCacheValue[T any](ctx RuleContext, key any, build func() T) T {
+	if ctx.ProgramCache == nil {
+		return build()
+	}
+	loaded, _ := ctx.ProgramCache.entries.LoadOrStore(key, &programCacheEntry[T]{})
+	entry := loaded.(*programCacheEntry[T])
+	entry.once.Do(func() {
+		entry.value = build()
+	})
+	return entry.value
+}
+
 type RuleContext struct {
 	SourceFile                      *ast.SourceFile
 	Program                         *compiler.Program
+	ProgramCache                    *ProgramCache
 	TypeChecker                     *checker.Checker
 	ReportDiagnostic                func(diagnostic RuleDiagnostic)
 	ReportDiagnosticWithFixes       func(diagnostic RuleDiagnostic, fixesFn func() []RuleFix)

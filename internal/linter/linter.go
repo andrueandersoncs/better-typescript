@@ -475,6 +475,7 @@ func RunLinterOnProgram(options RunLinterOnProgramOptions) error {
 
 	reportTypeScriptDiagnostics(program, files, typeErrors, onInternalDiagnostic)
 	workloadQueue := makeCheckerWorkloadQueue(program, files)
+	programCache := rule.NewProgramCache()
 
 	wg := core.NewWorkGroup(workers == 1)
 	for range workers {
@@ -487,6 +488,7 @@ func RunLinterOnProgram(options RunLinterOnProgramOptions) error {
 			// These closures remain valid for the length of linting, as we mutate the fields
 			// of `ctxBuilder`, but `ctxBuilder` itself will not change.
 			ctx := newRuleContext(ctxBuilder)
+			ctx.ProgramCache = programCache
 
 			if timingStore == nil {
 				// Listeners are tagged with the rule that is associated with, so that when a diagnostic

@@ -1,10 +1,10 @@
 # Better TypeScript
 
-Better TypeScript is a Go linter that analyzes one TypeScript project from the current directory.
+Better TypeScript is a Go linter that analyzes the TypeScript project graph rooted in the current directory.
 
 ## Domain
 
-**Analysis run**: Load `./tsconfig.json` into one `typescript-go` Program, lint its non-declaration root source files, normalize all reports, and return deterministic violations.
+**Analysis run**: Load `./tsconfig.json` and its recursive project references, lint each config's non-declaration root source files with its own `typescript-go` Program, normalize all reports, and return deterministic violations.
 
 **Rule**: A name and listener map keyed by `typescript-go` AST kind. A listener receives the current source file, Program, checker, and node/range reporters through `rule.RuleContext`.
 

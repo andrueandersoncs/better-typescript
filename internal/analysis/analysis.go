@@ -18,6 +18,7 @@ import (
 	"github.com/microsoft/typescript-go/shim/scanner"
 	"github.com/microsoft/typescript-go/shim/tsoptions"
 	"github.com/microsoft/typescript-go/shim/tspath"
+	"github.com/microsoft/typescript-go/shim/vfs"
 	"github.com/microsoft/typescript-go/shim/vfs/cachedvfs"
 	"github.com/microsoft/typescript-go/shim/vfs/osvfs"
 )
@@ -39,14 +40,70 @@ func Run(root string, rules []rule.Rule) ([]Violation, error) {
 		return nil, fmt.Errorf("tsconfig.json does not exist")
 	}
 
-	host := utils.CreateCompilerHost(root, fs)
-	config, _ := tsoptions.GetParsedCommandLineOfConfigFile(configFileName, &core.CompilerOptions{}, nil, host, nil)
-	program, _, err := utils.CreateProgram(false, fs, root, configFileName, host, false)
+	configFileNames, err := referencedConfigFileNames(fs, configFileName)
 	if err != nil {
-		return nil, fmt.Errorf("create TypeScript program: %w", err)
+		return nil, err
+	}
+
+	violations := make([]Violation, 0)
+	for _, projectConfigFileName := range configFileNames {
+		projectViolations, err := runProject(root, projectConfigFileName, fs, rules)
+		if err != nil {
+			return nil, err
+		}
+		violations = append(violations, projectViolations...)
+	}
+
+	slices.SortFunc(violations, compareViolations)
+	return slices.Compact(violations), nil
+}
+
+func referencedConfigFileNames(fs vfs.FS, rootConfigFileName string) ([]string, error) {
+	rootDirectory := tspath.GetDirectoryPath(rootConfigFileName)
+	visited := map[tspath.Path]bool{}
+	result := make([]string, 0)
+	var visit func(string) error
+	visit = func(configFileName string) error {
+		configFileName = tspath.NormalizePath(configFileName)
+		configPath := tspath.ToPath(configFileName, rootDirectory, fs.UseCaseSensitiveFileNames())
+		if visited[configPath] {
+			return nil
+		}
+		visited[configPath] = true
+
+		currentDirectory := tspath.GetDirectoryPath(configFileName)
+		host := utils.CreateCompilerHost(currentDirectory, fs)
+		config, diagnostics := tsoptions.GetParsedCommandLineOfConfigFile(configFileName, &core.CompilerOptions{}, nil, host, nil)
+		if config == nil || len(diagnostics) > 0 {
+			return fmt.Errorf("parse TypeScript config: %s", configFileName)
+		}
+
+		result = append(result, configFileName)
+		references := slices.Clone(config.ResolvedProjectReferencePaths())
+		slices.Sort(references)
+		for _, reference := range references {
+			if err := visit(reference); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	if err := visit(rootConfigFileName); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func runProject(root string, configFileName string, fs vfs.FS, rules []rule.Rule) ([]Violation, error) {
+	currentDirectory := tspath.GetDirectoryPath(configFileName)
+	host := utils.CreateCompilerHost(currentDirectory, fs)
+	config, _ := tsoptions.GetParsedCommandLineOfConfigFile(configFileName, &core.CompilerOptions{}, nil, host, nil)
+	program, _, err := utils.CreateProgram(false, fs, currentDirectory, configFileName, host, false)
+	if err != nil {
+		return nil, fmt.Errorf("create TypeScript program for %s: %w", configFileName, err)
 	}
 	if program == nil || config == nil {
-		return nil, fmt.Errorf("create TypeScript program")
+		return nil, fmt.Errorf("create TypeScript program for %s", configFileName)
 	}
 
 	files := make([]*ast.SourceFile, 0, len(config.FileNames()))
@@ -102,11 +159,9 @@ func Run(root string, rules []rule.Rule) ([]Violation, error) {
 		OnInternalDiagnostic: func(_ diagnostic.Internal) {},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("run linter: %w", err)
+		return nil, fmt.Errorf("run linter for %s: %w", configFileName, err)
 	}
-
-	slices.SortFunc(violations, compareViolations)
-	return slices.Compact(violations), nil
+	return violations, nil
 }
 
 func compareViolations(left, right Violation) int {

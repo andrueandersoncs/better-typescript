@@ -149,14 +149,36 @@ func isDomainField(symbol *ast.Symbol) bool {
 	return true
 }
 
-func fieldTarget(symbol *ast.Symbol, fallback *ast.Node) *ast.Node {
+func fieldTarget(symbol *ast.Symbol, sourceFile *ast.SourceFile) *ast.Node {
 	for _, declaration := range symbol.Declarations {
-		sourceFile := sourceFileOf(declaration)
-		if sourceFile != nil && !sourceFile.IsDeclarationFile {
+		if sourceFileOf(declaration) == sourceFile {
 			return declaration
 		}
 	}
-	return fallback
+	return nil
+}
+
+func stableFieldName(sourceFile *ast.SourceFile, field *ast.Symbol, declaration *ast.Node) string {
+	nameNode := declaration.Name()
+	if nameNode == nil {
+		return field.Name
+	}
+	if name, ok := ast.TryGetTextOfPropertyName(nameNode); ok {
+		return name
+	}
+	if !ast.IsComputedPropertyName(nameNode) || nameNode.Expression() == nil {
+		return field.Name
+	}
+	expression := nameNode.Expression()
+	start, end := expression.Pos(), expression.End()
+	text := sourceFile.Text()
+	if start < 0 || end < start || end > len(text) {
+		return field.Name
+	}
+	if name := strings.TrimSpace(text[start:end]); name != "" {
+		return name
+	}
+	return field.Name
 }
 
 func reportUnusedFields(ctx rule.RuleContext, declaration *ast.Node, readSymbols map[*ast.Symbol]struct{}, readFieldNames map[string]struct{}, usedByExportedFunction map[*ast.Symbol]struct{}) {
@@ -184,7 +206,11 @@ func reportUnusedFields(ctx rule.RuleContext, declaration *ast.Node, readSymbols
 			continue
 		}
 
-		ctx.ReportNode(fieldTarget(field, nameNode), unusedFieldMessage(nameNode.Text(), field.Name))
+		target := fieldTarget(field, ctx.SourceFile)
+		if target == nil {
+			continue
+		}
+		ctx.ReportNode(target, unusedFieldMessage(nameNode.Text(), stableFieldName(ctx.SourceFile, field, target)))
 	}
 }
 

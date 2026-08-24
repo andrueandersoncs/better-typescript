@@ -1,6 +1,6 @@
 # Architecture
 
-The CLI analyzes only the current directory. It loads `./tsconfig.json` into one `typescript-go` Program and selects non-declaration root source files.
+The CLI analyzes the project graph rooted in the current directory. It loads `./tsconfig.json` and its recursive project references. Each config gets one `typescript-go` Program and contributes its non-declaration root source files.
 
 The complete sorted rule catalog is passed to the tsgolint-derived checker-worker linter. For each file, every rule creates a listener map keyed by AST kind. The linter combines those listeners and dispatches them during one traversal. Rules report nodes or ranges through `rule.RuleContext`.
 

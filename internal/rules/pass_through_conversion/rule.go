@@ -134,7 +134,7 @@ func referencedTypeName(node *ast.Node) string {
 	for node != nil && ast.IsParenthesizedTypeNode(node) {
 		node = node.AsParenthesizedTypeNode().Type
 	}
-	if !ast.IsTypeReferenceNode(node) {
+	if node == nil || !ast.IsTypeReferenceNode(node) {
 		return ""
 	}
 	name := node.AsTypeReferenceNode().TypeName

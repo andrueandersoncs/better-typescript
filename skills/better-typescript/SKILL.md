@@ -18,7 +18,7 @@ For repository changes, run `go fmt ./...`, `go vet ./...`, `go test ./...`, and
 
 ## Run
 
-From the directory containing `tsconfig.json`, run the installed binary with no options:
+From the directory containing the root `tsconfig.json`, run the installed binary with no options. Recursive project references are included:
 
 ```sh
 better-typescript

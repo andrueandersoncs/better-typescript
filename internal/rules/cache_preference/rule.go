@@ -46,7 +46,11 @@ func bindingName(ctx rule.RuleContext, node *ast.Node) string {
 		return ""
 	}
 	if ast.IsVariableDeclaration(parent) || ast.IsPropertyAssignment(parent) {
-		return parent.Name().Text()
+		name, ok := ast.TryGetTextOfPropertyName(parent.Name())
+		if ok {
+			return name
+		}
+		return ""
 	}
 	if ast.IsBinaryExpression(parent) && parent.AsBinaryExpression().Right == node {
 		return nodeText(ctx.SourceFile, parent.AsBinaryExpression().Left)
@@ -59,7 +63,11 @@ func objectHasTTL(node *ast.Node) bool {
 		return false
 	}
 	for _, prop := range node.AsObjectLiteralExpression().Properties.Nodes {
-		if (ast.IsPropertyAssignment(prop) || ast.IsShorthandPropertyAssignment(prop)) && ttlName.MatchString(prop.Name().Text()) {
+		if !ast.IsPropertyAssignment(prop) && !ast.IsShorthandPropertyAssignment(prop) {
+			continue
+		}
+		name, ok := ast.TryGetTextOfPropertyName(prop.Name())
+		if ok && ttlName.MatchString(name) {
 			return true
 		}
 	}

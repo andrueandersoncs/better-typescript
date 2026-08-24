@@ -66,7 +66,7 @@ func parameterIsFunction(ctx rule.RuleContext, parameter *ast.Node) bool {
 	if hasCallSignature(ctx, parameterType) {
 		return true
 	}
-	if parameter.AsParameterDeclaration().DotDotDotToken == nil {
+	if parameter.AsParameterDeclaration().DotDotDotToken == nil || parameterType == nil || checker.Type_flags(parameterType)&checker.TypeFlagsObject == 0 || checker.Type_objectFlags(parameterType)&checker.ObjectFlagsReference == 0 {
 		return false
 	}
 	arguments := checker.Checker_getTypeArguments(ctx.TypeChecker, parameterType)

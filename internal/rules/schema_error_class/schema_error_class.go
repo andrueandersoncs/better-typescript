@@ -25,7 +25,11 @@ var SchemaErrorClassRule = rule.Rule{
 			dataTagged := regexp.MustCompile(`extends\s+(?:Data\.)?(?:TaggedError|Error)\s*\(`).MatchString(text)
 			hasTag := false
 			for _, member := range node.AsClassDeclaration().Members.Nodes {
-				if member.Kind == ast.KindPropertyDeclaration && member.Name() != nil && member.Name().Text() == "_tag" {
+				if member.Kind != ast.KindPropertyDeclaration {
+					continue
+				}
+				memberName, ok := ast.TryGetTextOfPropertyName(member.Name())
+				if ok && memberName == "_tag" {
 					hasTag = true
 					break
 				}

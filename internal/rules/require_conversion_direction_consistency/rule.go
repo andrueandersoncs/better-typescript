@@ -114,7 +114,9 @@ func callableAt(ctx rule.RuleContext, node *ast.Node) (callable, bool) {
 	if name == nil || !ast.IsIdentifier(name) {
 		return callable{}, false
 	}
-	c := callable{nameNode: name, name: name.Text(), words: words(name.Text()), body: sourceText(ctx, fn.Body()), construction: ast.IsObjectLiteralExpression(fn.Body()) || strings.HasPrefix(sourceText(ctx, fn.Body()), "({") || strings.Contains(sourceText(ctx, fn.Body()), "return {") || strings.Contains(sourceText(ctx, fn.Body()), "new ")}
+	body := fn.Body()
+	bodyText := sourceText(ctx, body)
+	c := callable{nameNode: name, name: name.Text(), words: words(name.Text()), body: bodyText, construction: body != nil && (ast.IsObjectLiteralExpression(body) || strings.HasPrefix(bodyText, "({") || strings.Contains(bodyText, "return {") || strings.Contains(bodyText, "new "))}
 	if fn.Type() != nil {
 		c.returnType = sourceText(ctx, fn.Type())
 	}

@@ -8,3 +8,5 @@ declare const users: Layer<Users, never, Database>
 declare const clock: Layer<Clock, never, never>
 Layer.merge(database, users)
 Layer.merge(database, clock)
+declare const layerLike: { readonly Layer: true }
+Layer.merge(layerLike, clock)

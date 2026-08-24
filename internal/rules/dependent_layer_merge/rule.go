@@ -52,6 +52,9 @@ func layerChannels(ctx rule.RuleContext, expression *ast.Node) (channels, bool) 
 	if t == nil || !strings.Contains(ctx.TypeChecker.TypeToString(t), "Layer") {
 		return channels{}, false
 	}
+	if checker.Type_flags(t)&checker.TypeFlagsObject == 0 || checker.Type_objectFlags(t)&checker.ObjectFlagsReference == 0 {
+		return channels{}, false
+	}
 	args := checker.Checker_getTypeArguments(ctx.TypeChecker, t)
 	if len(args) < 3 {
 		return channels{}, false
