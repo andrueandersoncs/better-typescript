@@ -1,5 +1,5 @@
-node_modules/
-dist/
-*.tsbuildinfo
-.agents/worktrees/
 .cache/
+.agents/worktrees/
+/better-typescript
+*.test
+coverage.out

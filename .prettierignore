@@ -1,6 +1,0 @@
-dist/
-repos/
-packages/*/test/fixtures/
-packages/rules/src/rules/*/fixtures/
-.claude/
-docs/

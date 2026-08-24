@@ -1,37 +1,23 @@
 # Better TypeScript
 
-Better TypeScript is a TypeScript linter with syntax- and type-based rules.
+Better TypeScript is a Go linter that analyzes one TypeScript project from the current directory.
 
 ## Domain
 
-**Analysis run**: One resource-owned workspace pass that discovers projects, loads root
-configuration, constructs and lints one TypeScript Program at a time, globally normalizes
-Violations, and releases each Program before continuing.
+**Analysis run**: Load `./tsconfig.json` into one `typescript-go` Program, lint its non-declaration root source files, normalize all reports, and return deterministic violations.
 
-**LoadedWorkspace**: A discovered TypeScript workspace containing one or more `LoadedProject`
-values. It is the project value accepted by the linter.
+**Rule**: A name and listener map keyed by `typescript-go` AST kind. A listener receives the current source file, Program, checker, and node/range reporters through `rule.RuleContext`.
 
-**LoadedProject**: One TypeScript Program and its configuration and root paths.
+**Violation**: The final NDJSON record: rule name, `error` level, actionable message, relative slash path, and one-based UTF-16 line and column.
 
-**Rule**: A named check invoked for exactly one applicable project source. Each built-in Rule has a
-canonical `packages/rules/src/rules/<rule-name>/` home that owns its identity, recognition, target,
-message, and exclusive helpers. Shared indexes expose facts used by multiple Rules rather than Rule
-kinds or verdicts. Scanner execution and local findings stay source-file scoped.
+**Built-in catalog**: The fixed, sorted set of 129 rules. Every rule is enabled once for every linted file.
 
-**Local finding**: Actionable message text plus either a syntax node or an explicit source position.
-It has no rule identity, configured level, serialized path, line, or column.
+**Checker worker**: A linter worker paired with a `typescript-go` checker. It registers enabled listeners once per file and dispatches them during one AST traversal.
 
-**Violation**: Core's final serialized occurrence. Core combines a local finding with its Rule and
-configuration, normalizes its workspace-relative path, locates its line and column, then exactly
-deduplicates and deterministically orders the complete output.
+## Modules
 
-**Built-in rule catalog**: The deterministic set of 127 selected Rules enabled by the CLI.
-
-## Packages
-
-Each package owns its package-level tests and test fixtures under `test/`.
-
-- `@better-typescript/core` owns complete analysis runs, final Violation materialization, and
-  focused project loading and linting interfaces.
-- `@better-typescript/rules` owns built-in Rule implementations and the catalog.
-- `@better-typescript/cli` invokes the catalog and renders Violations.
+- `cmd/better-typescript`: process boundary.
+- `internal/analysis`: Program loading and violation normalization.
+- `internal/linter` and `internal/rule`: traversal and rule interface.
+- `internal/rules`: built-in catalog and implementations.
+- `shim`, `patches`, `typescript-go`: pinned compiler foundation.

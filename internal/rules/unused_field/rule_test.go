@@ -1,0 +1,14 @@
+package unused_field
+
+import (
+	"testing"
+
+	"github.com/andrueandersoncs/better-typescript/internal/analysis"
+	"github.com/andrueandersoncs/better-typescript/internal/ruletest"
+)
+
+func TestRule(t *testing.T) {
+	ruletest.Assert(t, "testdata", UnusedFieldRule, []analysis.Violation{
+		{RuleName: "unused-field", Level: "error", Message: "Draft.forecast is constructed but never independently read. Delete the speculative field or connect it to behavior that consumes its semantics. Mechanical forwarding into another representation is not a read and instead indicates parallel concepts.", FilePath: "src/violation.ts", Line: 3, Column: 3},
+	})
+}

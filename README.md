@@ -1,176 +1,50 @@
 # Better TypeScript
 
-Better TypeScript is a TypeScript linter for coding agents. It supports syntax- and type-based
-rules, including semantic checks that syntax-only linters cannot express. It discovers a TypeScript
-project and prints a flat list of actionable violations.
+Better TypeScript is a Go linter for TypeScript projects. It uses the pinned `typescript-go` compiler and runs 129 syntax- and type-aware rules in one AST pass per root source file.
 
-## Agent skills
+## Build
 
 ```sh
-npx skills add andrueandersoncs/better-typescript --skill better-typescript
-npx skills add andrueandersoncs/better-typescript --skill triage-better-typescript
+./scripts/initialize.sh
+mise exec go@1.26 -- go build ./cmd/better-typescript
 ```
 
-Use `better-typescript` for setup and normal runs. Use `triage-better-typescript` when code produced
-by remediation is unsatisfactory and you can provide the result.
+The initialization command checks out the pinned `typescript-go` submodule, applies the required tsgolint patches, and prepares the compiler support code.
 
-## Usage
+## Run
+
+Run the binary with no options from a directory containing `tsconfig.json`:
 
 ```sh
-bun run build
-better-typescript --project .
+/path/to/better-typescript
 ```
 
-The current directory is used when `--project` is omitted. Use `--glob` to analyze only matching
-project-relative files:
-
-```sh
-better-typescript --project . --glob 'src/**/*.ts'
-```
-
-The glob further narrows the root files selected by TypeScript and `better-typescript.config.ts`.
-Use repeatable `--rule` flags to check only named built-in rules:
-
-```sh
-better-typescript --project . --rule no-throw --rule no-try-catch
-```
-
-When `--rule` is present, the CLI ignores `better-typescript.config.ts` and reports selected rules
-as errors. `--glob` still narrows the checked files. The command exits successfully after a
-completed analysis even when violations are present.
-
-Stdout is NDJSON by default. Each line has one shape:
+The command writes `Analyzing <absolute current directory>.` to stderr. It writes one violation per stdout line as NDJSON:
 
 ```json
-{
-  "ruleName": "no-throw",
-  "level": "error",
-  "message": "Avoid throwing errors with throw. Return a typed error through Effect instead.",
-  "filePath": "src/main.ts",
-  "line": 4,
-  "column": 3
-}
+{"ruleName":"no-throw","level":"error","message":"Avoid throwing errors with throw. Return a typed error through Effect instead.","filePath":"src/main.ts","line":4,"column":3}
 ```
 
-Use `--pretty` for the same fields in human-readable form:
+Paths are current-directory-relative slash paths. Locations are one-based UTF-16 positions. Output is exactly deduplicated and deterministic. A completed analysis exits successfully even when violations exist.
 
-```text
-src/main.ts:4:3 error no-throw Avoid throwing errors with throw. Return a typed error through Effect instead.
-```
-
-Operational status and project-loading failures go to stderr.
-
-## Configuration
-
-Add `better-typescript.config.ts` to the TypeScript project root when different files need different
-rules:
-
-```ts
-import { defineConfig } from "@better-typescript/core/config"
-
-export default defineConfig([
-  {
-    files: ["src/**/*.ts"],
-    rules: { "*": "error" }
-  },
-  {
-    files: ["src/legacy.ts"],
-    rules: { "no-throw": "off" }
-  },
-  {
-    files: ["src/boundary.ts"],
-    rules: { "require-explicit-return-type": "warn" }
-  }
-])
-```
-
-File globs are matched against forward-slash paths relative to the project root. A configured
-project starts with every rule disabled. Matching entries apply in declaration order, so later
-entries override earlier entries. `"*"` changes every rule at that point, while an explicit rule
-setting in the same entry takes precedence over `"*"`. `"error"` and `"warn"` enable a rule and set
-the reported violation level; `"off"` disables it. Files that match no enabled rule are not linted.
-Only root files selected by the TypeScript project's `files` or `include` are lint targets.
-Transitive imports remain available for type-aware analysis but are not linted.
-
-Rule identifiers must be unique kebab-case strings. Unknown configured rule names, invalid names,
-and malformed config exports are operational errors. Without a config file, the CLI enables every
-built-in rule for every project source file.
+The full fixed catalog is enabled at `error` level. There are no CLI options, project configuration, plugin API, or JavaScript API.
 
 ## Architecture
 
-This Bun workspace has exactly three packages:
+- `cmd/better-typescript` owns the no-option CLI and NDJSON rendering.
+- `internal/analysis` loads `./tsconfig.json`, creates one `typescript-go` Program, and runs the linter on its root source files.
+- `internal/linter` registers all rule listeners once per file and dispatches them in one traversal using checker workers.
+- `internal/rules/<rule_name>` owns each rule and its `testdata` project.
+- `internal/rules/catalog.go` registers all 129 rules once in sorted name order.
+- `shim`, `patches`, and `typescript-go` are the pinned tsgolint compiler foundation.
 
-- `@better-typescript/core` owns project discovery, TypeScript Programs, `Rule`, `Violation`, and
-  deterministic `lint` execution.
-- `@better-typescript/rules` owns the 126 built-in rules and the deterministic `builtinRules`
-  catalog.
-- `@better-typescript/cli` owns argument parsing and violation rendering.
-
-Dependencies point from CLI to core and rules, and from rules to core. Core never depends on the
-built-in catalog.
-
-There is no plugin graph, suppression, silent mode, aggregate report phase, or watch mode.
-Configuration selects files and applies the `"error"`, `"warn"`, or `"off"` severity to registered
-rules.
-
-## Programmatic use
-
-```ts
-import { Effect } from "effect"
-import { runAnalysis } from "@better-typescript/core/analysis"
-import { builtinRules } from "@better-typescript/rules/builtinRules"
-
-const { violations } = await Effect.runPromise(
-  runAnalysis({ projectPath: ".", rules: builtinRules })
-)
-```
-
-`loadProject` remains available for focused callers that need direct compiler Program access.
-
-A custom rule has only a stable name and a source-file check:
-
-```ts
-import { NodeTarget, RuleFinding } from "@better-typescript/core/linter"
-import type { Rule } from "@better-typescript/core/linter"
-
-const noConsoleLog: Rule = {
-  name: "acme-no-console-log",
-  check: (context) => {
-    const target = NodeTarget.make({ node: context.sourceFile })
-
-    return [RuleFinding.make({ message: "Avoid console.log.", target })]
-  }
-}
-```
-
-Use `NodeTarget` when syntax owns the location. `PositionTarget` accepts an absolute, zero-based
-integer offset within its `sourceFile`; core converts either target to one-based output coordinates.
-
-See [`docs/rules.md`](docs/rules.md) for the complete built-in catalog and
-[`examples/programmatic/main.ts`](examples/programmatic/main.ts) for a runnable example.
+See [`ARCHITECTURE.md`](ARCHITECTURE.md), [`docs/rules.md`](docs/rules.md), and [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).
 
 ## Development
 
 ```sh
-bun install
-bun run format
-bun run build
-bun run typecheck
-bun run test
-bun run format:check
-bun run bench:self
-bun run dev
+mise exec go@1.26 -- go fmt ./...
+mise exec go@1.26 -- go vet ./...
+mise exec go@1.26 -- go test ./...
+mise exec go@1.26 -- go build ./cmd/better-typescript
 ```
-
-`bun run dev` self-hosts with the complete built-in catalog. `bun run bench:self` reports the
-minimum, median, and maximum whole-process runtime.
-
-## Exit codes
-
-- `0`: analysis completed, with or without violations.
-- `2`: project discovery, TypeScript configuration, or another operational step failed.
-
-## Non-goals
-
-Better TypeScript is not a replacement for `tsc`, ESLint, or Prettier. It does not format code or
-load third-party plugins. Rule configuration controls enablement levels, not rule-specific options.
