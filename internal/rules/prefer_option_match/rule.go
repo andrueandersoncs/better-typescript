@@ -2,7 +2,7 @@ package prefer_option_match
 
 import (
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
-	"github.com/microsoft/typescript-go/shim/ast"
+	"github.com/andrueandersoncs/typescript-go/ast"
 )
 
 var message = rule.RuleMessage{Id: "prefer-option-match", Description: "Avoid using Option.isSome/isNone in a ternary to unwrap an Option.", Help: "Use Option.match(option, { onNone: () => fallback, onSome: (value) => ... }) instead of manually checking and accessing .value."}

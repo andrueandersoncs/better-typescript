@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
-	"github.com/microsoft/typescript-go/shim/ast"
+	"github.com/andrueandersoncs/typescript-go/ast"
 )
 
 const unusedFieldHelp = "Delete the speculative field or connect it to behavior that consumes its semantics. Mechanical forwarding into another representation is not a read and instead indicates parallel concepts."

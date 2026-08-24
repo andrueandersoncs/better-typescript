@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
-	"github.com/microsoft/typescript-go/shim/ast"
-	"github.com/microsoft/typescript-go/shim/scanner"
+	"github.com/andrueandersoncs/typescript-go/ast"
+	"github.com/andrueandersoncs/typescript-go/scanner"
 )
 
 var neutral = map[string]bool{"advice": true, "config": true, "data": true, "evidence": true, "metadata": true, "news": true, "series": true, "species": true, "status": true}

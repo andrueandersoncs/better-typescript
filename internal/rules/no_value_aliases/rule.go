@@ -2,7 +2,7 @@ package no_value_aliases
 
 import (
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
-	"github.com/microsoft/typescript-go/shim/ast"
+	"github.com/andrueandersoncs/typescript-go/ast"
 )
 
 var Rule = rule.Rule{

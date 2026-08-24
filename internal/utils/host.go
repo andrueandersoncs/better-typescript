@@ -1,19 +1,38 @@
 package utils
 
 import (
-	"github.com/microsoft/typescript-go/shim/ast"
-	"github.com/microsoft/typescript-go/shim/compiler"
-	"github.com/microsoft/typescript-go/shim/core"
+	"sync"
 
-	"github.com/andrueandersoncs/better-typescript/internal/collections"
-	"github.com/microsoft/typescript-go/shim/parser"
-	"github.com/microsoft/typescript-go/shim/tsoptions"
-	"github.com/microsoft/typescript-go/shim/tspath"
-	"github.com/microsoft/typescript-go/shim/vfs"
-	"github.com/microsoft/typescript-go/shim/vfs/cachedvfs"
+	"github.com/andrueandersoncs/typescript-go/ast"
+	"github.com/andrueandersoncs/typescript-go/compiler"
+	"github.com/andrueandersoncs/typescript-go/core"
+	"github.com/andrueandersoncs/typescript-go/parser"
+	"github.com/andrueandersoncs/typescript-go/tsoptions"
+	"github.com/andrueandersoncs/typescript-go/tspath"
+	"github.com/andrueandersoncs/typescript-go/vfs"
 )
 
 var _ compiler.CompilerHost = (*compilerHost)(nil)
+
+type syncMap[K comparable, V any] struct {
+	values sync.Map
+}
+
+func (m *syncMap[K, V]) Load(key K) (value V, ok bool) {
+	stored, ok := m.values.Load(key)
+	if !ok || stored == nil {
+		return value, ok
+	}
+	return stored.(V), true
+}
+
+func (m *syncMap[K, V]) LoadOrStore(key K, value V) (actual V, loaded bool) {
+	stored, loaded := m.values.LoadOrStore(key, value)
+	if stored == nil {
+		return actual, loaded
+	}
+	return stored.(V), loaded
+}
 
 type compilerHost struct {
 	currentDirectory          string
@@ -21,17 +40,7 @@ type compilerHost struct {
 	defaultLibraryPath        string
 	extendedConfigCache       tsoptions.ExtendedConfigCache
 	trace                     func(msg *ast.DiagnosticsMessage, args ...any)
-	resolvedProjectReferences collections.SyncMap[tspath.Path, *tsoptions.ParsedCommandLine]
-}
-
-func NewCachedFSCompilerHost(
-	currentDirectory string,
-	fs vfs.FS,
-	defaultLibraryPath string,
-	extendedConfigCache tsoptions.ExtendedConfigCache,
-	trace func(msg *ast.DiagnosticsMessage, args ...any),
-) compiler.CompilerHost {
-	return NewCompilerHost(currentDirectory, cachedvfs.From(fs), defaultLibraryPath, extendedConfigCache, trace)
+	resolvedProjectReferences syncMap[tspath.Path, *tsoptions.ParsedCommandLine]
 }
 
 func NewCompilerHost(
@@ -69,7 +78,7 @@ func (h *compilerHost) Trace(msg *ast.DiagnosticsMessage, args ...any) {
 	h.trace(msg, args...)
 }
 
-var sourceFileCache collections.SyncMap[SourceFileCacheKey, *ast.SourceFile]
+var sourceFileCache syncMap[SourceFileCacheKey, *ast.SourceFile]
 
 type SourceFileCacheKey struct {
 	opts       ast.SourceFileParseOptions

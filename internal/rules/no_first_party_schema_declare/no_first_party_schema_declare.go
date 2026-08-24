@@ -5,8 +5,8 @@ import (
 
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
 	"github.com/andrueandersoncs/better-typescript/internal/utils"
-	"github.com/microsoft/typescript-go/shim/ast"
-	"github.com/microsoft/typescript-go/shim/checker"
+	"github.com/andrueandersoncs/typescript-go/ast"
+	"github.com/andrueandersoncs/typescript-go/checker"
 )
 
 const help = "Schema.declare is for third-party integrations and non-parametric opaque or branded types validated by a type guard. For structural models you own, define a Schema.Struct plus a same-named decoded interface — for example export const MyType = Schema.Struct({ ... }); export interface MyType extends Schema.Schema.Type<typeof MyType> {} — which gives you validation, encoding, and decoding for free."

@@ -2,7 +2,7 @@ package no_raw_object_types
 
 import (
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
-	"github.com/microsoft/typescript-go/shim/ast"
+	"github.com/andrueandersoncs/typescript-go/ast"
 )
 
 var parameterMessage = rule.RuleMessage{Id: "no-raw-object-types", Description: "Parameter uses an anonymous object type instead of a named type.", Help: "Reuse a named data structure that already expresses this value's semantics. If none exists, reconsider whether this function is a real abstraction or a procedural seam that should be collapsed into its owner. Introduce a new model only when the data has meaning independent of this parameter list; never replace it with another anonymous object type."}

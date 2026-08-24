@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
-	"github.com/microsoft/typescript-go/shim/ast"
-	"github.com/microsoft/typescript-go/shim/scanner"
+	"github.com/andrueandersoncs/typescript-go/ast"
+	"github.com/andrueandersoncs/typescript-go/scanner"
 )
 
 var conversion = map[string]bool{"decode": true, "deserialize": true, "encode": true, "format": true, "parse": true, "serialize": true, "stringify": true, "transform": true}

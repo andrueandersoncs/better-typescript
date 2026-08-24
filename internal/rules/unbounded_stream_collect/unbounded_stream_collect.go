@@ -2,7 +2,7 @@ package unbounded_stream_collect
 
 import (
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
-	"github.com/microsoft/typescript-go/shim/ast"
+	"github.com/andrueandersoncs/typescript-go/ast"
 	"path"
 	"regexp"
 	"strings"

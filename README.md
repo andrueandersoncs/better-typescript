@@ -1,15 +1,33 @@
 # Better TypeScript
 
-Better TypeScript is a Go linter for TypeScript projects. It uses the pinned `typescript-go` compiler and runs 129 syntax- and type-aware rules in one AST pass per root source file.
+Better TypeScript is a Go linter for TypeScript projects. It uses a pinned public `typescript-go` compiler module and runs 129 syntax- and type-aware rules in one AST pass per root source file.
+
+## Prerequisites
+
+- Git
+- bash
+- mise
+- Network access for Go and module downloads
+
+The project intentionally uses the latest Go 1.26 patch selected by mise.
 
 ## Build
 
+A source checkout is a normal Go module. Build it directly:
+
 ```sh
-./scripts/initialize.sh
 mise exec go@1.26 -- go build ./cmd/better-typescript
 ```
 
-The initialization command checks out the pinned `typescript-go` submodule, applies the required tsgolint patches, and prepares the compiler support code.
+The current checkout has no Better TypeScript release tag, so build it locally.
+
+## Install
+
+Install a published Better TypeScript tag with normal Go tooling:
+
+```sh
+go install github.com/andrueandersoncs/better-typescript/cmd/better-typescript@<version>
+```
 
 ## Run
 
@@ -36,15 +54,20 @@ The full fixed catalog is enabled at `error` level. There are no CLI options, pr
 - `internal/linter` registers all rule listeners once per file and dispatches them in one traversal using checker workers.
 - `internal/rules/<rule_name>` owns each rule and its `testdata` project.
 - `internal/rules/catalog.go` registers all 129 rules once in sorted name order.
-- `shim`, `patches`, and `typescript-go` are the pinned tsgolint compiler foundation.
+- `github.com/andrueandersoncs/typescript-go` supplies the public compiler adapters.
 
-See [`ARCHITECTURE.md`](ARCHITECTURE.md), [`docs/rules.md`](docs/rules.md), and [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).
+See [`ARCHITECTURE.md`](ARCHITECTURE.md), [`docs/compiler-foundation.md`](docs/compiler-foundation.md), [`docs/rules.md`](docs/rules.md), and [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).
 
 ## Development
 
+Run the local gate:
+
 ```sh
-mise exec go@1.26 -- go fmt ./...
-mise exec go@1.26 -- go vet ./...
-mise exec go@1.26 -- go test ./...
-mise exec go@1.26 -- go build ./cmd/better-typescript
+./scripts/check.sh
+```
+
+Update the compiler dependency with:
+
+```sh
+./scripts/update-typescript-go.sh <version>
 ```

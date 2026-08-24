@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
-	"github.com/microsoft/typescript-go/shim/compiler"
+	"github.com/andrueandersoncs/typescript-go/compiler"
 )
 
 var Rule = rule.Rule{

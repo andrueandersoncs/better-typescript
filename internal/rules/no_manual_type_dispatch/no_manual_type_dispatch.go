@@ -2,7 +2,7 @@ package no_manual_type_dispatch
 
 import (
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
-	"github.com/microsoft/typescript-go/shim/ast"
+	"github.com/andrueandersoncs/typescript-go/ast"
 )
 
 var message = rule.RuleMessage{Id: "no-manual-type-dispatch", Description: "Avoid dispatching on a value with a chain of if statements that each return.", Help: "This is a hand-rolled pattern match. Use Effect's Match module — Match.value(subject) with a Match.when(...) per case — and prefer Match.exhaustive so a new case is a compile error rather than a silent fall-through."}

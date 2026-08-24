@@ -5,8 +5,8 @@ import (
 
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
 	"github.com/andrueandersoncs/better-typescript/internal/utils"
-	"github.com/microsoft/typescript-go/shim/ast"
-	"github.com/microsoft/typescript-go/shim/core"
+	"github.com/andrueandersoncs/typescript-go/ast"
+	"github.com/andrueandersoncs/typescript-go/core"
 )
 
 var message = rule.RuleMessage{

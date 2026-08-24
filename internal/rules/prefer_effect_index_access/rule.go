@@ -3,8 +3,8 @@ package prefer_effect_index_access
 import (
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
 	"github.com/andrueandersoncs/better-typescript/internal/utils"
-	"github.com/microsoft/typescript-go/shim/ast"
-	"github.com/microsoft/typescript-go/shim/checker"
+	"github.com/andrueandersoncs/typescript-go/ast"
+	"github.com/andrueandersoncs/typescript-go/checker"
 )
 
 var Rule = rule.Rule{Name: "prefer-effect-index-access", Run: func(ctx rule.RuleContext, _ any) rule.RuleListeners {

@@ -2,7 +2,7 @@ package bounded_retry_schedule
 
 import (
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
-	"github.com/microsoft/typescript-go/shim/ast"
+	"github.com/andrueandersoncs/typescript-go/ast"
 	"regexp"
 	"strings"
 )

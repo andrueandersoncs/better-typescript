@@ -7,14 +7,21 @@ description: Run Better TypeScript against the current TypeScript project and fi
 
 Better TypeScript is a Go binary with a fixed 129-rule catalog. Each rule is a direct `typescript-go` AST/checker listener in `internal/rules/<rule_name>`.
 
-## Build from source
+## Get the binary
+
+A source checkout needs Git, bash, mise, and network access. It intentionally uses the latest Go 1.26 patch. The current checkout is untagged, so build it locally:
 
 ```sh
-./scripts/initialize.sh
 mise exec go@1.26 -- go build ./cmd/better-typescript
 ```
 
-For repository changes, run `go fmt ./...`, `go vet ./...`, `go test ./...`, and `go build ./cmd/better-typescript` through `mise exec go@1.26 --`.
+Install a published tag with:
+
+```sh
+go install github.com/andrueandersoncs/better-typescript/cmd/better-typescript@<version>
+```
+
+For repository changes, run `./scripts/check.sh`.
 
 ## Run
 

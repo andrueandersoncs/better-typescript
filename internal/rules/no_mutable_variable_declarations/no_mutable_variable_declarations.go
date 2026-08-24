@@ -3,7 +3,7 @@ package no_mutable_variable_declarations
 import (
 	"fmt"
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
-	"github.com/microsoft/typescript-go/shim/ast"
+	"github.com/andrueandersoncs/typescript-go/ast"
 )
 
 const help = "Declare multiple const values to represent each state instead of mutating a single variable, and use immutable values that are not reassigned. When the value must genuinely evolve over time (a module-level counter, a cell shared across closures), hold it in a Ref inside the Effect runtime instead of a let binding."

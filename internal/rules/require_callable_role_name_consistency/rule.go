@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
-	"github.com/microsoft/typescript-go/shim/ast"
-	"github.com/microsoft/typescript-go/shim/scanner"
+	"github.com/andrueandersoncs/typescript-go/ast"
+	"github.com/andrueandersoncs/typescript-go/scanner"
 )
 
 var roles = map[string]bool{"accessor": true, "callback": true, "comparator": true, "factory": true, "function": true, "handler": true, "mapper": true, "predicate": true, "reducer": true}

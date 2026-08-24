@@ -4,8 +4,8 @@ import (
 	"regexp"
 
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
-	"github.com/microsoft/typescript-go/shim/ast"
-	"github.com/microsoft/typescript-go/shim/core"
+	"github.com/andrueandersoncs/typescript-go/ast"
+	"github.com/andrueandersoncs/typescript-go/core"
 )
 
 var becauseWord = regexp.MustCompile(`(?i)(^|[^\pL\pM\pN_])because([^\pL\pM\pN_]|$)`)

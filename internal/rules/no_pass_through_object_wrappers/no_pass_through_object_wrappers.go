@@ -2,7 +2,7 @@ package no_pass_through_object_wrappers
 
 import (
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
-	"github.com/microsoft/typescript-go/shim/ast"
+	"github.com/andrueandersoncs/typescript-go/ast"
 )
 
 var message = rule.RuleMessage{Id: "no-pass-through-object-wrappers", Description: "Avoid a function that only repackages its parameters for another constructor.", Help: "Inline the constructor or factory call at each caller. Keep a function only when it adds policy, validation, defaults, or behavior."}

@@ -20,4 +20,4 @@ Better TypeScript is a Go linter that analyzes the TypeScript project graph root
 - `internal/analysis`: Program loading and violation normalization.
 - `internal/linter` and `internal/rule`: traversal and rule interface.
 - `internal/rules`: built-in catalog and implementations.
-- `shim`, `patches`, `typescript-go`: pinned compiler foundation.
+- `github.com/andrueandersoncs/typescript-go`: versioned public compiler adapters; see [`docs/compiler-foundation.md`](docs/compiler-foundation.md).

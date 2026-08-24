@@ -3,8 +3,8 @@ package prefer_inferred_types
 import (
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
 	"github.com/andrueandersoncs/better-typescript/internal/utils"
-	"github.com/microsoft/typescript-go/shim/ast"
-	"github.com/microsoft/typescript-go/shim/checker"
+	"github.com/andrueandersoncs/typescript-go/ast"
+	"github.com/andrueandersoncs/typescript-go/checker"
 )
 
 var constMessage = rule.RuleMessage{Id: "prefer-inferred-types", Description: "Avoid a const annotation when its initializer infers the same type.", Help: "Delete the type annotation. Keep annotations that widen a value or guide generic inference."}

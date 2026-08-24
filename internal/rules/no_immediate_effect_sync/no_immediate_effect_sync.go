@@ -2,7 +2,7 @@ package no_immediate_effect_sync
 
 import (
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
-	"github.com/microsoft/typescript-go/shim/ast"
+	"github.com/andrueandersoncs/typescript-go/ast"
 )
 
 var message = rule.RuleMessage{Id: "no-immediate-effect-sync", Description: "Avoid immediately running a locally bound Effect.sync.", Help: "Run the synchronous action directly at this startup boundary, or retain the Effect only when it is deferred or composed into a larger workflow."}

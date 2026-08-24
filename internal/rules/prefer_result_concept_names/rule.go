@@ -3,7 +3,7 @@ package prefer_result_concept_names
 import (
 	"fmt"
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
-	"github.com/microsoft/typescript-go/shim/ast"
+	"github.com/andrueandersoncs/typescript-go/ast"
 	"regexp"
 	"strings"
 )

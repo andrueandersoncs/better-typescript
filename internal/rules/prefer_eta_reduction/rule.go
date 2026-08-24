@@ -2,7 +2,7 @@ package prefer_eta_reduction
 
 import (
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
-	"github.com/microsoft/typescript-go/shim/ast"
+	"github.com/andrueandersoncs/typescript-go/ast"
 )
 
 var etaMessage = rule.RuleMessage{Id: "prefer-eta-reduction", Description: "Avoid wrapping a function call that only forwards its argument.", Help: "Eta-reduce this arrow to the function value itself (pass f instead of (x) => f(x)). If the callee is already partially applied, use that partial directly. Do not nest calls."}

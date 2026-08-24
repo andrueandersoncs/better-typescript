@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
-	"github.com/microsoft/typescript-go/shim/ast"
+	"github.com/andrueandersoncs/typescript-go/ast"
 )
 
 var suffixes = []string{"Context", "Data", "Info", "Input", "Model", "Options", "Output", "Params", "Result", "State"}

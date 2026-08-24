@@ -3,3 +3,8 @@
 /better-typescript
 *.test
 coverage.out
+
+.DS_Store
+.env*
+!.env.example
+/dist/

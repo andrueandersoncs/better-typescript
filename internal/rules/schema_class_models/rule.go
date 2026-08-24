@@ -4,8 +4,8 @@ import (
 	"strings"
 
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
-	"github.com/microsoft/typescript-go/shim/ast"
-	"github.com/microsoft/typescript-go/shim/scanner"
+	"github.com/andrueandersoncs/typescript-go/ast"
+	"github.com/andrueandersoncs/typescript-go/scanner"
 )
 
 var msg = rule.RuleMessage{Id: "schema-class-models", Description: "Avoid Schema class data models; use Schema.Struct or tagged schema variants.", Help: "Keep ordinary data declarative and decode it at the boundary."}

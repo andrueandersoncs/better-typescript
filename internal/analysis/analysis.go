@@ -8,19 +8,18 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/andrueandersoncs/better-typescript/internal/diagnostic"
 	"github.com/andrueandersoncs/better-typescript/internal/linter"
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
 	"github.com/andrueandersoncs/better-typescript/internal/utils"
-	"github.com/microsoft/typescript-go/shim/ast"
-	"github.com/microsoft/typescript-go/shim/bundled"
-	"github.com/microsoft/typescript-go/shim/core"
-	"github.com/microsoft/typescript-go/shim/scanner"
-	"github.com/microsoft/typescript-go/shim/tsoptions"
-	"github.com/microsoft/typescript-go/shim/tspath"
-	"github.com/microsoft/typescript-go/shim/vfs"
-	"github.com/microsoft/typescript-go/shim/vfs/cachedvfs"
-	"github.com/microsoft/typescript-go/shim/vfs/osvfs"
+	"github.com/andrueandersoncs/typescript-go/ast"
+	"github.com/andrueandersoncs/typescript-go/bundled"
+	"github.com/andrueandersoncs/typescript-go/core"
+	"github.com/andrueandersoncs/typescript-go/scanner"
+	"github.com/andrueandersoncs/typescript-go/tsoptions"
+	"github.com/andrueandersoncs/typescript-go/tspath"
+	"github.com/andrueandersoncs/typescript-go/vfs"
+	"github.com/andrueandersoncs/typescript-go/vfs/cachedvfs"
+	"github.com/andrueandersoncs/typescript-go/vfs/osvfs"
 )
 
 type Violation struct {
@@ -98,7 +97,7 @@ func runProject(root string, configFileName string, fs vfs.FS, rules []rule.Rule
 	currentDirectory := tspath.GetDirectoryPath(configFileName)
 	host := utils.CreateCompilerHost(currentDirectory, fs)
 	config, _ := tsoptions.GetParsedCommandLineOfConfigFile(configFileName, &core.CompilerOptions{}, nil, host, nil)
-	program, _, err := utils.CreateProgram(false, fs, currentDirectory, configFileName, host, false)
+	program, err := utils.CreateProgram(fs, currentDirectory, configFileName, host)
 	if err != nil {
 		return nil, fmt.Errorf("create TypeScript program for %s: %w", configFileName, err)
 	}
@@ -128,10 +127,9 @@ func runProject(root string, configFileName string, fs vfs.FS, rules []rule.Rule
 	var mu sync.Mutex
 	violations := make([]Violation, 0)
 	err = linter.RunLinterOnProgram(linter.RunLinterOnProgramOptions{
-		LogLevel: utils.LogLevelNormal,
-		Program:  program,
-		Files:    files,
-		Workers:  runtime.GOMAXPROCS(0),
+		Program: program,
+		Files:   files,
+		Workers: runtime.GOMAXPROCS(0),
 		GetRulesForFile: func(_ *ast.SourceFile) []linter.ConfiguredRule {
 			return configuredRules
 		},
@@ -156,7 +154,6 @@ func runProject(root string, configFileName string, fs vfs.FS, rules []rule.Rule
 			})
 			mu.Unlock()
 		},
-		OnInternalDiagnostic: func(_ diagnostic.Internal) {},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("run linter for %s: %w", configFileName, err)

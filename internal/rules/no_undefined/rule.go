@@ -2,7 +2,7 @@ package no_undefined
 
 import (
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
-	"github.com/microsoft/typescript-go/shim/ast"
+	"github.com/andrueandersoncs/typescript-go/ast"
 )
 
 const help = "Use Effect's Option module to model optional values, and convert nullable boundaries with Option.fromNullishOr (incoming) and Option.getOrUndefined (outgoing). When a third-party signature forces undefined on a callback, keep the callback inline or annotate it with the library's own callback type so the undefined stays in the library's declaration, not yours."

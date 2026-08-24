@@ -3,8 +3,8 @@ package prefer_effect_schema_guard
 import (
 	"fmt"
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
-	"github.com/microsoft/typescript-go/shim/ast"
-	"github.com/microsoft/typescript-go/shim/scanner"
+	"github.com/andrueandersoncs/typescript-go/ast"
+	"github.com/andrueandersoncs/typescript-go/scanner"
 )
 
 var Rule = rule.Rule{Name: "prefer-effect-schema-guard", Run: func(ctx rule.RuleContext, _ any) rule.RuleListeners {

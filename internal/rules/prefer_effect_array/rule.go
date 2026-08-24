@@ -5,8 +5,8 @@ import (
 
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
 	"github.com/andrueandersoncs/better-typescript/internal/utils"
-	"github.com/microsoft/typescript-go/shim/ast"
-	"github.com/microsoft/typescript-go/shim/checker"
+	"github.com/andrueandersoncs/typescript-go/ast"
+	"github.com/andrueandersoncs/typescript-go/checker"
 )
 
 var arrayMethods = map[string]bool{"at": true, "concat": true, "copyWithin": true, "entries": true, "every": true, "fill": true, "filter": true, "find": true, "findIndex": true, "findLast": true, "findLastIndex": true, "flat": true, "flatMap": true, "forEach": true, "includes": true, "indexOf": true, "join": true, "keys": true, "lastIndexOf": true, "map": true, "pop": true, "push": true, "reduce": true, "reduceRight": true, "reverse": true, "shift": true, "slice": true, "some": true, "sort": true, "splice": true, "toLocaleString": true, "toReversed": true, "toSorted": true, "toSpliced": true, "toString": true, "unshift": true, "values": true, "with": true}

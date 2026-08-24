@@ -2,7 +2,7 @@ package no_nested_if_statements
 
 import (
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
-	"github.com/microsoft/typescript-go/shim/ast"
+	"github.com/andrueandersoncs/typescript-go/ast"
 )
 
 var message = rule.RuleMessage{Id: "no-nested-if-statements", Description: "Avoid nesting if statements.", Help: "Combine related conditions with boolean operators, or use an early return so this condition can remain a single-level if statement."}

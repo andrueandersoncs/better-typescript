@@ -3,11 +3,10 @@ package rule
 import (
 	"sync"
 
-	"github.com/andrueandersoncs/better-typescript/internal/utils"
-	"github.com/microsoft/typescript-go/shim/ast"
-	"github.com/microsoft/typescript-go/shim/checker"
-	"github.com/microsoft/typescript-go/shim/compiler"
-	"github.com/microsoft/typescript-go/shim/core"
+	"github.com/andrueandersoncs/typescript-go/ast"
+	"github.com/andrueandersoncs/typescript-go/checker"
+	"github.com/andrueandersoncs/typescript-go/compiler"
+	"github.com/andrueandersoncs/typescript-go/core"
 )
 
 const (
@@ -44,77 +43,11 @@ type RuleMessage struct {
 	Help        string
 }
 
-type RuleFix struct {
-	Text  string
-	Range core.TextRange
-}
-
-type RuleLabeledRange struct {
-	Label string         `json:"label"`
-	Range core.TextRange `json:"range"`
-}
-
-func RuleFixInsertBefore(file *ast.SourceFile, node *ast.Node, text string) RuleFix {
-	trimmed := utils.TrimNodeTextRange(file, node)
-	return RuleFix{
-		Text:  text,
-		Range: trimmed.WithEnd(trimmed.Pos()),
-	}
-}
-func RuleFixInsertAfter(node *ast.Node, text string) RuleFix {
-	return RuleFix{
-		Text:  text,
-		Range: node.Loc.WithPos(node.End()),
-	}
-}
-func RuleFixReplace(file *ast.SourceFile, node *ast.Node, text string) RuleFix {
-	return RuleFixReplaceRange(utils.TrimNodeTextRange(file, node), text)
-}
-func RuleFixReplaceRange(textRange core.TextRange, text string) RuleFix {
-	return RuleFix{
-		Text:  text,
-		Range: textRange,
-	}
-}
-func RuleFixRemove(file *ast.SourceFile, node *ast.Node) RuleFix {
-	return RuleFixReplace(file, node, "")
-}
-func RuleFixRemoveRange(textRange core.TextRange) RuleFix {
-	return RuleFixReplaceRange(textRange, "")
-}
-
-type RuleSuggestion struct {
-	Message  RuleMessage
-	FixesArr []RuleFix
-}
-
-func (s RuleSuggestion) Fixes() []RuleFix {
-	return s.FixesArr
-}
-
 type RuleDiagnostic struct {
-	Range    core.TextRange
-	RuleName string
-	Message  RuleMessage
-	// nil if no fixes were provided
-	FixesPtr *[]RuleFix
-	// nil if no suggestions were provided
-	Suggestions   *[]RuleSuggestion
-	SourceFile    *ast.SourceFile
-	LabeledRanges []RuleLabeledRange
-}
-
-func (d RuleDiagnostic) Fixes() []RuleFix {
-	if d.FixesPtr == nil {
-		return []RuleFix{}
-	}
-	return *d.FixesPtr
-}
-func (d RuleDiagnostic) GetSuggestions() []RuleSuggestion {
-	if d.Suggestions == nil {
-		return []RuleSuggestion{}
-	}
-	return *d.Suggestions
+	Range      core.TextRange
+	RuleName   string
+	Message    RuleMessage
+	SourceFile *ast.SourceFile
 }
 
 type ProgramCache struct {
@@ -143,29 +76,11 @@ func ProgramCacheValue[T any](ctx RuleContext, key any, build func() T) T {
 }
 
 type RuleContext struct {
-	SourceFile                      *ast.SourceFile
-	Program                         *compiler.Program
-	ProgramCache                    *ProgramCache
-	TypeChecker                     *checker.Checker
-	ReportDiagnostic                func(diagnostic RuleDiagnostic)
-	ReportDiagnosticWithFixes       func(diagnostic RuleDiagnostic, fixesFn func() []RuleFix)
-	ReportDiagnosticWithSuggestions func(diagnostic RuleDiagnostic, suggestionsFn func() []RuleSuggestion)
-	ReportRange                     func(textRange core.TextRange, msg RuleMessage)
-	ReportRangeWithSuggestions      func(textRange core.TextRange, msg RuleMessage, suggestionsFn func() []RuleSuggestion)
-	ReportNode                      func(node *ast.Node, msg RuleMessage)
-	ReportNodeWithFixes             func(node *ast.Node, msg RuleMessage, fixesFn func() []RuleFix)
-	ReportNodeWithSuggestions       func(node *ast.Node, msg RuleMessage, suggestionsFn func() []RuleSuggestion)
-}
-
-func ReportNodeWithFixesOrSuggestions(ctx RuleContext, node *ast.Node, fix bool, msg RuleMessage, suggestionMsg RuleMessage, fixes ...RuleFix) {
-	if fix {
-		ctx.ReportNodeWithFixes(node, msg, func() []RuleFix { return fixes })
-	} else {
-		ctx.ReportNodeWithSuggestions(node, msg, func() []RuleSuggestion {
-			return []RuleSuggestion{{
-				Message:  suggestionMsg,
-				FixesArr: fixes,
-			}}
-		})
-	}
+	SourceFile       *ast.SourceFile
+	Program          *compiler.Program
+	ProgramCache     *ProgramCache
+	TypeChecker      *checker.Checker
+	ReportDiagnostic func(diagnostic RuleDiagnostic)
+	ReportRange      func(textRange core.TextRange, msg RuleMessage)
+	ReportNode       func(node *ast.Node, msg RuleMessage)
 }

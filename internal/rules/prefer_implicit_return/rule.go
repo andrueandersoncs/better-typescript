@@ -2,7 +2,7 @@ package prefer_implicit_return
 
 import (
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
-	"github.com/microsoft/typescript-go/shim/ast"
+	"github.com/andrueandersoncs/typescript-go/ast"
 )
 
 var message = rule.RuleMessage{Id: "prefer-implicit-return", Description: "Avoid arrow function block bodies that only return a value.", Help: "Replace this with an implicit return by removing the return statement and function body braces. Wrap object literals in parentheses when needed."}

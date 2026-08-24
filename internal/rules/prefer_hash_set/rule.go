@@ -2,7 +2,7 @@ package prefer_hash_set
 
 import (
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
-	"github.com/microsoft/typescript-go/shim/ast"
+	"github.com/andrueandersoncs/typescript-go/ast"
 )
 
 var constructorMessage = rule.RuleMessage{Id: "prefer-hash-set", Description: "Avoid constructing a built-in Set.", Help: "Use Effect's HashSet instead — for example HashSet.fromIterable([1, 2, 3]) or HashSet.empty(). HashSet uses Equal and Hash with structural equality by default. For reference-identity object members, wrap each value in an Equal.equal value that compares the underlying objects with === and returns Hash.random(object) from Hash.symbol. Constructing a Set is permitted only when it is handed to a third-party API that requires one."}

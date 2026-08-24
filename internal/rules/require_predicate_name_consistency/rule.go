@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
-	"github.com/microsoft/typescript-go/shim/ast"
-	"github.com/microsoft/typescript-go/shim/scanner"
+	"github.com/andrueandersoncs/typescript-go/ast"
+	"github.com/andrueandersoncs/typescript-go/scanner"
 )
 
 var predicates = map[string]bool{"can": true, "contain": true, "contains": true, "does": true, "equal": true, "equals": true, "every": true, "exist": true, "exists": true, "has": true, "include": true, "includes": true, "is": true, "should": true, "some": true}

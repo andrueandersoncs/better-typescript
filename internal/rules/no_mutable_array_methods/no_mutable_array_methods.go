@@ -3,7 +3,7 @@ package no_mutable_array_methods
 import (
 	"fmt"
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
-	"github.com/microsoft/typescript-go/shim/ast"
+	"github.com/andrueandersoncs/typescript-go/ast"
 )
 
 const help = "This is a sign that you're doing something fundamentally procedural when you should be taking a more functional approach. Use Effect's Array module, such as Array.append(), Array.map(), Array.filter(), Array.sort(), or spread syntax instead of manipulating an array in place."

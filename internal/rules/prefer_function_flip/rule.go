@@ -2,7 +2,7 @@ package prefer_function_flip
 
 import (
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
-	"github.com/microsoft/typescript-go/shim/ast"
+	"github.com/andrueandersoncs/typescript-go/ast"
 )
 
 var message = rule.RuleMessage{Id: "prefer-function-flip", Description: "Avoid lambdas that only flip the order of a curried application.", Help: "Reorder the curried parameters so the fixed argument comes first (data-last), then pass the partial f(y) directly — or use Function.flip(f)(y) instead of (x) => f(x)(y)."}
