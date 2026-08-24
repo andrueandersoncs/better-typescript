@@ -1,0 +1,342 @@
+diff --git a/cmd/tsgolint/main.go b/cmd/tsgolint/main.go
+index 4429b31..331b138 100644
+--- a/cmd/tsgolint/main.go
++++ b/cmd/tsgolint/main.go
+@@ -32,0 +33 @@ import (
++	"github.com/typescript-eslint/tsgolint/internal/rules/no_error_type"
+@@ -171,0 +173 @@ var allRules = []rule.Rule{
++	no_error_type.NoErrorTypeRule,
+diff --git a/cmd/tsgolint/no_error_type_bench_test.go b/cmd/tsgolint/no_error_type_bench_test.go
+new file mode 100644
+index 0000000..5bc6770
+--- /dev/null
++++ b/cmd/tsgolint/no_error_type_bench_test.go
+@@ -0,0 +1,138 @@
++package main
++
++import (
++	"runtime"
++	"sync/atomic"
++	"testing"
++
++	"github.com/microsoft/typescript-go/shim/ast"
++	"github.com/typescript-eslint/tsgolint/internal/diagnostic"
++	"github.com/typescript-eslint/tsgolint/internal/linter"
++	"github.com/typescript-eslint/tsgolint/internal/rule"
++	"github.com/typescript-eslint/tsgolint/internal/rules/no_error_type"
++	"github.com/typescript-eslint/tsgolint/internal/utils"
++)
++
++var typeReferenceTraversalRule = rule.Rule{
++	Name: "benchmark-type-reference-traversal",
++	Run: func(ctx rule.RuleContext, options any) rule.RuleListeners {
++		return rule.RuleListeners{
++			ast.KindTypeReference: func(node *ast.Node) {},
++		}
++	},
++}
++
++func countTypeReferences(files []*ast.SourceFile) int64 {
++	var count int64
++	var visitor ast.Visitor
++	visitor = func(node *ast.Node) bool {
++		if node.Kind == ast.KindTypeReference {
++			count++
++		}
++		node.ForEachChild(visitor)
++		return false
++	}
++
++	for _, file := range files {
++		file.Node.ForEachChild(visitor)
++	}
++
++	return count
++}
++
++func configuredBenchmarkRule(benchmarkRule *rule.Rule) func(*ast.SourceFile) []linter.ConfiguredRule {
++	return func(_ *ast.SourceFile) []linter.ConfiguredRule {
++		return []linter.ConfiguredRule{{
++			Name: benchmarkRule.Name,
++			Run: func(ctx rule.RuleContext) rule.RuleListeners {
++				return benchmarkRule.Run(ctx, nil)
++			},
++		}}
++	}
++}
++
++func runConfiguredRuleBenchmark(
++	b *testing.B,
++	env benchmarkEnv,
++	benchmarkRule *rule.Rule,
++) int64 {
++	b.Helper()
++
++	var diagnosticCount atomic.Int64
++	err := linter.RunLinterOnProgram(linter.RunLinterOnProgramOptions{
++		LogLevel:             utils.LogLevelNormal,
++		Program:              env.program,
++		Files:                env.files,
++		Workers:              runtime.GOMAXPROCS(0),
++		GetRulesForFile:      configuredBenchmarkRule(benchmarkRule),
++		OnDiagnostic:         func(_ rule.RuleDiagnostic) { diagnosticCount.Add(1) },
++		OnInternalDiagnostic: func(_ diagnostic.Internal) {},
++	})
++	if err != nil {
++		b.Fatal("linter failed:", err)
++	}
++
++	return diagnosticCount.Load()
++}
++
++func runWarmProgramBenchmark(b *testing.B, benchmarkRule *rule.Rule, expectDiagnostics bool) {
++	b.Helper()
++	b.ReportAllocs()
++
++	env := setupBenchmarkEnv(b, false)
++	diagnosticCount := runConfiguredRuleBenchmark(b, env, benchmarkRule)
++	if expectDiagnostics && diagnosticCount == 0 {
++		b.Fatal("no diagnostics were emitted")
++	}
++	b.ResetTimer()
++	for b.Loop() {
++		runConfiguredRuleBenchmark(b, env, benchmarkRule)
++	}
++
++	b.ReportMetric(float64(len(env.files)), "files/op")
++	b.ReportMetric(float64(countTypeReferences(env.files)), "type-references/op")
++	b.ReportMetric(float64(diagnosticCount), "diagnostics/op")
++}
++
++func runColdProgramBenchmark(b *testing.B, benchmarkRule *rule.Rule, expectDiagnostics bool) {
++	b.Helper()
++	b.ReportAllocs()
++
++	env := setupBenchmarkEnv(b, false)
++	diagnosticCount := runConfiguredRuleBenchmark(b, env, benchmarkRule)
++	if expectDiagnostics && diagnosticCount == 0 {
++		b.Fatal("no diagnostics were emitted")
++	}
++	b.ResetTimer()
++	for b.Loop() {
++		runConfiguredRuleBenchmark(b, setupBenchmarkEnv(b, false), benchmarkRule)
++	}
++
++	b.ReportMetric(float64(len(env.files)), "files/op")
++	b.ReportMetric(float64(countTypeReferences(env.files)), "type-references/op")
++	b.ReportMetric(float64(diagnosticCount), "diagnostics/op")
++}
++
++// BenchmarkTypeReferenceTraversalWarmProgram is the warm baseline. It performs
++// the same AST traversal and TypeReference listener dispatch without checker work.
++func BenchmarkTypeReferenceTraversalWarmProgram(b *testing.B) {
++	runWarmProgramBenchmark(b, &typeReferenceTraversalRule, false)
++}
++
++// BenchmarkNoErrorTypeWarmProgram measures the port after program creation and
++// checker warmup. Subtract the traversal baseline to estimate incremental cost.
++func BenchmarkNoErrorTypeWarmProgram(b *testing.B) {
++	runWarmProgramBenchmark(b, &no_error_type.NoErrorTypeRule, true)
++}
++
++// BenchmarkTypeReferenceTraversalColdProgram is the cold baseline. It creates a
++// fresh TypeScript program for every operation, with a potentially warm OS cache.
++func BenchmarkTypeReferenceTraversalColdProgram(b *testing.B) {
++	runColdProgramBenchmark(b, &typeReferenceTraversalRule, false)
++}
++
++// BenchmarkNoErrorTypeColdProgram includes fresh TypeScript program creation for
++// every operation. The OS file cache may still be warm between operations.
++func BenchmarkNoErrorTypeColdProgram(b *testing.B) {
++	runColdProgramBenchmark(b, &no_error_type.NoErrorTypeRule, true)
++}
+diff --git a/e2e/fixtures/basic/rules/no-error-type/index.ts b/e2e/fixtures/basic/rules/no-error-type/index.ts
+new file mode 100644
+index 0000000..e4b6361
+--- /dev/null
++++ b/e2e/fixtures/basic/rules/no-error-type/index.ts
+@@ -0,0 +1,6 @@
++// Benchmark and end-to-end fixture for no-error-type.
++
++type Failure = Error
++type QualifiedFailure = globalThis.Error
++
++export type { Failure, QualifiedFailure }
+diff --git a/internal/rule_tester/__snapshots__/no-error-type.snap b/internal/rule_tester/__snapshots__/no-error-type.snap
+new file mode 100644
+index 0000000..a4a7ff4
+--- /dev/null
++++ b/internal/rule_tester/__snapshots__/no-error-type.snap
+@@ -0,0 +1,52 @@
++
++[TestNoErrorTypeRule/invalid-0 - 1]
++Diagnostic 1: noErrorType (1:27 - 1:31)
++Message: Avoid the built-in Error type.
++Help: Use a specific tagged error type for known failures, preserve the caller's error type with a type parameter, or use unknown at an untyped boundary.
++   1 | const messageOf = (error: Error): string => error.message;
++     |                           ~~~~~
++---
++
++[TestNoErrorTypeRule/invalid-1 - 1]
++Diagnostic 1: noErrorType (1:16 - 1:20)
++Message: Avoid the built-in Error type.
++Help: Use a specific tagged error type for known failures, preserve the caller's error type with a type parameter, or use unknown at an untyped boundary.
++   1 | type Failure = Error | { readonly code: string };
++     |                ~~~~~
++---
++
++[TestNoErrorTypeRule/invalid-2 - 1]
++Diagnostic 1: noErrorType (1:36 - 1:40)
++Message: Avoid the built-in Error type.
++Help: Use a specific tagged error type for known failures, preserve the caller's error type with a type parameter, or use unknown at an untyped boundary.
++   1 | type QualifiedFailure = globalThis.Error;
++     |                                    ~~~~~
++---
++
++[TestNoErrorTypeRule/invalid-3 - 1]
++Diagnostic 1: noErrorType (1:46 - 1:50)
++Message: Avoid the built-in Error type.
++Help: Use a specific tagged error type for known failures, preserve the caller's error type with a type parameter, or use unknown at an untyped boundary.
++   1 | interface ErrorSink { readonly push: (error: Error) => void }
++     |                                              ~~~~~
++---
++
++[TestNoErrorTypeRule/invalid-4 - 1]
++Diagnostic 1: noErrorType (1:14 - 1:18)
++Message: Avoid the built-in Error type.
++Help: Use a specific tagged error type for known failures, preserve the caller's error type with a type parameter, or use unknown at an untyped boundary.
++   1 | type Many = [Error, Promise<Error>, globalThis.Error];
++     |              ~~~~~
++
++Diagnostic 2: noErrorType (1:29 - 1:33)
++Message: Avoid the built-in Error type.
++Help: Use a specific tagged error type for known failures, preserve the caller's error type with a type parameter, or use unknown at an untyped boundary.
++   1 | type Many = [Error, Promise<Error>, globalThis.Error];
++     |                             ~~~~~
++
++Diagnostic 3: noErrorType (1:48 - 1:52)
++Message: Avoid the built-in Error type.
++Help: Use a specific tagged error type for known failures, preserve the caller's error type with a type parameter, or use unknown at an untyped boundary.
++   1 | type Many = [Error, Promise<Error>, globalThis.Error];
++     |                                                ~~~~~
++---
+diff --git a/internal/rules/no_error_type/no_error_type.go b/internal/rules/no_error_type/no_error_type.go
+new file mode 100644
+index 0000000..a47af2c
+--- /dev/null
++++ b/internal/rules/no_error_type/no_error_type.go
+@@ -0,0 +1,54 @@
++package no_error_type
++
++import (
++	"github.com/microsoft/typescript-go/shim/ast"
++	"github.com/typescript-eslint/tsgolint/internal/rule"
++)
++
++var avoidBuiltinErrorMessage = rule.RuleMessage{
++	Id:          "noErrorType",
++	Description: "Avoid the built-in Error type.",
++	Help:        "Use a specific tagged error type for known failures, preserve the caller's error type with a type parameter, or use unknown at an untyped boundary.",
++}
++
++func errorTypeName(typeName *ast.Node) *ast.Node {
++	if ast.IsIdentifier(typeName) {
++		if typeName.Text() == "Error" {
++			return typeName
++		}
++		return nil
++	}
++
++	if !ast.IsQualifiedName(typeName) {
++		return nil
++	}
++
++	qualifiedName := typeName.AsQualifiedName()
++	if qualifiedName.Right.Text() != "Error" {
++		return nil
++	}
++
++	return qualifiedName.Right
++}
++
++var NoErrorTypeRule = rule.Rule{
++	Name: "no-error-type",
++	Run: func(ctx rule.RuleContext, options any) rule.RuleListeners {
++		globalErrorSymbol := ctx.TypeChecker.ResolveName("Error", nil, ast.SymbolFlagsType, false)
++
++		return rule.RuleListeners{
++			ast.KindTypeReference: func(node *ast.Node) {
++				typeName := errorTypeName(node.AsTypeReferenceNode().TypeName)
++				if typeName == nil || globalErrorSymbol == nil {
++					return
++				}
++
++				if ctx.TypeChecker.GetSymbolAtLocation(typeName) != globalErrorSymbol {
++					return
++				}
++
++				ctx.ReportNode(typeName, avoidBuiltinErrorMessage)
++			},
++		}
++	},
++}
+diff --git a/internal/rules/no_error_type/no_error_type_test.go b/internal/rules/no_error_type/no_error_type_test.go
+new file mode 100644
+index 0000000..ee93047
+--- /dev/null
++++ b/internal/rules/no_error_type/no_error_type_test.go
+@@ -0,0 +1,54 @@
++package no_error_type
++
++import (
++	"testing"
++
++	"github.com/typescript-eslint/tsgolint/internal/rule_tester"
++	"github.com/typescript-eslint/tsgolint/internal/rules/fixtures"
++)
++
++func TestNoErrorTypeRule(t *testing.T) {
++	t.Parallel()
++
++	rule_tester.RunRuleTester(
++		fixtures.GetRootDir(),
++		"tsconfig.minimal.json",
++		t,
++		&NoErrorTypeRule,
++		[]rule_tester.ValidTestCase{
++			{Code: `class ParseError extends Error {}`},
++			{Code: `const builtInErrorValue = new Error("runtime value");`},
++			{Code: `const builtInErrorConstructor: ErrorConstructor = Error;`},
++			{Code: `export {}; type Error = { readonly message: string }; const localFailure: Error = { message: "local" };`},
++			{Code: `namespace Local { export type Error = { readonly message: string } }; type LocalFailure = Local.Error;`},
++			{Code: `type UnknownFailure = unknown;`},
++			{Code: `type GenericFailure<E> = E;`},
++		},
++		[]rule_tester.InvalidTestCase{
++			{
++				Code:   `const messageOf = (error: Error): string => error.message;`,
++				Errors: []rule_tester.InvalidTestCaseError{{MessageId: "noErrorType"}},
++			},
++			{
++				Code:   `type Failure = Error | { readonly code: string };`,
++				Errors: []rule_tester.InvalidTestCaseError{{MessageId: "noErrorType"}},
++			},
++			{
++				Code:   `type QualifiedFailure = globalThis.Error;`,
++				Errors: []rule_tester.InvalidTestCaseError{{MessageId: "noErrorType"}},
++			},
++			{
++				Code:   `interface ErrorSink { readonly push: (error: Error) => void }`,
++				Errors: []rule_tester.InvalidTestCaseError{{MessageId: "noErrorType"}},
++			},
++			{
++				Code: `type Many = [Error, Promise<Error>, globalThis.Error];`,
++				Errors: []rule_tester.InvalidTestCaseError{
++					{MessageId: "noErrorType"},
++					{MessageId: "noErrorType"},
++					{MessageId: "noErrorType"},
++				},
++			},
++		},
++	)
++}

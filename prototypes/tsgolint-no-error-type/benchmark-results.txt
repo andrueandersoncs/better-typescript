@@ -1,0 +1,46 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/typescript-eslint/tsgolint/cmd/tsgolint
+cpu: Apple M4 Max
+BenchmarkTypeReferenceTraversalWarmProgram-16    	   30902	     38564 ns/op	         0 diagnostics/op	        57.00 files/op	        35.00 type-references/op	   38687 B/op	     501 allocs/op
+BenchmarkTypeReferenceTraversalWarmProgram-16    	   30937	     39562 ns/op	         0 diagnostics/op	        57.00 files/op	        35.00 type-references/op	   38680 B/op	     500 allocs/op
+BenchmarkTypeReferenceTraversalWarmProgram-16    	   31233	     38567 ns/op	         0 diagnostics/op	        57.00 files/op	        35.00 type-references/op	   38679 B/op	     500 allocs/op
+BenchmarkTypeReferenceTraversalWarmProgram-16    	   31018	     39134 ns/op	         0 diagnostics/op	        57.00 files/op	        35.00 type-references/op	   38680 B/op	     500 allocs/op
+BenchmarkTypeReferenceTraversalWarmProgram-16    	   31101	     38720 ns/op	         0 diagnostics/op	        57.00 files/op	        35.00 type-references/op	   38679 B/op	     500 allocs/op
+BenchmarkTypeReferenceTraversalWarmProgram-16    	   31186	     38485 ns/op	         0 diagnostics/op	        57.00 files/op	        35.00 type-references/op	   38679 B/op	     500 allocs/op
+BenchmarkTypeReferenceTraversalWarmProgram-16    	   30880	     38547 ns/op	         0 diagnostics/op	        57.00 files/op	        35.00 type-references/op	   38679 B/op	     500 allocs/op
+BenchmarkTypeReferenceTraversalWarmProgram-16    	   31358	     38268 ns/op	         0 diagnostics/op	        57.00 files/op	        35.00 type-references/op	   38679 B/op	     500 allocs/op
+BenchmarkTypeReferenceTraversalWarmProgram-16    	   31168	     38386 ns/op	         0 diagnostics/op	        57.00 files/op	        35.00 type-references/op	   38679 B/op	     500 allocs/op
+BenchmarkTypeReferenceTraversalWarmProgram-16    	   31029	     38342 ns/op	         0 diagnostics/op	        57.00 files/op	        35.00 type-references/op	   38679 B/op	     500 allocs/op
+BenchmarkNoErrorTypeWarmProgram-16               	   27930	     41296 ns/op	         2.000 diagnostics/op	        57.00 files/op	        35.00 type-references/op	   45407 B/op	     559 allocs/op
+BenchmarkNoErrorTypeWarmProgram-16               	   29668	     40631 ns/op	         2.000 diagnostics/op	        57.00 files/op	        35.00 type-references/op	   45405 B/op	     559 allocs/op
+BenchmarkNoErrorTypeWarmProgram-16               	   28752	     40457 ns/op	         2.000 diagnostics/op	        57.00 files/op	        35.00 type-references/op	   45406 B/op	     559 allocs/op
+BenchmarkNoErrorTypeWarmProgram-16               	   30106	     39708 ns/op	         2.000 diagnostics/op	        57.00 files/op	        35.00 type-references/op	   45405 B/op	     559 allocs/op
+BenchmarkNoErrorTypeWarmProgram-16               	   29828	     40138 ns/op	         2.000 diagnostics/op	        57.00 files/op	        35.00 type-references/op	   45405 B/op	     559 allocs/op
+BenchmarkNoErrorTypeWarmProgram-16               	   30152	     39708 ns/op	         2.000 diagnostics/op	        57.00 files/op	        35.00 type-references/op	   45405 B/op	     559 allocs/op
+BenchmarkNoErrorTypeWarmProgram-16               	   30026	     39927 ns/op	         2.000 diagnostics/op	        57.00 files/op	        35.00 type-references/op	   45405 B/op	     559 allocs/op
+BenchmarkNoErrorTypeWarmProgram-16               	   29956	     39903 ns/op	         2.000 diagnostics/op	        57.00 files/op	        35.00 type-references/op	   45405 B/op	     559 allocs/op
+BenchmarkNoErrorTypeWarmProgram-16               	   30073	     40346 ns/op	         2.000 diagnostics/op	        57.00 files/op	        35.00 type-references/op	   45405 B/op	     559 allocs/op
+BenchmarkNoErrorTypeWarmProgram-16               	   29469	     40082 ns/op	         2.000 diagnostics/op	        57.00 files/op	        35.00 type-references/op	   45406 B/op	     559 allocs/op
+BenchmarkTypeReferenceTraversalColdProgram-16    	     475	   2464620 ns/op	         0 diagnostics/op	        57.00 files/op	        35.00 type-references/op	 2145639 B/op	   12404 allocs/op
+BenchmarkTypeReferenceTraversalColdProgram-16    	     484	   2437102 ns/op	         0 diagnostics/op	        57.00 files/op	        35.00 type-references/op	 2145410 B/op	   12400 allocs/op
+BenchmarkTypeReferenceTraversalColdProgram-16    	     488	   2498776 ns/op	         0 diagnostics/op	        57.00 files/op	        35.00 type-references/op	 2152731 B/op	   12471 allocs/op
+BenchmarkTypeReferenceTraversalColdProgram-16    	     475	   2470614 ns/op	         0 diagnostics/op	        57.00 files/op	        35.00 type-references/op	 2148981 B/op	   12433 allocs/op
+BenchmarkTypeReferenceTraversalColdProgram-16    	     492	   2441919 ns/op	         0 diagnostics/op	        57.00 files/op	        35.00 type-references/op	 2144816 B/op	   12397 allocs/op
+BenchmarkTypeReferenceTraversalColdProgram-16    	     490	   2438670 ns/op	         0 diagnostics/op	        57.00 files/op	        35.00 type-references/op	 2144595 B/op	   12397 allocs/op
+BenchmarkTypeReferenceTraversalColdProgram-16    	     490	   2440730 ns/op	         0 diagnostics/op	        57.00 files/op	        35.00 type-references/op	 2144686 B/op	   12398 allocs/op
+BenchmarkTypeReferenceTraversalColdProgram-16    	     481	   2471097 ns/op	         0 diagnostics/op	        57.00 files/op	        35.00 type-references/op	 2145683 B/op	   12408 allocs/op
+BenchmarkTypeReferenceTraversalColdProgram-16    	     482	   2456199 ns/op	         0 diagnostics/op	        57.00 files/op	        35.00 type-references/op	 2144956 B/op	   12399 allocs/op
+BenchmarkTypeReferenceTraversalColdProgram-16    	     488	   2470351 ns/op	         0 diagnostics/op	        57.00 files/op	        35.00 type-references/op	 2145797 B/op	   12407 allocs/op
+BenchmarkNoErrorTypeColdProgram-16               	     474	   2545354 ns/op	         2.000 diagnostics/op	        57.00 files/op	        35.00 type-references/op	 2370673 B/op	   12479 allocs/op
+BenchmarkNoErrorTypeColdProgram-16               	     464	   2549303 ns/op	         2.000 diagnostics/op	        57.00 files/op	        35.00 type-references/op	 2370809 B/op	   12481 allocs/op
+BenchmarkNoErrorTypeColdProgram-16               	     476	   2531214 ns/op	         2.000 diagnostics/op	        57.00 files/op	        35.00 type-references/op	 2369804 B/op	   12473 allocs/op
+BenchmarkNoErrorTypeColdProgram-16               	     475	   2538051 ns/op	         2.000 diagnostics/op	        57.00 files/op	        35.00 type-references/op	 2369870 B/op	   12474 allocs/op
+BenchmarkNoErrorTypeColdProgram-16               	     475	   2528073 ns/op	         2.000 diagnostics/op	        57.00 files/op	        35.00 type-references/op	 2369892 B/op	   12475 allocs/op
+BenchmarkNoErrorTypeColdProgram-16               	     476	   2563689 ns/op	         2.000 diagnostics/op	        57.00 files/op	        35.00 type-references/op	 2371551 B/op	   12489 allocs/op
+BenchmarkNoErrorTypeColdProgram-16               	     472	   2535369 ns/op	         2.000 diagnostics/op	        57.00 files/op	        35.00 type-references/op	 2370654 B/op	   12479 allocs/op
+BenchmarkNoErrorTypeColdProgram-16               	     470	   2549641 ns/op	         2.000 diagnostics/op	        57.00 files/op	        35.00 type-references/op	 2369799 B/op	   12474 allocs/op
+BenchmarkNoErrorTypeColdProgram-16               	     474	   2548180 ns/op	         2.000 diagnostics/op	        57.00 files/op	        35.00 type-references/op	 2370648 B/op	   12480 allocs/op
+BenchmarkNoErrorTypeColdProgram-16               	     422	   2637304 ns/op	         2.000 diagnostics/op	        57.00 files/op	        35.00 type-references/op	 2372330 B/op	   12495 allocs/op
+PASS
+ok  	github.com/typescript-eslint/tsgolint/cmd/tsgolint	48.323s
