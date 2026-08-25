@@ -12,6 +12,11 @@ type fileMatcher struct {
 	patterns []string
 }
 
+func ValidateFilePattern(pattern string) error {
+	_, err := newFileMatcher("", []string{pattern})
+	return err
+}
+
 func newFileMatcher(root string, patterns []string) (fileMatcher, error) {
 	for _, pattern := range patterns {
 		if pattern == "" {

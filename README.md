@@ -46,7 +46,7 @@ Run the binary from a directory containing `tsconfig.json`:
 /path/to/better-typescript
 ```
 
-With no flags, the command checks all project files with all rules. Restrict files with project-relative globs:
+With no flags or configuration, the command checks all project files with all rules. Restrict files with project-relative globs:
 
 ```sh
 /path/to/better-typescript --files 'src/**/*.ts'
@@ -61,6 +61,26 @@ Restrict rules by name:
 
 Repeat either flag or separate its values with commas. Quote globs so the CLI expands them instead of the shell.
 
+### Configuration
+
+Add `better-typescript.json` to the project root to select rules by file:
+
+```json
+{
+  "overrides": [
+    { "files": "src/**/*.ts", "rules": "no-throw" },
+    {
+      "files": "src/**/*.test.ts",
+      "rules": ["no-throw", "no-error-type"]
+    }
+  ]
+}
+```
+
+All rules are the default. Each matching entry replaces the rule set for that file. Entries run in order, so a later match overrides an earlier match. An empty rule list disables checks for matching files. Globs are relative to the project root.
+
+`--files` limits which configured files are analyzed. An explicit `--rules` value applies those rules to every selected file and ignores `better-typescript.json`.
+
 The command writes `Analyzing <absolute current directory>.` to stderr. It writes one violation per stdout line as NDJSON:
 
 ```json
@@ -69,7 +89,7 @@ The command writes `Analyzing <absolute current directory>.` to stderr. It write
 
 Paths are current-directory-relative slash paths. Locations are one-based UTF-16 positions. Output is exactly deduplicated and deterministic. A completed analysis exits successfully even when violations exist.
 
-Selected rules use `error` level. Unknown rule names fail before analysis. There is no project configuration, plugin API, or JavaScript API.
+Selected rules use `error` level. Unknown rule names and invalid configuration fail before analysis. There is no plugin API or JavaScript API.
 
 ## Architecture
 

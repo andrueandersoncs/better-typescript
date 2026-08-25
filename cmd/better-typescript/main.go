@@ -58,7 +58,10 @@ func selectRules(names []string) ([]rule.Rule, error) {
 	if len(names) == 0 {
 		return rules.BuiltinRules, nil
 	}
+	return selectRuleNames(names)
+}
 
+func selectRuleNames(names []string) ([]rule.Rule, error) {
 	selected := make(map[string]bool, len(names))
 	for _, name := range names {
 		selected[name] = true
@@ -91,17 +94,12 @@ func run() error {
 	options, err := parseCLIOptions(os.Args[1:])
 	if errors.Is(err, flag.ErrHelp) {
 		fmt.Fprintln(os.Stdout, "Usage: better-typescript [--files glob] [--rules name]")
-		fmt.Fprintln(os.Stdout, "Repeat flags or separate values with commas. No flags checks all files with all rules.")
+		fmt.Fprintln(os.Stdout, "Repeat flags or separate values with commas. better-typescript.json supplies per-file rule overrides.")
 		return nil
 	}
 	if err != nil {
 		return err
 	}
-	selectedRules, err := selectRules(options.ruleNames)
-	if err != nil {
-		return err
-	}
-
 	root, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("get current directory: %w", err)
@@ -110,9 +108,22 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("resolve current directory: %w", err)
 	}
+
+	selectedRules, err := selectRules(options.ruleNames)
+	if err != nil {
+		return err
+	}
+	var overrides []analysis.RuleOverride
+	if len(options.ruleNames) == 0 {
+		overrides, err = loadRuleOverrides(root)
+		if err != nil {
+			return err
+		}
+	}
+
 	fmt.Fprintf(os.Stderr, "Analyzing %s.\n", root)
 
-	violations, err := analysis.Run(root, selectedRules, options.filePatterns...)
+	violations, err := analysis.RunWithRuleOverrides(root, selectedRules, overrides, options.filePatterns...)
 	if err != nil {
 		return err
 	}

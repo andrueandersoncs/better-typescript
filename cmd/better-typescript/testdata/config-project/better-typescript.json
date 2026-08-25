@@ -1,0 +1,7 @@
+{
+  "overrides": [
+    { "files": "src/**/*.ts", "rules": "no-throw" },
+    { "files": "src/nested/**/*.ts", "rules": ["no-error-type"] },
+    { "files": "src/nested/disabled.ts", "rules": [] }
+  ]
+}

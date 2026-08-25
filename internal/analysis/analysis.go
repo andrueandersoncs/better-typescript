@@ -31,7 +31,16 @@ type Violation struct {
 	Column   int    `json:"column"`
 }
 
+type RuleOverride struct {
+	FilePattern string
+	Rules       []rule.Rule
+}
+
 func Run(root string, rules []rule.Rule, filePatterns ...string) ([]Violation, error) {
+	return RunWithRuleOverrides(root, rules, nil, filePatterns...)
+}
+
+func RunWithRuleOverrides(root string, rules []rule.Rule, overrides []RuleOverride, filePatterns ...string) ([]Violation, error) {
 	root = tspath.NormalizePath(root)
 	fileMatcher, err := newFileMatcher(root, filePatterns)
 	if err != nil {
@@ -48,9 +57,14 @@ func Run(root string, rules []rule.Rule, filePatterns ...string) ([]Violation, e
 		return nil, err
 	}
 
+	ruleSelector, err := newRuleSelector(root, rules, overrides)
+	if err != nil {
+		return nil, err
+	}
+
 	violations := make([]Violation, 0)
 	for _, projectConfigFileName := range configFileNames {
-		projectViolations, err := runProject(root, projectConfigFileName, fs, rules, fileMatcher)
+		projectViolations, err := runProject(root, projectConfigFileName, fs, ruleSelector, fileMatcher)
 		if err != nil {
 			return nil, err
 		}
@@ -97,7 +111,7 @@ func referencedConfigFileNames(fs vfs.FS, rootConfigFileName string) ([]string, 
 	return result, nil
 }
 
-func runProject(root string, configFileName string, fs vfs.FS, rules []rule.Rule, fileMatcher fileMatcher) ([]Violation, error) {
+func runProject(root string, configFileName string, fs vfs.FS, ruleSelector ruleSelector, fileMatcher fileMatcher) ([]Violation, error) {
 	currentDirectory := tspath.GetDirectoryPath(configFileName)
 	host := utils.CreateCompilerHost(currentDirectory, fs)
 	config, _ := tsoptions.GetParsedCommandLineOfConfigFile(configFileName, &core.CompilerOptions{}, nil, host, nil)
@@ -117,25 +131,14 @@ func runProject(root string, configFileName string, fs vfs.FS, rules []rule.Rule
 		}
 	}
 
-	configuredRules := make([]linter.ConfiguredRule, len(rules))
-	for index := range rules {
-		builtin := rules[index]
-		configuredRules[index] = linter.ConfiguredRule{
-			Name: builtin.Name,
-			Run: func(ctx rule.RuleContext) rule.RuleListeners {
-				return builtin.Run(ctx, nil)
-			},
-		}
-	}
-
 	var mu sync.Mutex
 	violations := make([]Violation, 0)
 	err = linter.RunLinterOnProgram(linter.RunLinterOnProgramOptions{
 		Program: program,
 		Files:   files,
 		Workers: runtime.GOMAXPROCS(0),
-		GetRulesForFile: func(_ *ast.SourceFile) []linter.ConfiguredRule {
-			return configuredRules
+		GetRulesForFile: func(sourceFile *ast.SourceFile) []linter.ConfiguredRule {
+			return ruleSelector.rulesForFile(sourceFile.FileName())
 		},
 		OnDiagnostic: func(result rule.RuleDiagnostic) {
 			line, column := scanner.GetECMALineAndUTF16CharacterOfPosition(result.SourceFile, result.Range.Pos())

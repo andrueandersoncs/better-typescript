@@ -160,6 +160,32 @@ func TestCLISelectsManyRules(t *testing.T) {
 	}
 }
 
+func TestCLIUsesCascadingJSONRuleConfiguration(t *testing.T) {
+	binary, packageDirectory := buildCLI(t)
+	projectDirectory := filepath.Join(packageDirectory, "testdata", "config-project")
+
+	command := exec.Command(binary)
+	command.Dir = projectDirectory
+	output, err := command.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	violations := decodeViolations(t, output)
+	if len(violations) != 2 {
+		t.Fatalf("got %d violations, want 2", len(violations))
+	}
+	want := map[string]string{
+		"src/main.ts":            "no-throw",
+		"src/nested/selected.ts": "no-error-type",
+	}
+	for _, violation := range violations {
+		if want[violation.FilePath] != violation.RuleName {
+			t.Errorf("violation = %#v, want configured rule for file", violation)
+		}
+	}
+}
+
 func TestCLIRejectsUnknownRule(t *testing.T) {
 	binary, packageDirectory := buildCLI(t)
 	projectDirectory := filepath.Join(packageDirectory, "testdata", "project")
