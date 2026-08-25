@@ -54,12 +54,16 @@ jobs:
           node-version: 18.20.8
           package-manager-cache: false
 
+      - name: Build packages
+        run: ./scripts/build-npm-packages.sh "$VERSION" dist/npm
+
       - name: Check
+        env:
+          BETTER_TYPESCRIPT_NPM_STAGE: ${{ github.workspace }}/dist/npm
         run: ./scripts/check.sh
 
-      - name: Build packages
+      - name: Pack packages
         run: |
-          ./scripts/build-npm-packages.sh "$VERSION" dist/npm
           ./scripts/pack-npm-packages.sh dist/npm dist/npm/tarballs
           ./scripts/test-npm-packages.sh dist/npm/tarballs
 

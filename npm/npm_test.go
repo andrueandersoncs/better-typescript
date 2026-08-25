@@ -51,10 +51,19 @@ type manifest struct {
 func TestNpmPackages(t *testing.T) {
 	repository := repositoryRoot(t)
 	testOutputGuards(t, repository)
-	stage := filepath.Join(t.TempDir(), "stage")
-	run(t, repository, filepath.Join(repository, "scripts", "build-npm-packages.sh"), testVersion, stage)
+	stage := os.Getenv("BETTER_TYPESCRIPT_NPM_STAGE")
+	version := testVersion
+	if stage == "" {
+		stage = filepath.Join(t.TempDir(), "stage")
+		run(t, repository, filepath.Join(repository, "scripts", "build-npm-packages.sh"), version, stage)
+	} else {
+		if !filepath.IsAbs(stage) {
+			t.Fatal("BETTER_TYPESCRIPT_NPM_STAGE must be absolute")
+		}
+		version = readManifest(t, filepath.Join(stage, "better-typescript", "package.json")).Version
+	}
 
-	archives := packAndCheck(t, repository, stage)
+	archives := packAndCheck(t, repository, stage, version)
 	testResumablePublish(t, repository, archives["better-typescript"])
 	run(t, repository, filepath.Join(repository, "scripts", "test-npm-packages.sh"), filepath.Dir(archives["better-typescript"]), filepath.Join(repository, "npm", "testdata", "project"))
 	testInstalledLauncher(t, repository, archives)
@@ -84,12 +93,12 @@ func testOutputGuards(t *testing.T, repository string) {
 	}
 }
 
-func packAndCheck(t *testing.T, repository, stage string) map[string]string {
+func packAndCheck(t *testing.T, repository, stage, version string) map[string]string {
 	t.Helper()
 	archiveDirectory := filepath.Join(t.TempDir(), "archives")
 
 	launcher := readManifest(t, filepath.Join(stage, "better-typescript", "package.json"))
-	if launcher.Name != "@better-typescript/better-typescript" || launcher.Version != testVersion || launcher.Private {
+	if launcher.Name != "@better-typescript/better-typescript" || launcher.Version != version || launcher.Private {
 		t.Fatalf("launcher manifest = %#v", launcher)
 	}
 	if launcher.Bin["better-typescript"] != "bin/better-typescript.js" || len(launcher.Scripts) != 0 {
@@ -99,7 +108,7 @@ func packAndCheck(t *testing.T, repository, stage string) map[string]string {
 		t.Fatalf("optional dependencies = %#v", launcher.OptionalDependencies)
 	}
 	for _, platform := range platformPackages {
-		if launcher.OptionalDependencies[platform.name] != testVersion {
+		if launcher.OptionalDependencies[platform.name] != version {
 			t.Errorf("optional dependency %s = %q", platform.name, launcher.OptionalDependencies[platform.name])
 		}
 	}
@@ -108,7 +117,7 @@ func packAndCheck(t *testing.T, repository, stage string) map[string]string {
 	for _, platform := range platformPackages {
 		packages = append(packages, platform.directory)
 		got := readManifest(t, filepath.Join(stage, platform.directory, "package.json"))
-		if got.Name != platform.name || got.Version != testVersion || got.Private {
+		if got.Name != platform.name || got.Version != version || got.Private {
 			t.Errorf("%s manifest = %#v", platform.directory, got)
 		}
 		if strings.Join(got.OS, ",") != platform.os || strings.Join(got.CPU, ",") != platform.cpu {
@@ -123,7 +132,7 @@ func packAndCheck(t *testing.T, repository, stage string) map[string]string {
 	run(t, repository, filepath.Join(repository, "scripts", "pack-npm-packages.sh"), stage, archiveDirectory)
 	archives := make(map[string]string)
 	for _, directory := range packages {
-		archive := onlyMatchingFile(t, archiveDirectory, "*"+directory+"-"+testVersion+".tgz")
+		archive := onlyMatchingFile(t, archiveDirectory, "*"+directory+"-"+version+".tgz")
 		archives[directory] = archive
 		checkArchive(t, archive, directory == "better-typescript")
 	}
