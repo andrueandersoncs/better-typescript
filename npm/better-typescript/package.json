@@ -1,0 +1,30 @@
+{
+  "name": "@andrueandersoncs/better-typescript",
+  "version": "0.0.0-development",
+  "private": true,
+  "description": "Type-aware TypeScript linter",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andrueandersoncs/better-typescript.git",
+    "directory": "npm/better-typescript"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "bin": {
+    "better-typescript": "bin/better-typescript.js"
+  },
+  "files": [
+    "bin"
+  ],
+  "optionalDependencies": {
+    "@andrueandersoncs/better-typescript-darwin-amd64": "0.0.0-development",
+    "@andrueandersoncs/better-typescript-darwin-arm64": "0.0.0-development",
+    "@andrueandersoncs/better-typescript-linux-amd64": "0.0.0-development",
+    "@andrueandersoncs/better-typescript-linux-arm64": "0.0.0-development"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

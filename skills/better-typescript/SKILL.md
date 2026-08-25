@@ -9,16 +9,16 @@ Better TypeScript is a Go binary with a fixed 129-rule catalog. Each rule is a d
 
 ## Get the binary
 
-A source checkout needs Git, bash, mise, and network access. It intentionally uses the latest Go 1.26 patch. The current checkout is untagged, so build it locally:
+Install the npm package in the TypeScript project:
+
+```sh
+npm install --save-dev @andrueandersoncs/better-typescript
+```
+
+For Better TypeScript development, build the current source with Go 1.26:
 
 ```sh
 mise exec go@1.26 -- go build ./cmd/better-typescript
-```
-
-Install a published tag with:
-
-```sh
-go install github.com/andrueandersoncs/better-typescript/cmd/better-typescript@<version>
 ```
 
 For repository changes, run `./scripts/check.sh`.
@@ -28,7 +28,7 @@ For repository changes, run `./scripts/check.sh`.
 From the directory containing the root `tsconfig.json`, run the installed binary with no options. Recursive project references are included:
 
 ```sh
-better-typescript
+npx better-typescript
 ```
 
 Status and operational errors go to stderr. Each stdout line is one NDJSON violation with `ruleName`, `level`, `message`, `filePath`, `line`, and `column`. Exit code `0` means analysis completed, even when violations exist. Empty stdout means the run is clean.

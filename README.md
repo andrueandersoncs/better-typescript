@@ -7,7 +7,9 @@ Better TypeScript is a Go linter for TypeScript projects. It uses a pinned publi
 - Git
 - bash
 - mise
-- Network access for Go and module downloads
+- Bun 1.3.0
+- Node.js 18 or newer with npm
+- Network access for Go and package downloads
 
 The project intentionally uses the latest Go 1.26 patch selected by mise.
 
@@ -19,11 +21,18 @@ A source checkout is a normal Go module. Build it directly:
 mise exec go@1.26 -- go build ./cmd/better-typescript
 ```
 
-The current checkout has no Better TypeScript release tag, so build it locally.
+The command writes `./better-typescript`.
 
 ## Install
 
-Install a published Better TypeScript tag with normal Go tooling:
+Install the npm package in a TypeScript project:
+
+```sh
+npm install --save-dev @andrueandersoncs/better-typescript
+npx better-typescript
+```
+
+Alternatively, install a published tag with Go:
 
 ```sh
 go install github.com/andrueandersoncs/better-typescript/cmd/better-typescript@<version>

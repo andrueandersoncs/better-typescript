@@ -1,0 +1,27 @@
+{
+  "name": "@andrueandersoncs/better-typescript-darwin-arm64",
+  "version": "0.0.0-development",
+  "private": true,
+  "description": "Better TypeScript native binary for macOS ARM64",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andrueandersoncs/better-typescript.git",
+    "directory": "npm/better-typescript-darwin-arm64"
+  },
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "files": [
+    "bin",
+    "LICENSES",
+    "THIRD-PARTY-NOTICES.md",
+    "BINARY-DEPENDENCIES.txt"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

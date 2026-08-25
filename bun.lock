@@ -1,0 +1,48 @@
+{
+  "lockfileVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "better-typescript-packages",
+    },
+    "npm/better-typescript": {
+      "name": "@andrueandersoncs/better-typescript",
+      "version": "0.0.0-development",
+      "bin": {
+        "better-typescript": "bin/better-typescript.js",
+      },
+      "optionalDependencies": {
+        "@andrueandersoncs/better-typescript-darwin-amd64": "0.0.0-development",
+        "@andrueandersoncs/better-typescript-darwin-arm64": "0.0.0-development",
+        "@andrueandersoncs/better-typescript-linux-amd64": "0.0.0-development",
+        "@andrueandersoncs/better-typescript-linux-arm64": "0.0.0-development",
+      },
+    },
+    "npm/better-typescript-darwin-amd64": {
+      "name": "@andrueandersoncs/better-typescript-darwin-amd64",
+      "version": "0.0.0-development",
+    },
+    "npm/better-typescript-darwin-arm64": {
+      "name": "@andrueandersoncs/better-typescript-darwin-arm64",
+      "version": "0.0.0-development",
+    },
+    "npm/better-typescript-linux-amd64": {
+      "name": "@andrueandersoncs/better-typescript-linux-amd64",
+      "version": "0.0.0-development",
+    },
+    "npm/better-typescript-linux-arm64": {
+      "name": "@andrueandersoncs/better-typescript-linux-arm64",
+      "version": "0.0.0-development",
+    },
+  },
+  "packages": {
+    "@andrueandersoncs/better-typescript": ["@andrueandersoncs/better-typescript@workspace:npm/better-typescript"],
+
+    "@andrueandersoncs/better-typescript-darwin-amd64": ["@andrueandersoncs/better-typescript-darwin-amd64@workspace:npm/better-typescript-darwin-amd64"],
+
+    "@andrueandersoncs/better-typescript-darwin-arm64": ["@andrueandersoncs/better-typescript-darwin-arm64@workspace:npm/better-typescript-darwin-arm64"],
+
+    "@andrueandersoncs/better-typescript-linux-amd64": ["@andrueandersoncs/better-typescript-linux-amd64@workspace:npm/better-typescript-linux-amd64"],
+
+    "@andrueandersoncs/better-typescript-linux-arm64": ["@andrueandersoncs/better-typescript-linux-arm64@workspace:npm/better-typescript-linux-arm64"],
+  }
+}
