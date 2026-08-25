@@ -31,8 +31,12 @@ type Violation struct {
 	Column   int    `json:"column"`
 }
 
-func Run(root string, rules []rule.Rule) ([]Violation, error) {
+func Run(root string, rules []rule.Rule, filePatterns ...string) ([]Violation, error) {
 	root = tspath.NormalizePath(root)
+	fileMatcher, err := newFileMatcher(root, filePatterns)
+	if err != nil {
+		return nil, err
+	}
 	configFileName := tspath.ResolvePath(root, "tsconfig.json")
 	fs := bundled.WrapFS(cachedvfs.From(osvfs.FS()))
 	if !fs.FileExists(configFileName) {
@@ -46,7 +50,7 @@ func Run(root string, rules []rule.Rule) ([]Violation, error) {
 
 	violations := make([]Violation, 0)
 	for _, projectConfigFileName := range configFileNames {
-		projectViolations, err := runProject(root, projectConfigFileName, fs, rules)
+		projectViolations, err := runProject(root, projectConfigFileName, fs, rules, fileMatcher)
 		if err != nil {
 			return nil, err
 		}
@@ -93,7 +97,7 @@ func referencedConfigFileNames(fs vfs.FS, rootConfigFileName string) ([]string, 
 	return result, nil
 }
 
-func runProject(root string, configFileName string, fs vfs.FS, rules []rule.Rule) ([]Violation, error) {
+func runProject(root string, configFileName string, fs vfs.FS, rules []rule.Rule, fileMatcher fileMatcher) ([]Violation, error) {
 	currentDirectory := tspath.GetDirectoryPath(configFileName)
 	host := utils.CreateCompilerHost(currentDirectory, fs)
 	config, _ := tsoptions.GetParsedCommandLineOfConfigFile(configFileName, &core.CompilerOptions{}, nil, host, nil)
@@ -108,7 +112,7 @@ func runProject(root string, configFileName string, fs vfs.FS, rules []rule.Rule
 	files := make([]*ast.SourceFile, 0, len(config.FileNames()))
 	for _, fileName := range config.FileNames() {
 		file := program.GetSourceFile(fileName)
-		if file != nil && !file.IsDeclarationFile {
+		if file != nil && !file.IsDeclarationFile && fileMatcher.matches(file.FileName()) {
 			files = append(files, file)
 		}
 	}

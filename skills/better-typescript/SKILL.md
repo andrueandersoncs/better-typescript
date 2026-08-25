@@ -25,13 +25,20 @@ For repository changes, run `./scripts/check.sh`.
 
 ## Run
 
-From the directory containing the root `tsconfig.json`, run the installed binary with no options. Recursive project references are included:
+From the directory containing the root `tsconfig.json`, run the installed binary. Recursive project references are included:
 
 ```sh
 npx better-typescript
 ```
 
-Status and operational errors go to stderr. Each stdout line is one NDJSON violation with `ruleName`, `level`, `message`, `filePath`, `line`, and `column`. Exit code `0` means analysis completed, even when violations exist. Empty stdout means the run is clean.
+No flags means all project files and all rules. Use project-relative file globs or rule names to narrow a run:
+
+```sh
+npx better-typescript --files 'src/**/*.ts'
+npx better-typescript --rules no-throw,no-error-type
+```
+
+Repeat either flag or separate its values with commas. Status and operational errors go to stderr. Each stdout line is one NDJSON violation with `ruleName`, `level`, `message`, `filePath`, `line`, and `column`. Exit code `0` means analysis completed, even when violations exist. Empty stdout means the run is clean.
 
 ## Handle results
 

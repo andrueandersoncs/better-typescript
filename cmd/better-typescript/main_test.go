@@ -104,3 +104,98 @@ func buildCLI(t *testing.T) (binary string, packageDirectory string) {
 	}
 	return binary, packageDirectory
 }
+
+func TestCLISelectsGlobFilesAndOneRule(t *testing.T) {
+	binary, packageDirectory := buildCLI(t)
+	projectDirectory := filepath.Join(packageDirectory, "testdata", "project")
+
+	command := exec.Command(binary, "--files", "src/missing.ts", "--files", "src/**/selected.ts", "--rules", "no-throw")
+	command.Dir = projectDirectory
+	output, err := command.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	violations := decodeViolations(t, output)
+	if len(violations) != 1 {
+		t.Fatalf("got %d violations, want 1", len(violations))
+	}
+	if violations[0].FilePath != "src/nested/selected.ts" || violations[0].RuleName != "no-throw" {
+		t.Fatalf("violation = %#v, want selected file and no-throw rule", violations[0])
+	}
+}
+
+func TestCLISelectsManyRules(t *testing.T) {
+	binary, packageDirectory := buildCLI(t)
+	projectDirectory := filepath.Join(packageDirectory, "testdata", "project")
+
+	command := exec.Command(binary, "--files", "src/main.ts,src/nested/selected.ts", "--rules", "no-error-type", "--rules", "no-throw")
+	command.Dir = projectDirectory
+	output, err := command.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	foundRules := map[string]bool{}
+	foundFiles := map[string]bool{}
+	for _, violation := range decodeViolations(t, output) {
+		foundRules[violation.RuleName] = true
+		foundFiles[violation.FilePath] = true
+	}
+	for _, ruleName := range []string{"no-error-type", "no-throw"} {
+		if !foundRules[ruleName] {
+			t.Errorf("missing %s violation", ruleName)
+		}
+	}
+	if len(foundRules) != 2 {
+		t.Fatalf("rules = %#v, want only selected rules", foundRules)
+	}
+	for _, fileName := range []string{"src/main.ts", "src/nested/selected.ts"} {
+		if !foundFiles[fileName] {
+			t.Errorf("missing violations for %s", fileName)
+		}
+	}
+	if len(foundFiles) != 2 {
+		t.Fatalf("files = %#v, want only selected files", foundFiles)
+	}
+}
+
+func TestCLIRejectsUnknownRule(t *testing.T) {
+	binary, packageDirectory := buildCLI(t)
+	projectDirectory := filepath.Join(packageDirectory, "testdata", "project")
+	command := exec.Command(binary, "--rules", "not-a-rule")
+	command.Dir = projectDirectory
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	command.Stdout = &stdout
+	command.Stderr = &stderr
+
+	err := command.Run()
+	var exitError *exec.ExitError
+	if !errors.As(err, &exitError) || exitError.ExitCode() != 1 {
+		t.Fatalf("error = %v, want exit code 1", err)
+	}
+	if stdout.Len() != 0 {
+		t.Fatalf("stdout = %q, want empty", stdout.String())
+	}
+	if stderr.String() != "unknown rules: not-a-rule\n" {
+		t.Fatalf("stderr = %q, want unknown-rule error", stderr.String())
+	}
+}
+
+func decodeViolations(t *testing.T, output []byte) []analysis.Violation {
+	t.Helper()
+	violations := make([]analysis.Violation, 0)
+	scanner := bufio.NewScanner(bytes.NewReader(output))
+	for scanner.Scan() {
+		var violation analysis.Violation
+		if err := json.Unmarshal(scanner.Bytes(), &violation); err != nil {
+			t.Fatalf("parse NDJSON: %v", err)
+		}
+		violations = append(violations, violation)
+	}
+	if err := scanner.Err(); err != nil {
+		t.Fatal(err)
+	}
+	return violations
+}

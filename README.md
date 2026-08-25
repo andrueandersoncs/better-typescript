@@ -40,11 +40,26 @@ go install github.com/andrueandersoncs/better-typescript/cmd/better-typescript@<
 
 ## Run
 
-Run the binary with no options from a directory containing `tsconfig.json`:
+Run the binary from a directory containing `tsconfig.json`:
 
 ```sh
 /path/to/better-typescript
 ```
+
+With no flags, the command checks all project files with all rules. Restrict files with project-relative globs:
+
+```sh
+/path/to/better-typescript --files 'src/**/*.ts'
+```
+
+Restrict rules by name:
+
+```sh
+/path/to/better-typescript --rules no-throw
+/path/to/better-typescript --rules no-throw,no-error-type
+```
+
+Repeat either flag or separate its values with commas. Quote globs so the CLI expands them instead of the shell.
 
 The command writes `Analyzing <absolute current directory>.` to stderr. It writes one violation per stdout line as NDJSON:
 
@@ -54,11 +69,11 @@ The command writes `Analyzing <absolute current directory>.` to stderr. It write
 
 Paths are current-directory-relative slash paths. Locations are one-based UTF-16 positions. Output is exactly deduplicated and deterministic. A completed analysis exits successfully even when violations exist.
 
-The full fixed catalog is enabled at `error` level. There are no CLI options, project configuration, plugin API, or JavaScript API.
+Selected rules use `error` level. Unknown rule names fail before analysis. There is no project configuration, plugin API, or JavaScript API.
 
 ## Architecture
 
-- `cmd/better-typescript` owns the no-option CLI and NDJSON rendering.
+- `cmd/better-typescript` owns CLI flag parsing, rule selection, and NDJSON rendering.
 - `internal/analysis` loads `./tsconfig.json` and its recursive project references, then runs one `typescript-go` Program per config.
 - `internal/linter` registers all rule listeners once per file and dispatches them in one traversal using checker workers.
 - `internal/rules/<rule_name>` owns each rule and its `testdata` project.
