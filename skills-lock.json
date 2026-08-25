@@ -113,7 +113,7 @@
       "source": "andrueandersoncs/skills",
       "sourceType": "github",
       "skillPath": "llm-wiki/SKILL.md",
-      "computedHash": "2b80b7fc6578d216267887df86030bb9edc1257fd92d6b05f5d291fbf493aec0"
+      "computedHash": "391a225cbe3368a28838746e20be7fb720f4a72536c6a95ff35baed38187a8b4"
     },
     "loop-me": {
       "source": "mattpocock/skills",
@@ -132,6 +132,12 @@
       "sourceType": "github",
       "skillPath": "skills/misc/migrate-to-shoehorn/SKILL.md",
       "computedHash": "6397731ced114f3657aa88b55ed13d1344a56d77ca449c568e3200c21740fa99"
+    },
+    "npm-publish-tool": {
+      "source": "andrueandersoncs/skills",
+      "sourceType": "github",
+      "skillPath": "npm-publish-tool/SKILL.md",
+      "computedHash": "5b988d0d5d5a07f4372731b51b330f93351ff3edc078f18f5633eb418fdcfd84"
     },
     "plan-happy-path": {
       "source": "andrueandersoncs/skills",
@@ -156,6 +162,12 @@
       "sourceType": "github",
       "skillPath": "skills/engineering/resolving-merge-conflicts/SKILL.md",
       "computedHash": "63b2dcadbe9124caeb3448f1378286fe18dcefb2494f60e136831b8b4986ca27"
+    },
+    "retro": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/in-progress/retro/SKILL.md",
+      "computedHash": "b9bd2e5e0378214bf54d2a293df50490669b845a4c2a71c8f747ce8ab365f53a"
     },
     "scaffold-exercises": {
       "source": "mattpocock/skills",
