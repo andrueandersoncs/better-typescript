@@ -31,4 +31,4 @@ if ! grep -q 'E404' "$error_log"; then
   exit 1
 fi
 
-npm publish "$archive" --access public --provenance
+npm publish "$archive" --access public

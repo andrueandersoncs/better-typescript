@@ -38,24 +38,10 @@ All five packages use the same version as the Git tag without its `v` prefix. A 
 
 Platform packages include the project license and required third-party notices. The launcher has no runtime dependency other than Node.js and its matching optional package.
 
-Build and test the package tarballs locally with:
+Authenticate once with `npm login`. Publish a version from a clean worktree with:
 
 ```sh
-bun run build:npm
-bun run pack:npm
-bun run smoke:npm
+./scripts/publish-npm-release.sh 0.2.3
 ```
 
-The five npm packages must exist before npm trusted publishing can be configured. Bootstrap them once with an authenticated npm account:
-
-```sh
-npm login
-./scripts/build-npm-packages.sh 0.0.0-bootstrap.0 dist/npm
-./scripts/pack-npm-packages.sh dist/npm dist/npm/tarballs
-for archive in dist/npm/tarballs/*-darwin-*.tgz dist/npm/tarballs/*-linux-*.tgz; do
-  npm publish "$archive" --access public --tag bootstrap
-done
-npm publish dist/npm/tarballs/better-typescript-better-typescript-[0-9]*.tgz --access public --tag bootstrap
-```
-
-Then configure `.github/workflows/publish-npm.yml` as the trusted publisher for each package. Normal releases publish with npm provenance from that workflow.
+The command builds all four binaries, runs the full gate against those binaries, packs and smoke-tests the tarballs, then publishes the platform packages before the launcher. Rerunning the same version is safe when the registry contents match exactly.

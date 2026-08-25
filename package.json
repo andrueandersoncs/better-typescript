@@ -9,6 +9,7 @@
     "build:npm": "./scripts/build-npm-packages.sh 0.0.0-development",
     "pack:npm": "./scripts/pack-npm-packages.sh",
     "smoke:npm": "./scripts/test-npm-packages.sh",
-    "test:npm": "mise exec go@1.26 -- go test ./npm"
+    "test:npm": "mise exec go@1.26 -- go test ./npm",
+    "publish:npm": "./scripts/publish-npm-release.sh"
   }
 }
