@@ -16,8 +16,8 @@ case "$(uname -s)/$(uname -m)" in
   *) printf 'unsupported test platform: %s/%s\n' "$(uname -s)" "$(uname -m)" >&2; exit 1 ;;
 esac
 
-launcher=("$archives"/andrueandersoncs-better-typescript-[0-9]*.tgz)
-native=("$archives"/andrueandersoncs-better-typescript-"$platform"-*.tgz)
+launcher=("$archives"/better-typescript-better-typescript-[0-9]*.tgz)
+native=("$archives"/better-typescript-better-typescript-"$platform"-*.tgz)
 if [[ ${#launcher[@]} -ne 1 || ! -f "${launcher[0]}" || ${#native[@]} -ne 1 || ! -f "${native[0]}" ]]; then
   printf 'expected one launcher and one %s archive in %s\n' "$platform" "$archives" >&2
   exit 1

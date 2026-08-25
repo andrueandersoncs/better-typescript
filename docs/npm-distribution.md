@@ -6,11 +6,11 @@ Better TypeScript is distributed on npm as a launcher package plus one package p
 
 | Package | Purpose |
 | --- | --- |
-| `@andrueandersoncs/better-typescript` | Public command and platform selection |
-| `@andrueandersoncs/better-typescript-darwin-arm64` | macOS Apple silicon binary |
-| `@andrueandersoncs/better-typescript-darwin-amd64` | macOS Intel binary |
-| `@andrueandersoncs/better-typescript-linux-arm64` | Linux ARM64 binary |
-| `@andrueandersoncs/better-typescript-linux-amd64` | Linux x86-64 binary |
+| `@better-typescript/better-typescript` | Public command and platform selection |
+| `@better-typescript/better-typescript-darwin-arm64` | macOS Apple silicon binary |
+| `@better-typescript/better-typescript-darwin-amd64` | macOS Intel binary |
+| `@better-typescript/better-typescript-linux-arm64` | Linux ARM64 binary |
+| `@better-typescript/better-typescript-linux-amd64` | Linux x86-64 binary |
 
 The unscoped `better-typescript` name belongs to another project.
 
@@ -21,7 +21,7 @@ This design keeps downloads small and avoids install scripts. Node.js locates th
 ## Use
 
 ```sh
-npm install --save-dev @andrueandersoncs/better-typescript
+npm install --save-dev @better-typescript/better-typescript
 npx better-typescript
 ```
 
@@ -55,7 +55,7 @@ npm login
 for archive in dist/npm/tarballs/*-darwin-*.tgz dist/npm/tarballs/*-linux-*.tgz; do
   npm publish "$archive" --access public --tag bootstrap
 done
-npm publish dist/npm/tarballs/andrueandersoncs-better-typescript-[0-9]*.tgz --access public --tag bootstrap
+npm publish dist/npm/tarballs/better-typescript-better-typescript-[0-9]*.tgz --access public --tag bootstrap
 ```
 
 Then configure `.github/workflows/publish-npm.yml` as the trusted publisher for each package. Normal releases publish with npm provenance from that workflow.

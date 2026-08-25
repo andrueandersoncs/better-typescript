@@ -5,10 +5,10 @@
 const { spawnSync } = require("node:child_process");
 
 const packages = {
-  "darwin-arm64": "@andrueandersoncs/better-typescript-darwin-arm64",
-  "darwin-x64": "@andrueandersoncs/better-typescript-darwin-amd64",
-  "linux-arm64": "@andrueandersoncs/better-typescript-linux-arm64",
-  "linux-x64": "@andrueandersoncs/better-typescript-linux-amd64",
+  "darwin-arm64": "@better-typescript/better-typescript-darwin-arm64",
+  "darwin-x64": "@better-typescript/better-typescript-darwin-amd64",
+  "linux-arm64": "@better-typescript/better-typescript-linux-arm64",
+  "linux-x64": "@better-typescript/better-typescript-linux-amd64",
 };
 
 const target = `${process.platform}-${process.arch}`;

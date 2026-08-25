@@ -1,5 +1,5 @@
 {
-  "name": "@andrueandersoncs/better-typescript",
+  "name": "@better-typescript/better-typescript",
   "version": "0.0.0-development",
   "private": true,
   "description": "Type-aware TypeScript linter",
@@ -19,10 +19,10 @@
     "bin"
   ],
   "optionalDependencies": {
-    "@andrueandersoncs/better-typescript-darwin-amd64": "0.0.0-development",
-    "@andrueandersoncs/better-typescript-darwin-arm64": "0.0.0-development",
-    "@andrueandersoncs/better-typescript-linux-amd64": "0.0.0-development",
-    "@andrueandersoncs/better-typescript-linux-arm64": "0.0.0-development"
+    "@better-typescript/better-typescript-darwin-amd64": "0.0.0-development",
+    "@better-typescript/better-typescript-darwin-arm64": "0.0.0-development",
+    "@better-typescript/better-typescript-linux-amd64": "0.0.0-development",
+    "@better-typescript/better-typescript-linux-arm64": "0.0.0-development"
   },
   "publishConfig": {
     "access": "public"

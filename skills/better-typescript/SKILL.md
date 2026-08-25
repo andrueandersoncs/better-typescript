@@ -12,7 +12,7 @@ Better TypeScript is a Go binary with a fixed 129-rule catalog. Each rule is a d
 Install the npm package in the TypeScript project:
 
 ```sh
-npm install --save-dev @andrueandersoncs/better-typescript
+npm install --save-dev @better-typescript/better-typescript
 ```
 
 For Better TypeScript development, build the current source with Go 1.26:

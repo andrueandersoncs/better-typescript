@@ -3,7 +3,7 @@
 Type-aware TypeScript linting as a native executable.
 
 ```sh
-npm install --save-dev @andrueandersoncs/better-typescript
+npm install --save-dev @better-typescript/better-typescript
 npx better-typescript
 ```
 

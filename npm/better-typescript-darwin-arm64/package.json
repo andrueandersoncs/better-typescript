@@ -1,5 +1,5 @@
 {
-  "name": "@andrueandersoncs/better-typescript-darwin-arm64",
+  "name": "@better-typescript/better-typescript-darwin-arm64",
   "version": "0.0.0-development",
   "private": true,
   "description": "Better TypeScript native binary for macOS ARM64",

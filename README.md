@@ -28,7 +28,7 @@ The command writes `./better-typescript`.
 Install the npm package in a TypeScript project:
 
 ```sh
-npm install --save-dev @andrueandersoncs/better-typescript
+npm install --save-dev @better-typescript/better-typescript
 npx better-typescript
 ```
 

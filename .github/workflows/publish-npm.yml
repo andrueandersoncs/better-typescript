@@ -79,10 +79,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ./scripts/publish-npm-package.sh dist/npm/tarballs/andrueandersoncs-better-typescript-darwin-amd64-*.tgz
-          ./scripts/publish-npm-package.sh dist/npm/tarballs/andrueandersoncs-better-typescript-darwin-arm64-*.tgz
-          ./scripts/publish-npm-package.sh dist/npm/tarballs/andrueandersoncs-better-typescript-linux-amd64-*.tgz
-          ./scripts/publish-npm-package.sh dist/npm/tarballs/andrueandersoncs-better-typescript-linux-arm64-*.tgz
+          ./scripts/publish-npm-package.sh dist/npm/tarballs/better-typescript-better-typescript-darwin-amd64-*.tgz
+          ./scripts/publish-npm-package.sh dist/npm/tarballs/better-typescript-better-typescript-darwin-arm64-*.tgz
+          ./scripts/publish-npm-package.sh dist/npm/tarballs/better-typescript-better-typescript-linux-amd64-*.tgz
+          ./scripts/publish-npm-package.sh dist/npm/tarballs/better-typescript-better-typescript-linux-arm64-*.tgz
 
       - name: Publish launcher
-        run: ./scripts/publish-npm-package.sh dist/npm/tarballs/andrueandersoncs-better-typescript-[0-9]*.tgz
+        run: ./scripts/publish-npm-package.sh dist/npm/tarballs/better-typescript-better-typescript-[0-9]*.tgz

@@ -31,10 +31,10 @@ var platformPackages = []struct {
 	os        string
 	cpu       string
 }{
-	{"better-typescript-darwin-amd64", "@andrueandersoncs/better-typescript-darwin-amd64", "darwin", "amd64", "darwin", "x64"},
-	{"better-typescript-darwin-arm64", "@andrueandersoncs/better-typescript-darwin-arm64", "darwin", "arm64", "darwin", "arm64"},
-	{"better-typescript-linux-amd64", "@andrueandersoncs/better-typescript-linux-amd64", "linux", "amd64", "linux", "x64"},
-	{"better-typescript-linux-arm64", "@andrueandersoncs/better-typescript-linux-arm64", "linux", "arm64", "linux", "arm64"},
+	{"better-typescript-darwin-amd64", "@better-typescript/better-typescript-darwin-amd64", "darwin", "amd64", "darwin", "x64"},
+	{"better-typescript-darwin-arm64", "@better-typescript/better-typescript-darwin-arm64", "darwin", "arm64", "darwin", "arm64"},
+	{"better-typescript-linux-amd64", "@better-typescript/better-typescript-linux-amd64", "linux", "amd64", "linux", "x64"},
+	{"better-typescript-linux-arm64", "@better-typescript/better-typescript-linux-arm64", "linux", "arm64", "linux", "arm64"},
 }
 
 type manifest struct {
@@ -89,7 +89,7 @@ func packAndCheck(t *testing.T, repository, stage string) map[string]string {
 	archiveDirectory := filepath.Join(t.TempDir(), "archives")
 
 	launcher := readManifest(t, filepath.Join(stage, "better-typescript", "package.json"))
-	if launcher.Name != "@andrueandersoncs/better-typescript" || launcher.Version != testVersion || launcher.Private {
+	if launcher.Name != "@better-typescript/better-typescript" || launcher.Version != testVersion || launcher.Private {
 		t.Fatalf("launcher manifest = %#v", launcher)
 	}
 	if launcher.Bin["better-typescript"] != "bin/better-typescript.js" || len(launcher.Scripts) != 0 {
