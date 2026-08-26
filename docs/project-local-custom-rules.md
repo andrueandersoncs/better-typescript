@@ -30,38 +30,38 @@ This section records source facts. Recommendations start under **Design synthesi
 
 - The CLI loads the root `tsconfig.json` and recursive project references, creates one
   `typescript-go` Program per config, and passes each config's non-declaration root files to the
-  linter ([analysis](../../internal/analysis/analysis.go#L44-L76),
-  [per-project run](../../internal/analysis/analysis.go#L115-L169)). A rule sees one Program at a
+  linter ([analysis](../internal/analysis/analysis.go#L44-L76),
+  [per-project run](../internal/analysis/analysis.go#L115-L169)). A rule sees one Program at a
   time.
 - A rule is a name plus a function that returns listeners keyed by `ast.Kind`. `RuleContext` exposes
   the current source file, Program, checker, a synchronized per-Program cache, and node/range
-  reporters ([rule contract](../../internal/rule/rule.go#L33-L85)). These are Go pointers and
+  reporters ([rule contract](../internal/rule/rule.go#L33-L85)). These are Go pointers and
   closures, not a serialized interface.
 - The linter creates listeners per rule and file, combines them by kind, and dispatches them during
-  one traversal ([registration and dispatch](../../internal/linter/linter.go#L168-L230)). Checker
+  one traversal ([registration and dispatch](../internal/linter/linter.go#L168-L230)). Checker
   workloads run concurrently. Custom rules that share state must therefore follow an explicit
   concurrency contract.
 - Built-ins are statically imported into one sorted slice
-  ([catalog](../../internal/rules/catalog.go)). The rule, linter, and analysis packages are under
+  ([catalog](../internal/rules/catalog.go)). The rule, linter, and analysis packages are under
   `internal/`, so an outside Go module cannot import the current rule API under Go's
   [internal-directory rule](https://pkg.go.dev/cmd/go#hdr-Internal_Directories). The compiler adapters
   themselves are public and pinned to `github.com/andrueandersoncs/typescript-go v0.1.0`
-  ([module pin](../../go.mod#L1-L5), [compiler foundation](../../docs/compiler-foundation.md#L5-L24)).
+  ([module pin](../go.mod#L1-L5), [compiler foundation](compiler-foundation.md#L5-L24)).
 - `better-typescript.json` currently permits only ordered file/rule overrides and rejects unknown
-  fields ([decoder](../../cmd/better-typescript/config.go#L45-L76)). Rule names are resolved against
+  fields ([decoder](../cmd/better-typescript/config.go#L45-L76)). Rule names are resolved against
   the built-in catalog before analysis. `--rules` also selects from that catalog and skips config
   overrides. Discovery must therefore happen before name validation, or custom rules must already
   be linked into the runner.
 - A diagnostic currently carries a source range and message inside the linter, but public output
   keeps only the range start, combines description and help, hard-codes `error`, and writes the
   stable six-field NDJSON record
-  ([diagnostic types](../../internal/rule/rule.go#L40-L50),
-  [normalization](../../internal/analysis/analysis.go#L135-L164)). There is no production edit,
+  ([diagnostic types](../internal/rule/rule.go#L40-L50),
+  [normalization](../internal/analysis/analysis.go#L135-L164)). There is no production edit,
   suggestion, or `--fix` API. Locations are one-based UTF-16 in output
-  ([public contract](../../README.md#L89-L97)).
+  ([public contract](../README.md#L89-L97)).
 - The npm package launches a static platform binary. It does not host a JavaScript rule runtime
-  ([distribution design](../../docs/npm-distribution.md#L17-L19),
-  [launcher](../../npm/better-typescript/bin/better-typescript.js)).
+  ([distribution design](npm-distribution.md#L17-L19),
+  [launcher](../npm/better-typescript/bin/better-typescript.js)).
 
 ### First-party extension precedents
 

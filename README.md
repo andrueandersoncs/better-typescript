@@ -1,6 +1,6 @@
 # Better TypeScript
 
-Better TypeScript is a Go linter for TypeScript projects. It uses a pinned public `typescript-go` compiler module and runs 129 syntax- and type-aware rules in one AST pass per root source file.
+Better TypeScript is a Go linter for TypeScript projects. It uses a pinned public `typescript-go` compiler module and runs 131 syntax- and type-aware rules in one AST pass per root source file.
 
 ## Prerequisites
 
@@ -102,7 +102,7 @@ Selected rules use `error` level. Unknown rule names and invalid configuration f
 - `internal/analysis` loads `./tsconfig.json` and its recursive project references, then runs one `typescript-go` Program per config.
 - `internal/linter` registers all rule listeners once per file and dispatches them in one traversal using checker workers.
 - `internal/rules/<rule_name>` owns each rule and its `testdata` project.
-- `internal/rules/catalog.go` registers all 130 rules once in sorted name order.
+- `internal/rules/catalog.go` registers all 131 rules once in sorted name order.
 - `github.com/andrueandersoncs/typescript-go` supplies the public compiler adapters.
 
 See [`ARCHITECTURE.md`](ARCHITECTURE.md), [`docs/compiler-foundation.md`](docs/compiler-foundation.md), [`docs/rules.md`](docs/rules.md), and [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).

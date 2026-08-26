@@ -9,7 +9,7 @@ import (
 	"github.com/andrueandersoncs/typescript-go/checker"
 )
 
-const help = "Schema.declare is for third-party integrations and non-parametric opaque or branded types validated by a type guard. For structural models you own, define a Schema.Struct plus a same-named decoded interface — for example export const MyType = Schema.Struct({ ... }); export interface MyType extends Schema.Schema.Type<typeof MyType> {} — which gives you validation, encoding, and decoding for free."
+const help = "Schema.declare is for third-party integrations and non-parametric opaque or branded types validated by a type guard. For structural models you own, define a Schema.Struct const with a Schema suffix plus a decoded interface — for example export const MyTypeSchema = Schema.Struct({ ... }); export interface MyType extends Schema.Schema.Type<typeof MyTypeSchema> {} — which gives you validation, encoding, and decoding for free."
 
 func isDeclareCall(node *ast.Node) bool {
 	if !ast.IsCallExpression(node) {

@@ -1,84 +1,129 @@
 package schema_record_interface
 
 import (
+	"path/filepath"
+	"strings"
+
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
 	"github.com/andrueandersoncs/typescript-go/ast"
-	"path"
-	"regexp"
-	"strings"
 )
 
-var message = rule.RuleMessage{Id: "schemaRecordInterface", Description: "Pair a Schema.Struct record with its same-name interface.", Help: "Export the decoded interface beside the Schema.Struct declaration."}
+var message = rule.RuleMessage{Id: "schemaRecordInterface", Description: "Pair a Schema.Struct record with its decoded interface.", Help: "For UserSchema, export interface User extends Schema.Schema.Type<typeof UserSchema> beside the schema declaration."}
 
 var SchemaRecordInterfaceRule = rule.Rule{
 	Name: "schema-record-interface",
 	Run: func(ctx rule.RuleContext, _ any) rule.RuleListeners {
-		imports := collectAPIImports(ctx.SourceFile.Text())
-		paired := map[string]bool{}
+		paired := map[*ast.Symbol]bool{}
 		walk(ctx.SourceFile.AsNode(), func(node *ast.Node) bool {
 			if node.Kind != ast.KindInterfaceDeclaration || node.Name() == nil {
 				return false
 			}
-			name := node.Name().Text()
-			text := ctx.SourceFile.Text()[node.Pos():node.End()]
-			pattern := regexp.MustCompile(`(?s)extends\s+(?:[A-Za-z_$][\w$]*\.)*Type\s*<\s*typeof\s+` + regexp.QuoteMeta(name) + `\s*>`)
-			if pattern.MatchString(text) {
-				paired[name] = true
+			schemaName := node.Name().Text() + "Schema"
+			if symbol := decodedInterface(ctx, node, schemaName); symbol != nil {
+				paired[symbol] = true
 			}
 			return false
 		})
 		return rule.RuleListeners{ast.KindVariableDeclaration: func(node *ast.Node) {
 			name := node.Name()
 			initializer := skipTransparent(node.AsVariableDeclaration().Initializer)
-			if name == nil || name.Kind != ast.KindIdentifier || initializer == nil || !ast.IsCallExpression(initializer) || paired[name.Text()] {
+			if name == nil || name.Kind != ast.KindIdentifier || initializer == nil || !ast.IsCallExpression(initializer) || paired[ctx.TypeChecker.GetSymbolAtLocation(name)] {
 				return
 			}
-			if isAPICall(imports, initializer.AsCallExpression(), "Schema", "Struct") {
+			if effectStructCall(ctx, initializer.AsCallExpression()) {
 				ctx.ReportNode(name, message)
 			}
 		}}
 	},
 }
 
-type apiImports struct {
-	namespaces map[string]string
-	members    map[string][2]string
+func expressionPath(node *ast.Node) []string {
+	if node == nil {
+		return nil
+	}
+	if ast.IsIdentifier(node) {
+		return []string{node.Text()}
+	}
+	if !ast.IsPropertyAccessExpression(node) || node.Name() == nil || !ast.IsIdentifier(node.Name()) {
+		return nil
+	}
+	path := expressionPath(node.AsPropertyAccessExpression().Expression)
+	if len(path) == 0 {
+		return nil
+	}
+	return append(path, node.Name().Text())
 }
 
-func collectAPIImports(text string) apiImports {
-	result := apiImports{namespaces: map[string]string{}, members: map[string][2]string{}}
-	re := regexp.MustCompile(`(?ms)^\s*import\s+(\{[^}]*\}|\*\s+as\s+[A-Za-z_$][\w$]*)\s+from\s+["']([^"']+)["']`)
-	for _, match := range re.FindAllStringSubmatch(text, -1) {
-		clause, module := strings.TrimSpace(match[1]), match[2]
-		family := ""
-		if strings.HasPrefix(module, "effect/") {
-			family = path.Base(module)
-		}
-		if strings.HasPrefix(clause, "* as ") && family != "" {
-			result.namespaces[strings.TrimSpace(strings.TrimPrefix(clause, "* as "))] = family
+func expressionRoot(node *ast.Node) *ast.Node {
+	for ast.IsPropertyAccessExpression(node) {
+		node = node.AsPropertyAccessExpression().Expression
+	}
+	if ast.IsIdentifier(node) {
+		return node
+	}
+	return nil
+}
+
+func symbolInEffectSchema(symbol *ast.Symbol) bool {
+	if symbol == nil || symbol.Flags&ast.SymbolFlagsAlias != 0 {
+		return false
+	}
+	for _, declaration := range symbol.Declarations {
+		file := ast.GetSourceFileOfNode(declaration)
+		if file == nil {
 			continue
 		}
-		start, end := strings.Index(clause, "{"), strings.LastIndex(clause, "}")
-		if start < 0 || end <= start {
+		name := strings.ReplaceAll(file.FileName(), "\\", "/")
+		base := filepath.Base(name)
+		if base != "Schema.ts" && base != "Schema.d.ts" {
 			continue
 		}
-		for _, item := range strings.Split(clause[start+1:end], ",") {
-			parts := strings.Fields(strings.TrimSpace(item))
-			if len(parts) == 0 || parts[0] == "type" {
+		if strings.Contains(name, "/node_modules/effect/") || strings.Contains(name, "/packages/effect/src/") {
+			return true
+		}
+	}
+	return false
+}
+
+func resolvedSymbol(ctx rule.RuleContext, node *ast.Node) *ast.Symbol {
+	symbol := ctx.TypeChecker.GetSymbolAtLocation(node)
+	if symbol != nil && symbol.Flags&ast.SymbolFlagsAlias != 0 {
+		return ctx.TypeChecker.GetAliasedSymbol(symbol)
+	}
+	return symbol
+}
+
+func importedEffectSymbol(ctx rule.RuleContext, node *ast.Node) bool {
+	return symbolInEffectSchema(resolvedSymbol(ctx, node))
+}
+
+func decodedInterface(ctx rule.RuleContext, node *ast.Node, schemaName string) *ast.Symbol {
+	clauses := node.AsInterfaceDeclaration().HeritageClauses
+	if clauses == nil {
+		return nil
+	}
+	for _, clause := range clauses.Nodes {
+		for _, heritage := range clause.AsHeritageClause().Types.Nodes {
+			if !ast.IsExpressionWithTypeArguments(heritage) {
 				continue
 			}
-			imported, local := parts[0], parts[0]
-			if len(parts) >= 3 && parts[1] == "as" {
-				local = parts[2]
+			expression := heritage.AsExpressionWithTypeArguments()
+			path := expressionPath(expression.Expression)
+			root := expressionRoot(expression.Expression)
+			if len(path) != 3 || path[1] != "Schema" || path[2] != "Type" || root == nil || !importedEffectSymbol(ctx, root) || expression.TypeArguments == nil || len(expression.TypeArguments.Nodes) != 1 {
+				continue
 			}
-			if module == "effect" {
-				result.namespaces[local] = imported
-			} else if family != "" {
-				result.members[local] = [2]string{family, imported}
+			argument := expression.TypeArguments.Nodes[0]
+			if !ast.IsTypeQueryNode(argument) {
+				continue
+			}
+			name := argument.AsTypeQueryNode().ExprName
+			if name != nil && ast.IsIdentifier(name) && name.Text() == schemaName {
+				return ctx.TypeChecker.GetSymbolAtLocation(name)
 			}
 		}
 	}
-	return result
+	return nil
 }
 
 func skipTransparent(node *ast.Node) *ast.Node {
@@ -94,29 +139,19 @@ func skipTransparent(node *ast.Node) *ast.Node {
 	return nil
 }
 
-func isAPICall(imports apiImports, call *ast.CallExpression, family string, names ...string) bool {
+func effectStructCall(ctx rule.RuleContext, call *ast.CallExpression) bool {
 	callee := skipTransparent(call.Expression)
 	if callee == nil {
 		return false
 	}
-	contains := func(name string) bool {
-		for _, candidate := range names {
-			if candidate == name {
-				return true
-			}
-		}
-		return false
-	}
 	if ast.IsPropertyAccessExpression(callee) {
 		access := callee.AsPropertyAccessExpression()
-		name := access.Name()
 		receiver := skipTransparent(access.Expression)
-		return name != nil && receiver != nil && receiver.Kind == ast.KindIdentifier &&
-			imports.namespaces[receiver.Text()] == family && contains(name.Text())
+		return access.Name() != nil && access.Name().Text() == "Struct" && receiver != nil && ast.IsIdentifier(receiver) && importedEffectSymbol(ctx, receiver)
 	}
-	if callee.Kind == ast.KindIdentifier {
-		member, ok := imports.members[callee.Text()]
-		return ok && member[0] == family && contains(member[1])
+	if ast.IsIdentifier(callee) {
+		symbol := resolvedSymbol(ctx, callee)
+		return symbol != nil && symbol.Name == "Struct" && symbolInEffectSchema(symbol)
 	}
 	return false
 }

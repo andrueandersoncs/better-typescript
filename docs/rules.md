@@ -1,6 +1,6 @@
 # Built-in rules
 
-The fixed catalog contains these 130 rules:
+The fixed catalog contains these 131 rules:
 
 - `boundary-schema-decode`
 - `bounded-retry-schedule`
@@ -116,6 +116,7 @@ The fixed catalog contains these 130 rules:
 - `retry-without-jitter`
 - `schema-class-models`
 - `schema-error-class`
+- `schema-name-suffix`
 - `schema-optional-key`
 - `schema-record-interface`
 - `scoped-background-work`

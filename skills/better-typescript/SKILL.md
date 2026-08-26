@@ -5,7 +5,7 @@ description: Run Better TypeScript against the current TypeScript project and fi
 
 # Better TypeScript
 
-Better TypeScript is a Go binary with a fixed 130-rule catalog. Each rule is a direct `typescript-go` AST/checker listener in `internal/rules/<rule_name>`.
+Better TypeScript is a Go binary with a fixed 131-rule catalog. Each rule is a direct `typescript-go` AST/checker listener in `internal/rules/<rule_name>`.
 
 ## Get the binary
 

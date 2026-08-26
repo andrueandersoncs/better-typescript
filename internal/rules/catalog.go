@@ -115,6 +115,7 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/rules/retry_without_jitter"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/schema_class_models"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/schema_error_class"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/schema_name_suffix"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/schema_optional_key"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/schema_record_interface"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/scoped_background_work"
@@ -250,6 +251,7 @@ var BuiltinRules = []rule.Rule{
 	retry_without_jitter.Rule,
 	schema_class_models.Rule,
 	schema_error_class.SchemaErrorClassRule,
+	schema_name_suffix.Rule,
 	schema_optional_key.SchemaOptionalKeyRule,
 	schema_record_interface.SchemaRecordInterfaceRule,
 	scoped_background_work.ScopedBackgroundWorkRule,

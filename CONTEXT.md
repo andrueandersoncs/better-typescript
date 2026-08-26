@@ -10,7 +10,7 @@ Better TypeScript is a Go linter that analyzes the TypeScript project graph root
 
 **Violation**: The final NDJSON record: rule name, `error` level, actionable message, relative slash path, and one-based UTF-16 line and column.
 
-**Built-in catalog**: The fixed, sorted set of 130 rules. All rules are enabled by default. CLI rule names can select a global subset.
+**Built-in catalog**: The fixed, sorted set of 131 rules. All rules are enabled by default. CLI rule names can select a global subset.
 
 **Rule override**: An ordered, tagged `better-typescript.json` entry that includes or excludes rules for matching project-relative files.
 
