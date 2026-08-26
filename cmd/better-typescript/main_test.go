@@ -172,15 +172,20 @@ func TestCLIUsesCascadingJSONRuleConfiguration(t *testing.T) {
 	}
 
 	violations := decodeViolations(t, output)
-	if len(violations) != 2 {
-		t.Fatalf("got %d violations, want 2", len(violations))
+	if len(violations) != 3 {
+		t.Fatalf("got %d violations, want 3", len(violations))
 	}
-	want := map[string]string{
-		"src/main.ts":            "no-throw",
-		"src/nested/selected.ts": "no-error-type",
+	want := map[string]map[string]bool{
+		"src/main.ts": {
+			"no-error-type": true,
+			"no-throw":      true,
+		},
+		"src/nested/selected.ts": {
+			"no-error-type": true,
+		},
 	}
 	for _, violation := range violations {
-		if want[violation.FilePath] != violation.RuleName {
+		if !want[violation.FilePath][violation.RuleName] {
 			t.Errorf("violation = %#v, want configured rule for file", violation)
 		}
 	}

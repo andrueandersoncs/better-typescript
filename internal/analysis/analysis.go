@@ -32,8 +32,9 @@ type Violation struct {
 }
 
 type RuleOverride struct {
-	FilePattern string
-	Rules       []rule.Rule
+	FilePattern  string
+	Rules        []rule.Rule
+	ExcludeRules bool
 }
 
 func Run(root string, rules []rule.Rule, filePatterns ...string) ([]Violation, error) {

@@ -1,6 +1,6 @@
 # Built-in rules
 
-The fixed catalog contains these 129 rules:
+The fixed catalog contains these 130 rules:
 
 - `boundary-schema-decode`
 - `bounded-retry-schedule`
@@ -108,6 +108,7 @@ The fixed catalog contains these 129 rules:
 - `require-command-name-consistency`
 - `require-construction-name-consistency`
 - `require-conversion-direction-consistency`
+- `require-export-jsdoc`
 - `require-lookup-totality-name-consistency`
 - `require-predicate-name-consistency`
 - `require-result-cardinality-name-consistency`

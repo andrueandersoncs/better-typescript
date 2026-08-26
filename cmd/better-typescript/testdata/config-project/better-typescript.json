@@ -1,7 +1,19 @@
 {
   "overrides": [
-    { "files": "src/**/*.ts", "rules": "no-throw" },
-    { "files": "src/nested/**/*.ts", "rules": ["no-error-type"] },
-    { "files": "src/nested/disabled.ts", "rules": [] }
+    {
+      "type": "inclusion",
+      "files": "src/**/*.ts",
+      "rules": ["no-error-type", "no-throw"]
+    },
+    {
+      "type": "exclusion",
+      "files": "src/nested/**/*.ts",
+      "rules": "no-throw"
+    },
+    {
+      "type": "exclusion",
+      "files": "src/nested/disabled.ts",
+      "rules": ["no-error-type"]
+    }
   ]
 }

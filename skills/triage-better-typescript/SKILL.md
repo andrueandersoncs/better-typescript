@@ -7,7 +7,7 @@ description: Triage disliked TypeScript code produced while fixing Better TypeSc
 
 ## Tool contract
 
-Better TypeScript is a Go binary with 129 direct `typescript-go` rules under `internal/rules/`. Run it from the directory containing `tsconfig.json`. No flags checks all project files with all rules unless `better-typescript.json` contains ordered per-file rule overrides. `--files` accepts project-relative globs. `--rules` accepts rule names and ignores the configuration. Both flags are repeatable or comma-separated. The CLI emits deterministic six-field NDJSON at `error` level and exits successfully after completed analysis.
+Better TypeScript is a Go binary with 130 direct `typescript-go` rules under `internal/rules/`. Run it from the directory containing `tsconfig.json`. No flags checks all project files with all rules unless `better-typescript.json` contains ordered per-file `inclusion` or `exclusion` overrides. `--files` accepts project-relative globs. `--rules` accepts rule names and ignores the configuration. Both flags are repeatable or comma-separated. The CLI emits deterministic six-field NDJSON at `error` level and exits successfully after completed analysis.
 
 Install a published tag with `go install github.com/andrueandersoncs/better-typescript/cmd/better-typescript@<version>`. The current checkout is untagged, so build it with `mise exec go@1.26 -- go build ./cmd/better-typescript`. Repository validation is `./scripts/check.sh`.
 

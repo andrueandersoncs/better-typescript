@@ -10,7 +10,7 @@ For repository changes, run:
 
 Add the narrowest `_test.go` and `testdata/` coverage for changed behavior.
 
-Keep the fixed 129-rule catalog complete, unique, and sorted. Each rule belongs in one `internal/rules/<rule_name>/` package. Keep rule-specific helpers there.
+Keep the rule catalog complete, unique, and sorted. Each rule belongs in one `internal/rules/<rule_name>/` package. Keep rule-specific helpers there.
 
 Use the pinned public `typescript-go` AST and checker adapters directly. Preserve one listener registration and one AST traversal per file.
 

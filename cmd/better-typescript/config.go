@@ -30,7 +30,7 @@ func (names *ruleNameList) UnmarshalJSON(data []byte) error {
 
 	var many []string
 	if err := json.Unmarshal(data, &many); err != nil || many == nil {
-		return fmt.Errorf("rules must be a string or list of strings")
+		return fmt.Errorf("rule names must be a string or list of strings")
 	}
 	for index := range many {
 		many[index] = strings.TrimSpace(many[index])
@@ -43,6 +43,7 @@ func (names *ruleNameList) UnmarshalJSON(data []byte) error {
 }
 
 type configOverride struct {
+	Type  string        `json:"type"`
 	Files string        `json:"files"`
 	Rules *ruleNameList `json:"rules"`
 }
@@ -85,6 +86,14 @@ func loadRuleOverrides(root string) ([]analysis.RuleOverride, error) {
 		if err := analysis.ValidateFilePattern(entry.Files); err != nil {
 			return nil, fmt.Errorf("parse %s: overrides[%d]: %w", configFileName, index, err)
 		}
+		excludeRules := false
+		switch entry.Type {
+		case "inclusion":
+		case "exclusion":
+			excludeRules = true
+		default:
+			return nil, fmt.Errorf(`parse %s: overrides[%d].type must be "inclusion" or "exclusion"`, configFileName, index)
+		}
 		if entry.Rules == nil {
 			return nil, fmt.Errorf("parse %s: overrides[%d].rules is required", configFileName, index)
 		}
@@ -93,8 +102,9 @@ func loadRuleOverrides(root string) ([]analysis.RuleOverride, error) {
 			return nil, fmt.Errorf("parse %s: overrides[%d]: %w", configFileName, index, err)
 		}
 		overrides[index] = analysis.RuleOverride{
-			FilePattern: entry.Files,
-			Rules:       selectedRules,
+			FilePattern:  entry.Files,
+			Rules:        selectedRules,
+			ExcludeRules: excludeRules,
 		}
 	}
 	return overrides, nil
