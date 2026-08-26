@@ -34,6 +34,9 @@ mise exec go@1.26 -- go mod tidy -diff
 printf 'npm install\n'
 bun install --frozen-lockfile --ignore-scripts
 
+printf 'docs\n'
+bun run docs:build
+
 printf 'compiler provenance\n'
 mise exec go@1.26 -- go run ./scripts/compiler-provenance.go check
 
