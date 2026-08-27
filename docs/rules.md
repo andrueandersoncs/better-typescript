@@ -1,6 +1,6 @@
 # Built-in rules
 
-The fixed catalog contains these 131 rules:
+The fixed catalog contains these 132 rules:
 
 - [`boundary-schema-decode`](./rules/boundary-schema-decode.md)
 - [`bounded-retry-schedule`](./rules/bounded-retry-schedule.md)
@@ -49,6 +49,7 @@ The fixed catalog contains these 131 rules:
 - [`no-new-error`](./rules/no-new-error.md)
 - [`no-non-null-assertion`](./rules/no-non-null-assertion.md)
 - [`no-pass-through-object-wrappers`](./rules/no-pass-through-object-wrappers.md)
+- [`no-property-access-after-call`](./rules/no-property-access-after-call.md)
 - [`no-raw-object-types`](./rules/no-raw-object-types.md)
 - [`no-reexports`](./rules/no-reexports.md)
 - [`no-switch-statements`](./rules/no-switch-statements.md)

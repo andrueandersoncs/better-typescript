@@ -3,8 +3,8 @@ package rules
 import "testing"
 
 func TestBuiltinRules(t *testing.T) {
-	if len(BuiltinRules) != 131 {
-		t.Fatalf("got %d built-in rules, want 131", len(BuiltinRules))
+	if len(BuiltinRules) != 132 {
+		t.Fatalf("got %d built-in rules, want 132", len(BuiltinRules))
 	}
 	seen := make(map[string]struct{}, len(BuiltinRules))
 	for index, builtin := range BuiltinRules {

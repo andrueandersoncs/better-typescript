@@ -48,6 +48,7 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_new_error"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_non_null_assertion"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_pass_through_object_wrappers"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/no_property_access_after_call"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_raw_object_types"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_reexports"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_switch_statements"
@@ -184,6 +185,7 @@ var BuiltinRules = []rule.Rule{
 	no_new_error.Rule,
 	no_non_null_assertion.Rule,
 	no_pass_through_object_wrappers.Rule,
+	no_property_access_after_call.Rule,
 	no_raw_object_types.Rule,
 	no_reexports.Rule,
 	no_switch_statements.Rule,
