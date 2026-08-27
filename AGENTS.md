@@ -12,6 +12,8 @@ Add the narrowest `_test.go` and `testdata/` coverage for changed behavior.
 
 Keep the rule catalog complete, unique, and sorted. Each rule belongs in one `internal/rules/<rule_name>/` package. Keep rule-specific helpers there.
 
+After every rule addition or behavior change, update the public docs in `docs/rules.md` and `docs/rules/<rule-name>.md`.
+
 Use the pinned public `typescript-go` AST and checker adapters directly. Preserve one listener registration and one AST traversal per file.
 
 For compiler dependency updates, read `docs/compiler-foundation.md` and run `./scripts/update-typescript-go.sh <version>`.
