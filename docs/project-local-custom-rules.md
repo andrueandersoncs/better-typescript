@@ -47,10 +47,10 @@ This section records source facts. Recommendations start under **Design synthesi
   [internal-directory rule](https://pkg.go.dev/cmd/go#hdr-Internal_Directories). The compiler adapters
   themselves are public and pinned to `github.com/andrueandersoncs/typescript-go v0.1.0`
   ([module pin](../go.mod#L1-L5), [compiler foundation](compiler-foundation.md#L5-L24)).
-- `better-typescript.json` currently permits only ordered file/rule overrides and rejects unknown
+- `better-typescript.json` currently permits only ordered file/rule commands and rejects unknown
   fields ([decoder](../cmd/better-typescript/config.go#L45-L76)). Rule names are resolved against
   the built-in catalog before analysis. `--rules` also selects from that catalog and skips config
-  overrides. Discovery must therefore happen before name validation, or custom rules must already
+  commands. Discovery must therefore happen before name validation, or custom rules must already
   be linked into the runner.
 - A diagnostic currently carries a source range and message inside the linter, but public output
   keeps only the range start, combines description and help, hard-codes `error`, and writes the
@@ -220,7 +220,7 @@ Use plugin-qualified IDs: `project/no-console-log`. Reserve unqualified names fo
 empty namespaces, duplicate fully qualified IDs, and attempts to use a reserved namespace. Sort the
 merged registry before selection.
 
-Keep `better-typescript.json` focused on selection. Existing inclusions, exclusions, `--files`, and
+Keep `better-typescript.json` focused on selection. Existing `add_inclusions`, `add_exclusions`, `--files`, and
 `--rules` can work after validation uses the merged registry rather than `BuiltinRules`. Static
 linking avoids the current `--rules`/config discovery cycle because custom rules exist before either
 selection path runs.

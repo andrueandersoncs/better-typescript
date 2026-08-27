@@ -38,7 +38,7 @@ npx better-typescript --files 'src/**/*.ts'
 npx better-typescript --rules no-throw,no-error-type
 ```
 
-Repeat either flag or separate its values with commas. A root `better-typescript.json` can contain ordered `overrides` entries with `type`, `files`, and `rules`. An `inclusion` replaces the active rules. An `exclusion` removes rules. An explicit `--rules` ignores the configuration.
+Repeat either flag or separate its values with commas. A root `better-typescript.json` can contain ordered `commands` with `type`, `files`, and `rules`. `add_inclusions` replaces the active rules. `add_exclusions` removes rules. An explicit `--rules` ignores the configuration.
 
 Status and operational errors go to stderr. Each stdout line is one NDJSON violation with `ruleName`, `level`, `message`, `filePath`, `line`, and `column`. Exit code `0` means analysis completed, even when violations exist. Empty stdout means the run is clean.
 

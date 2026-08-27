@@ -1,17 +1,17 @@
 {
-  "overrides": [
+  "commands": [
     {
-      "type": "inclusion",
+      "type": "add_inclusions",
       "files": "src/**/*.ts",
       "rules": ["no-error-type", "no-throw"]
     },
     {
-      "type": "exclusion",
+      "type": "add_exclusions",
       "files": "src/nested/**/*.ts",
       "rules": "no-throw"
     },
     {
-      "type": "exclusion",
+      "type": "add_exclusions",
       "files": "src/nested/disabled.ts",
       "rules": ["no-error-type"]
     }

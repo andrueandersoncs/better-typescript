@@ -94,7 +94,7 @@ func run() error {
 	options, err := parseCLIOptions(os.Args[1:])
 	if errors.Is(err, flag.ErrHelp) {
 		fmt.Fprintln(os.Stdout, "Usage: better-typescript [--files glob] [--rules name]")
-		fmt.Fprintln(os.Stdout, "Repeat flags or separate values with commas. better-typescript.json supplies per-file rule overrides.")
+		fmt.Fprintln(os.Stdout, "Repeat flags or separate values with commas. better-typescript.json supplies per-file rule commands.")
 		return nil
 	}
 	if err != nil {
@@ -115,7 +115,7 @@ func run() error {
 	}
 	var overrides []analysis.RuleOverride
 	if len(options.ruleNames) == 0 {
-		overrides, err = loadRuleOverrides(root)
+		overrides, err = loadRuleCommands(root)
 		if err != nil {
 			return err
 		}

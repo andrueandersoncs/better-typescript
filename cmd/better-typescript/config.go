@@ -42,17 +42,17 @@ func (names *ruleNameList) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-type configOverride struct {
+type configCommand struct {
 	Type  string        `json:"type"`
 	Files string        `json:"files"`
 	Rules *ruleNameList `json:"rules"`
 }
 
 type configFile struct {
-	Overrides []configOverride `json:"overrides"`
+	Commands []configCommand `json:"commands"`
 }
 
-func loadRuleOverrides(root string) ([]analysis.RuleOverride, error) {
+func loadRuleCommands(root string) ([]analysis.RuleOverride, error) {
 	fileName := filepath.Join(root, configFileName)
 	content, err := os.ReadFile(fileName)
 	if errors.Is(err, os.ErrNotExist) {
@@ -75,37 +75,37 @@ func loadRuleOverrides(root string) ([]analysis.RuleOverride, error) {
 		return nil, fmt.Errorf("parse %s: expected one JSON value", configFileName)
 	}
 
-	overrides := make([]analysis.RuleOverride, len(config.Overrides))
-	for index, entry := range config.Overrides {
+	commands := make([]analysis.RuleOverride, len(config.Commands))
+	for index, entry := range config.Commands {
 		if entry.Files == "" {
-			return nil, fmt.Errorf("parse %s: overrides[%d].files must not be empty", configFileName, index)
+			return nil, fmt.Errorf("parse %s: commands[%d].files must not be empty", configFileName, index)
 		}
 		if filepath.IsAbs(entry.Files) {
-			return nil, fmt.Errorf("parse %s: overrides[%d].files must be project-relative", configFileName, index)
+			return nil, fmt.Errorf("parse %s: commands[%d].files must be project-relative", configFileName, index)
 		}
 		if err := analysis.ValidateFilePattern(entry.Files); err != nil {
-			return nil, fmt.Errorf("parse %s: overrides[%d]: %w", configFileName, index, err)
+			return nil, fmt.Errorf("parse %s: commands[%d]: %w", configFileName, index, err)
 		}
 		excludeRules := false
 		switch entry.Type {
-		case "inclusion":
-		case "exclusion":
+		case "add_inclusions":
+		case "add_exclusions":
 			excludeRules = true
 		default:
-			return nil, fmt.Errorf(`parse %s: overrides[%d].type must be "inclusion" or "exclusion"`, configFileName, index)
+			return nil, fmt.Errorf(`parse %s: commands[%d].type must be "add_exclusions" or "add_inclusions"`, configFileName, index)
 		}
 		if entry.Rules == nil {
-			return nil, fmt.Errorf("parse %s: overrides[%d].rules is required", configFileName, index)
+			return nil, fmt.Errorf("parse %s: commands[%d].rules is required", configFileName, index)
 		}
 		selectedRules, err := selectRuleNames(*entry.Rules)
 		if err != nil {
-			return nil, fmt.Errorf("parse %s: overrides[%d]: %w", configFileName, index, err)
+			return nil, fmt.Errorf("parse %s: commands[%d]: %w", configFileName, index, err)
 		}
-		overrides[index] = analysis.RuleOverride{
+		commands[index] = analysis.RuleOverride{
 			FilePattern:  entry.Files,
 			Rules:        selectedRules,
 			ExcludeRules: excludeRules,
 		}
 	}
-	return overrides, nil
+	return commands, nil
 }
