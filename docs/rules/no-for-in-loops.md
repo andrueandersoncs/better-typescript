@@ -11,7 +11,9 @@ Use it to replace imperative record iteration with Effect's `Record` functions, 
 ## Conformant
 
 ```ts
-const keys = (value: Record<string, number>) => Object.keys(value)
+import { Record as EffectRecord } from "effect"
+
+const keys = (value: Record<string, number>) => EffectRecord.keys(value)
 ```
 
 ## Non-conformant

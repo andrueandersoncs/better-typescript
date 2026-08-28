@@ -76,6 +76,7 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_effect_fn"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_effect_function_constant"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_effect_index_access"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_effect_object"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_effect_property_accessors"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_effect_record_filter_map"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_effect_schema_constructor"
@@ -213,6 +214,7 @@ var BuiltinRules = []rule.Rule{
 	prefer_effect_fn.Rule,
 	prefer_effect_function_constant.Rule,
 	prefer_effect_index_access.Rule,
+	prefer_effect_object.Rule,
 	prefer_effect_property_accessors.Rule,
 	prefer_effect_record_filter_map.Rule,
 	prefer_effect_schema_constructor.Rule,

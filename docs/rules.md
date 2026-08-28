@@ -1,6 +1,6 @@
 # Built-in rules
 
-The fixed catalog contains these 132 rules:
+The fixed catalog contains these 133 rules:
 
 - [`boundary-schema-decode`](./rules/boundary-schema-decode.md)
 - [`bounded-retry-schedule`](./rules/bounded-retry-schedule.md)
@@ -77,6 +77,7 @@ The fixed catalog contains these 132 rules:
 - [`prefer-effect-fn`](./rules/prefer-effect-fn.md)
 - [`prefer-effect-function-constant`](./rules/prefer-effect-function-constant.md)
 - [`prefer-effect-index-access`](./rules/prefer-effect-index-access.md)
+- [`prefer-effect-object`](./rules/prefer-effect-object.md)
 - [`prefer-effect-property-accessors`](./rules/prefer-effect-property-accessors.md)
 - [`prefer-effect-record-filter-map`](./rules/prefer-effect-record-filter-map.md)
 - [`prefer-effect-schema-constructor`](./rules/prefer-effect-schema-constructor.md)

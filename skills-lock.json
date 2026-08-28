@@ -31,18 +31,6 @@
       "skillPath": "skills/engineering/codebase-design/SKILL.md",
       "computedHash": "5a17552cc1482f1a40124bf4e6c9dbd90ac0dbb47e71c07d47369f9e5f2ae3b5"
     },
-    "decompose-skill": {
-      "source": "andrueandersoncs/skills",
-      "sourceType": "github",
-      "skillPath": "decompose-skill/SKILL.md",
-      "computedHash": "c813f1e0babbdbaf8d0604475d0d0bcf188f31321de2a15fdf316f6e6ea052cc"
-    },
-    "decompose-workflow-skill": {
-      "source": "andrueandersoncs/skills",
-      "sourceType": "github",
-      "skillPath": "decompose-workflow-skill/SKILL.md",
-      "computedHash": "9b58681b5aae83434e7c464b8a60e9acc246adbd24536ddb0bc44514c5154827"
-    },
     "diagnosing-bugs": {
       "source": "mattpocock/skills",
       "sourceType": "github",
@@ -258,24 +246,6 @@
       "sourceType": "github",
       "skillPath": "skills/engineering/wizard/SKILL.md",
       "computedHash": "dee7f1a523994a1e063c69fe09c2f5b4da97a41ad68107722664e6e472cb2423"
-    },
-    "workflow-callstack-simulation": {
-      "source": "andrueandersoncs/skills",
-      "sourceType": "github",
-      "skillPath": "workflow-callstack-simulation/SKILL.md",
-      "computedHash": "aeba6e7952c94883fb416321a1deb6d4389d6b594396e46b9b6cfc9edb65aa86"
-    },
-    "workflow-state-machine-simulation": {
-      "source": "andrueandersoncs/skills",
-      "sourceType": "github",
-      "skillPath": "workflow-state-machine-simulation/SKILL.md",
-      "computedHash": "3967e84711a4157bd9f2e27cfe27f36566ca39f3598a4e3afcc9ac30e6bfd7bd"
-    },
-    "workflow-to-skill": {
-      "source": "andrueandersoncs/skills",
-      "sourceType": "github",
-      "skillPath": "workflow-to-skill/SKILL.md",
-      "computedHash": "acdadbe6a14d37c57dbff609f869a174ee903c7cf81c411d4ac90a572a5d6f02"
     },
     "workflows": {
       "source": "andrueandersoncs/skills",

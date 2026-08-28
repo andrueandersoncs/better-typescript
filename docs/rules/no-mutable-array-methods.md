@@ -11,8 +11,10 @@ Use it to avoid changing arrays in place. Prefer Effect's `Array` functions, non
 ## Conformant
 
 ```ts
+import { Array } from "effect"
+
 const values = [1, 2]
-const incremented = values.map((value) => value + 1)
+const incremented = Array.map(values, (value) => value + 1)
 ```
 
 ## Non-conformant
