@@ -145,6 +145,12 @@
       "skillPath": "plan-happy-path/SKILL.md",
       "computedHash": "d1a13f4bfcdce2e85dbf95e07cfaf654ee82ce859f57a545fa2b38c802f8250f"
     },
+    "predictive-planning": {
+      "source": "andrueandersoncs/skills",
+      "sourceType": "github",
+      "skillPath": "predictive-planning/SKILL.md",
+      "computedHash": "a31c5d3f64d7d96ea3928738605be8baa7b1d919b767da6d0bf3709e989d7d94"
+    },
     "prototype": {
       "source": "mattpocock/skills",
       "sourceType": "github",
