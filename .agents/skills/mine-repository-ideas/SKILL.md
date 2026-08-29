@@ -8,7 +8,7 @@ compatibility: Requires concurrent fresh-subagent delegation.
 
 Incrementally mine one external repository for evidence-backed Better TypeScript rule candidates and other reusable ideas, and produce exactly one Markdown report without implementing ideas or editing the source repository.
 
-Every task runs once in a fresh subagent. The owner launches all ready tasks concurrently, passes each full rendered task, persists outputs, evidence, decisions, handles, and next actions in the runtime session checkpoint outside both repositories, starts asynchronous work once and resumes only on its completion event, treats only `Wait` as a dependency, records the resume event for blocked work, stops downstream work for a blocking question or unresolved failure, and claims completion only after a passed fresh independent review; checkpoint state is not a repository artifact or workflow output.
+Every task runs once in a fresh subagent. The owner launches all ready tasks concurrently, passes each full rendered task, persists outputs, evidence, decisions, handles, and next actions in the runtime session checkpoint outside both repositories, starts asynchronous work once and resumes only on its completion event, treats only `Wait` as a dependency, records the resume event for blocked work, stops downstream work for a blocking question or unresolved failure, and claims completion only after a passed fresh independent review and a committed report transaction; checkpoint state is not a repository artifact or workflow output.
 
 Use [references/research-state-protocol.md](references/research-state-protocol.md) as the global research-state-protocol.
 
@@ -24,7 +24,7 @@ Use [references/research-state-protocol.md](references/research-state-protocol.m
 
 ## Outputs
 
-- **repository-ideas-report:** Exactly one cumulative Markdown report at the requested repo-relative report destination, or `.scratch/research/<sanitized-repo-name>-ideas.md` by default. It names the exact source and coverage, preserves human annotations, contains the deterministic Research ledger, and includes evidence-backed current recommendations. A no-findings report is valid. Completion requires every task check and a passed fresh independent review.
+- **repository-ideas-report:** Exactly one cumulative Markdown report at the requested repo-relative report destination, or `.scratch/research/<sanitized-repo-name>-ideas.md` by default. It names the exact source and cumulative checked-scope coverage, preserves human annotations, contains the deterministic Research ledger, and includes evidence-backed current recommendations. A no-findings report is valid. Completion requires every task check, a passed fresh independent review, and a finalized transaction with status `committed`.
 
 ## Tasks
 
@@ -74,7 +74,7 @@ Apply $research-state-protocol in $better-typescript-repository to read the decl
 
 ### reconcile-research-history: Reconcile prior research and select incremental work
 
-Apply $research-state-protocol before any source scan: resolve $report-destination in $better-typescript-repository, read the existing report when present, and reconcile it with $resolved-source-record, $better-typescript-fingerprint, $research-method-fingerprint, $research-focus, $research-exclusions, $research-depth, and $research-context; return stable identity and annotation state, scope and state encoding, bounded per-lane directives, migration and adjudication modes, or exactly one blocking question.
+Apply $research-state-protocol before any source scan: resolve $report-destination in $better-typescript-repository, read the existing report when present, and reconcile it with $resolved-source-record, $better-typescript-fingerprint, $research-method-fingerprint, $research-focus, $research-exclusions, $research-depth, and $research-context; validate coverage units, recompute automatic gaps, select the next eligible bounded automatic slice, and return stable identity and annotation state, scope and state encoding, bounded per-lane directives, migration and adjudication modes, or exactly one blocking question.
 
 **Inputs:**
 
@@ -93,11 +93,11 @@ Apply $research-state-protocol before any source scan: resolve $report-destinati
 
 - Reconcile before either scan starts.
 - Stop both scans for an annotation ambiguity or conflict.
-- Return exact bounded paths, gaps, affected candidate IDs, and reasons for any full lane.
+- Return exact bounded paths, coverage units, gaps, affected candidate IDs, and reasons for any full lane.
 
 **Outputs:**
 
-- incremental-research-plan: Parsed cumulative history and ledger, stable identity and annotation state, fingerprints and state encoding, per-lane directives and read bounds, candidate exclusions, migration and adjudication modes, and no-new-evidence state.
+- incremental-research-plan: Parsed cumulative history and ledger, stable identity and annotation state, fingerprints and state encoding, coverage units, automatic and manual gaps, automatic selection or byte-forward eligibility, per-lane directives and read bounds, candidate exclusions, and migration and adjudication modes.
 - research-history-question: Exactly one blocking question for ambiguous or conflicting annotations, otherwise an empty value.
 
 ### scan-lint-rule-ideas: Scan for lint rule candidates
@@ -118,7 +118,7 @@ Apply $research-state-protocol and only the lint-rule lane directive in $increme
 
 **Outputs:**
 
-- lint-rule-scan-record: Applied directive, exact planned and inspected paths, exclusions, new or updated rule candidates with links, Observed evidence and Inference, gaps, completion check, and verified zero-content-read evidence when skipped.
+- lint-rule-scan-record: Applied directive, automatic gap when selected, exact planned and inspected paths, actual inspection level and coverage-unit evidence, exclusions, new or updated rule candidates with links, Observed evidence and Inference, gaps, completion check, and verified zero-content-read evidence when skipped.
 
 ### scan-other-ideas: Scan for other reusable ideas
 
@@ -138,11 +138,11 @@ Apply $research-state-protocol and only the other-ideas lane directive in $incre
 
 **Outputs:**
 
-- other-ideas-scan-record: Applied directive, exact planned and inspected paths, exclusions, new or updated non-rule candidates with links, Observed evidence and Inference, gaps, completion check, and verified zero-content-read evidence when skipped.
+- other-ideas-scan-record: Applied directive, automatic gap when selected, exact planned and inspected paths, actual inspection level and coverage-unit evidence, exclusions, new or updated non-rule candidates with links, Observed evidence and Inference, gaps, completion check, and verified zero-content-read evidence when skipped.
 
 ### adjudicate-repository-ideas: Adjudicate incremental candidates and cumulative history
 
-Apply $research-state-protocol to merge $lint-rule-scan-record and $other-ideas-scan-record with $incremental-research-plan, assign or match stable candidates, and adjudicate only directed items against $better-typescript-overlap-inventory and $resolved-source-record; verify evidence and links, deduplicate and reclassify findings, apply human annotations, retain cumulative history, and return current recommendations plus ledger updates.
+Apply $research-state-protocol to merge $lint-rule-scan-record and $other-ideas-scan-record with $incremental-research-plan, review exact scan completion and coverage-unit updates, exclude settled stable IDs from new proposals, match candidate identities, and adjudicate only directed items against $better-typescript-overlap-inventory and $resolved-source-record; verify evidence and links, deduplicate and reclassify findings, apply human annotations, retain cumulative history, and return current recommendations plus ledger updates.
 
 **Inputs:**
 
@@ -161,11 +161,11 @@ Apply $research-state-protocol to merge $lint-rule-scan-record and $other-ideas-
 
 **Outputs:**
 
-- adjudicated-idea-set: Current rule and other-idea recommendations, cumulative stable candidate records, annotations and history, verified evidence and links, overlap decisions, coverage, reclassifications, and deterministic ledger updates.
+- adjudicated-idea-set: Current rule and other-idea recommendations, cumulative stable candidate records, annotations and history, verified evidence and links, overlap decisions, reclassifications, coverage-unit updates, candidate exclusions, and deterministic ledger updates.
 
 ### write-repository-ideas-report: Write or forward the single cumulative report
 
-Apply $research-state-protocol to write, deterministically refresh, or byte-forward $report-destination inside $better-typescript-repository from $adjudicated-idea-set, $resolved-source-record, and $incremental-research-plan while checking $better-typescript-workspace-baseline; verify that the actual destination is the sole runtime repository output and satisfies the complete report state.
+Apply $research-state-protocol to $report-destination inside $better-typescript-repository from $adjudicated-idea-set, $resolved-source-record, and $incremental-research-plan while checking $better-typescript-workspace-baseline: before changing the actual destination, create the immutable runtime transaction checkpoint outside both repositories with its resolved destination, prior existence, exact prior bytes, and prior hash, then write, deterministically refresh, or byte-forward candidate bytes in place; treat coverage-unit upserts, gap closure, lane rotation, and candidate and ledger updates as provisional until final review, and verify that the actual destination is the sole runtime repository output and satisfies the complete candidate report state.
 
 **Inputs:**
 
@@ -180,16 +180,17 @@ Apply $research-state-protocol to write, deterministically refresh, or byte-forw
 **Constraints:**
 
 - Resolve an omitted destination to `.scratch/research/<sanitized-repo-name>-ideas.md`.
+- Create and verify the runtime transaction checkpoint before the first destination write.
 - Preserve every unrelated workspace change.
-- Create no sidecar or support artifact.
+- Create no repository sidecar or support artifact.
 
 **Outputs:**
 
-- written-report-record: Actual report path, pre-write and post-write hashes, source identity, annotation preservation and hash, state key, research mode, artifact diff, byte-identity result, and report contract check.
+- written-report-record: Actual report path, prior existence and hash, immutable runtime transaction checkpoint handle and location, candidate post-write hash, source identity, annotation preservation and hash, state key, research mode, provisional coverage-unit, gap, lane, candidate, and ledger updates, artifact diff, byte-identity result, and candidate report contract check.
 
 ### review-repository-ideas-report: Review the actual incremental report independently
 
-Apply $research-state-protocol in a fresh independent review of the actual $written-report-record against $resolved-source-record, $better-typescript-overlap-inventory, $better-typescript-workspace-baseline, $incremental-research-plan, $lint-rule-scan-record, $other-ideas-scan-record, and $adjudicated-idea-set; obey the protocol read bounds and verify claims, annotations, ledger state, fingerprints, planned and inspected paths, no-op forwarding, artifact scope, and baseline preservation, then return pass or fail with evidence and exactly one corrective action on failure.
+Apply $research-state-protocol in a fresh independent review of the actual candidate in $written-report-record against $resolved-source-record, $better-typescript-overlap-inventory, $better-typescript-workspace-baseline, $incremental-research-plan, $lint-rule-scan-record, $other-ideas-scan-record, and $adjudicated-idea-set; obey the protocol read bounds and verify the runtime transaction checkpoint destination, prior existence, prior hash, preserved bytes, and repository-external location, plus candidate claims, annotations, provisional ledger state, fingerprints, automatic selection and progress, planned and inspected paths, provisional coverage-unit upserts and lane rotation, settled-candidate exclusion, byte-forward eligibility, artifact scope, and baseline preservation, then return pass or fail with evidence and exactly one corrective action on failure.
 
 **Inputs:**
 
@@ -205,17 +206,18 @@ Apply $research-state-protocol in a fresh independent review of the actual $writ
 
 **Constraints:**
 
-- Check the report at its actual destination.
+- Check the candidate report at its actual destination and validate the checkpoint against the pre-write state.
+- Treat report progress as provisional rather than committed.
 - Record exact source paths inspected or revalidated by the review.
 - Return no corrective action on pass and exactly one on failure.
 
 **Outputs:**
 
-- initial-independent-review: Pass or fail verdict, bounded review evidence, and exactly one corrective action on failure.
+- initial-independent-review: Pass or fail verdict, bounded review evidence including transaction-checkpoint, provisional-state, automatic-selection, and coverage-progress checks, and exactly one corrective action on failure.
 
 ### correct-or-forward-report: Apply the first review decision
 
-Apply $research-state-protocol to $initial-independent-review and $written-report-record; on pass, forward the existing report bytes and hash, and on failure, apply only the one permitted report correction, then verify destination, bytes or correction, annotations, ledger preservation, and artifact scope.
+Apply $research-state-protocol to $initial-independent-review and $written-report-record while retaining its immutable runtime transaction checkpoint untouched; on pass, forward the existing candidate report bytes and hash, and on failure, apply only the one permitted report correction, then verify destination, bytes or correction, annotations, provisional ledger preservation, checkpoint identity, and artifact scope.
 
 **Inputs:**
 
@@ -227,18 +229,20 @@ Apply $research-state-protocol to $initial-independent-review and $written-repor
 
 - Change only the report and only when the review fails.
 - Apply exactly the single requested correction on failure.
+- Preserve the transaction checkpoint, its bytes, and its metadata unchanged.
 
 **Outputs:**
 
-- review-ready-report: Actual report path, final content hash, pass-forward or correction record, annotation preservation check, ledger preservation check, and artifact-scope check.
+- review-ready-report: Actual report path, candidate content hash, pass-forward or correction record, unchanged transaction checkpoint identity, annotation preservation check, provisional ledger preservation check, and artifact-scope check.
 
 ### final-independent-review: Review the final incremental report independently
 
-Apply $research-state-protocol in a fresh independent review of the actual destination in $review-ready-report against $resolved-source-record, $lint-rule-scan-record, $other-ideas-scan-record, $better-typescript-overlap-inventory, $better-typescript-workspace-baseline, $adjudicated-idea-set, $initial-independent-review, and $incremental-research-plan; obey the protocol read bounds and verify the full incremental trail, report contract, evidence, annotations, ledger state, fingerprints, paths, idempotency, artifact scope, and baseline preservation, then return pass or fail with required evidence and exactly one correction on failure.
+Apply $research-state-protocol in a fresh independent review of the actual candidate destination in $review-ready-report and immutable runtime transaction checkpoint in $written-report-record against $resolved-source-record, $lint-rule-scan-record, $other-ideas-scan-record, $better-typescript-overlap-inventory, $better-typescript-workspace-baseline, $adjudicated-idea-set, $initial-independent-review, and $incremental-research-plan; obey the protocol read bounds and verify the full incremental trail, candidate report contract and hash, checkpoint destination, prior existence, prior hash, preserved bytes and external location, evidence, annotations, provisional ledger state, fingerprints, automatic selection and progress, exact paths, provisional coverage-unit upserts and lane rotation, settled-candidate exclusion, byte-forward eligibility, idempotency, artifact scope, and baseline preservation, then return pass or fail with required evidence and exactly one correction on failure.
 
 **Inputs:**
 
 - Wait for correct-or-forward-report to produce review-ready-report.
+- Wait for write-repository-ideas-report to produce written-report-record.
 - Wait for resolve-repository-source to produce resolved-source-record.
 - Wait for scan-lint-rule-ideas to produce lint-rule-scan-record.
 - Wait for scan-other-ideas to produce other-ideas-scan-record.
@@ -251,27 +255,52 @@ Apply $research-state-protocol in a fresh independent review of the actual desti
 
 **Constraints:**
 
-- Inspect the report at its actual final path.
+- Inspect the candidate report at its actual final path and validate the immutable checkpoint against the pre-write state.
+- Treat all candidate report progress as provisional pending finalization.
 - Record exact source paths inspected or revalidated by the review.
 - Return no correction on pass and exactly one correction on failure.
 
 **Outputs:**
 
-- final-independent-review-verdict: Pass or fail verdict, result path, source identity, fingerprints, scope signature, lane directives and paths, annotation count and hash, state key, report hash, artifact diff, completion evidence, and exactly one correction on failure.
+- final-independent-review-verdict: Pass or fail verdict, result path, source identity, fingerprints, scope signature, lane directives and paths, provisional coverage-unit and automatic-progress checks, annotation count and hash, state key, candidate report hash, checkpoint path, prior existence and hash, checkpoint validation, artifact diff, completion evidence, and exactly one correction on failure.
 
-### report-workflow-result: Report the workflow result
+### commit-or-rollback-report: Finalize reviewed report state
 
-Report $final-independent-review-verdict with exactly `Result path`, `Source revision`, `Completion state`, and `Evidence`; on failure also report `Corrective action`, leave the workflow incomplete, and make no completion claim.
+Apply $research-state-protocol to finalize $review-ready-report in $better-typescript-repository from $final-independent-review-verdict and the immutable transaction checkpoint in $written-report-record: on pass, leave the reviewed candidate bytes byte-identical and mark them committed; on fail, atomically restore the exact prior bytes or remove the candidate when the prior report did not exist, then verify destination existence and hash against the checkpoint and verify that the report is the only repository path changed by this transaction.
 
 **Inputs:**
 
 - Wait for final-independent-review to produce final-independent-review-verdict.
+- Wait for correct-or-forward-report to produce review-ready-report.
+- Wait for write-repository-ideas-report to produce written-report-record.
+- Use runtime value better-typescript-repository.
+- Use global value research-state-protocol.
 
 **Constraints:**
 
-- Claim completion only for a passed final independent review.
-- A failed review ends this run without a retry loop.
+- Preserve the immutable transaction checkpoint unchanged.
+- A failed restore has status `restore-failed`, is a blocking incomplete failure, and permits no completion claim.
+- Finalize exactly one report path and preserve every unrelated workspace change.
 
 **Outputs:**
 
-- workflow-result-report: The exact result fields, with corrective action added only for an incomplete result.
+- finalized-report-state: Transaction status `committed`, `rolled-back`, or `restore-failed`; result and prior path, hash, and existence; final review verdict; artifact diff; and correction.
+
+### report-workflow-result: Report the workflow result
+
+Report $final-independent-review-verdict and $finalized-report-state with exactly `Result path`, `Source revision`, `Completion state`, and `Evidence`, including transaction status and result and prior hash and existence; claim completion only for review `PASS` plus transaction `committed`, on review `FAIL` plus `rolled-back` also report `Corrective action` and an incomplete state, and on `restore-failed` report its blocker and an incomplete state with no completion claim.
+
+**Inputs:**
+
+- Wait for final-independent-review to produce final-independent-review-verdict.
+- Wait for commit-or-rollback-report to produce finalized-report-state.
+
+**Constraints:**
+
+- Claim completion only for a passed final independent review and committed byte-identical candidate.
+- A failed review with successful rollback ends this run without a retry loop.
+- A failed restore is a blocking incomplete failure.
+
+**Outputs:**
+
+- workflow-result-report: The exact result fields with transaction evidence, with corrective action added only for an incomplete reviewed result and a restore blocker added for `restore-failed`.

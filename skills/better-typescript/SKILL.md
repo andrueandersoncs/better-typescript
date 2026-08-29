@@ -46,7 +46,7 @@ Status and operational errors go to stderr. Each stdout line is one NDJSON viola
 
 1. Parse every stdout line.
 2. For a check request, report violations without editing.
-3. For a fix request, apply the smallest behavior-preserving fixes.
+3. For a fix request, apply the smallest behavior-preserving fixes. For `related-kind-files`, use the reported type evidence and repository vocabulary to choose a domain module name; do not derive a directory name mechanically.
 4. Run the project's formatter, type check, and tests.
 5. Rerun `better-typescript` from the same directory.
 6. Finish when stdout is empty or report the exact blocker.
