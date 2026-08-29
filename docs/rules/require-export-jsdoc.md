@@ -2,22 +2,51 @@
 
 ## What it does
 
-Requires JSDoc directly above an export to contain the standalone word `when`. It reports: `Exports need JSDoc that explains when to use them.` This includes declarations, export lists, re-exports, default exports, and `export =`. JSDoc that only describes the value is not enough.
+Requires JSDoc directly above every export to use this structure:
+
+```ts
+/**
+
+Use when: <explanation>
+
+Example: <example>
+
+**/
+```
+
+`Use when:` and `Example:` must be non-empty, ordered, and separated by blank lines. Both sections may span multiple lines. Conventional leading `*` characters are allowed. The rule covers declarations, export lists, re-exports, default exports, and `export =`.
+
+It reports: `Exports need multi-line JSDoc with non-empty "Use when:" and "Example:" sections.`
 
 ## When to use it
 
-Use it when every public export must include usage guidance.
+Use it when every public export must explain when and how to use it.
 
 ## Conformant
 
 ```ts
-/** Use this export when callers need the shared value. */
+/**
+
+Use when: callers need the shared value because this module owns its identity
+across package boundaries.
+
+Example: import { shared } from "./shared.js"
+then pass shared to the consumer.
+
+**/
 export const shared = 2
 ```
 
 ## Non-conformant
 
 ```ts
-/** A documented value. */
-export const missingUsageGuidance = 2
+/** Use this export when callers need the shared value. */
+export const oneLine = 2
+
+/**
+
+Use when: callers need the shared value.
+
+**/
+export const missingExample = 3
 ```
