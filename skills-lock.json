@@ -43,6 +43,12 @@
       "skillPath": "skills/engineering/domain-modeling/SKILL.md",
       "computedHash": "a11713c0ff7870efa3c331b2e273f09116158485246edc89ae5088eefd1b0b48"
     },
+    "executable-interactive-plans": {
+      "source": "andrueandersoncs/skills",
+      "sourceType": "github",
+      "skillPath": "executable-interactive-plans/SKILL.md",
+      "computedHash": "98ce99e02beb95217bab21112ac432b4acffd27982b70f686c7d5fd5c29f67bc"
+    },
     "git-guardrails-claude-code": {
       "source": "mattpocock/skills",
       "sourceType": "github",
@@ -168,6 +174,12 @@
       "sourceType": "github",
       "skillPath": "skills/misc/scaffold-exercises/SKILL.md",
       "computedHash": "354c91f6dbc9b058632f30594aacb4edc6d25012596585abb00402af8d7ec5e9"
+    },
+    "setup-better-typescript": {
+      "source": "andrueandersoncs/skills",
+      "sourceType": "github",
+      "skillPath": "setup-better-typescript/SKILL.md",
+      "computedHash": "4fb6b16933b2c6fcf0d1d27d74e16a5d2304e0b165428991f320008ade847f40"
     },
     "setup-matt-pocock-skills": {
       "source": "mattpocock/skills",
