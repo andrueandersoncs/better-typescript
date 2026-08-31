@@ -112,7 +112,7 @@ The fixed catalog contains these 135 rules:
 - [`require-command-name-consistency`](./rules/require-command-name-consistency.md)
 - [`require-construction-name-consistency`](./rules/require-construction-name-consistency.md)
 - [`require-conversion-direction-consistency`](./rules/require-conversion-direction-consistency.md)
-- [`require-export-jsdoc`](./rules/require-export-jsdoc.md): requires structured multi-line usage and example guidance on exports.
+- [`require-export-jsdoc`](./rules/require-export-jsdoc.md): requires private or public export scope and structured public usage guidance.
 - [`require-lookup-totality-name-consistency`](./rules/require-lookup-totality-name-consistency.md)
 - [`require-predicate-name-consistency`](./rules/require-predicate-name-consistency.md)
 - [`require-result-cardinality-name-consistency`](./rules/require-result-cardinality-name-consistency.md)

@@ -10,8 +10,8 @@ import (
 
 var message = rule.RuleMessage{
 	Id:          "requireExportJSDoc",
-	Description: `Exports need multi-line JSDoc with non-empty "Use when:" and "Example:" sections.`,
-	Help:        "Check from first principles whether the export and declaration are needed. Remove either when it is not needed. Otherwise, add the required sections directly above the export; separate them with blank lines. Both sections may span multiple lines.",
+	Description: `Exports need structured JSDoc with a "Scope: public" or "Scope: private" section.`,
+	Help:        `Private exports must only declare their scope. Public exports also need a concise, specific scenario in the "When to use:" section and a complete, minimal TypeScript code example in a fenced "Example:" section.`,
 }
 
 func normalizeLine(line string) string {
@@ -22,25 +22,17 @@ func normalizeLine(line string) string {
 	return line
 }
 
-func sectionStart(line, label string) (string, bool) {
-	if line == label {
-		return "", true
+func hasPublicSections(body []string) bool {
+	if len(body) < 8 || body[0] != "Scope: public" || body[1] != "" {
+		return false
 	}
-	if !strings.HasPrefix(line, label) || len(line) == len(label) {
-		return "", false
+	if !strings.HasPrefix(body[2], "When to use: ") || strings.TrimSpace(strings.TrimPrefix(body[2], "When to use: ")) == "" {
+		return false
 	}
-	separator := line[len(label)]
-	if separator != ' ' && separator != '\t' {
-		return "", false
+	if body[3] != "" || body[4] != "Example:" || body[5] != "```ts" || body[len(body)-1] != "```" {
+		return false
 	}
-	return strings.TrimSpace(line[len(label):]), true
-}
-
-func hasContent(first string, rest []string) bool {
-	if strings.TrimSpace(first) != "" {
-		return true
-	}
-	for _, line := range rest {
+	for _, line := range body[6 : len(body)-1] {
 		if strings.TrimSpace(line) != "" {
 			return true
 		}
@@ -50,7 +42,7 @@ func hasContent(first string, rest []string) bool {
 
 func isStructuredJSDoc(text string) bool {
 	lines := strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n")
-	if len(lines) < 7 || strings.TrimSpace(lines[0]) != "/**" {
+	if len(lines) < 5 || strings.TrimSpace(lines[0]) != "/**" {
 		return false
 	}
 	closing := strings.TrimSpace(lines[len(lines)-1])
@@ -62,26 +54,15 @@ func isStructuredJSDoc(text string) bool {
 	for index, line := range lines[1 : len(lines)-1] {
 		body[index] = normalizeLine(line)
 	}
-	if len(body) < 5 || body[0] != "" || body[len(body)-1] != "" {
+	if body[0] != "" || body[len(body)-1] != "" {
 		return false
 	}
 	body = body[1 : len(body)-1]
 
-	useWhen, ok := sectionStart(body[0], "Use when:")
-	if !ok {
-		return false
+	if len(body) == 1 && body[0] == "Scope: private" {
+		return true
 	}
-	for index := 1; index < len(body); index++ {
-		example, isExample := sectionStart(body[index], "Example:")
-		if !isExample {
-			continue
-		}
-		if body[index-1] != "" || !hasContent(useWhen, body[1:index-1]) {
-			return false
-		}
-		return hasContent(example, body[index+1:])
-	}
-	return false
+	return hasPublicSections(body)
 }
 
 func hasStructuredJSDoc(factory *ast.NodeFactory, source string, node *ast.Node) bool {

@@ -2,33 +2,44 @@ const local = 1
 
 /**
 
-Use when: callers need a shared value because the module owns its identity
-across package boundaries.
-
-Example: import { shared } from "./clean.js"
-then pass shared to the consumer.
+Scope: private
 
 **/
-export const shared = 2
+export const internalShared = local
 
 const listed = 3
 /**
  *
- * Use when: callers need the listed value because its local name is private.
+ * Scope: public
  *
- * Example: import { listed } from "./clean.js"
- * and read listed directly.
+ * When to use: The module's fixed listed value must cross a package boundary.
+ *
+ * Example:
+ * ```ts
+ * import { listed } from "./clean.js"
+ *
+ * console.log(listed)
+ * ```
  *
  */
 export { listed }
 
 /**
 
-Use when:
-Callers augment nested types because this namespace is the public extension point.
+Scope: public
+
+When to use: A consumer needs to extend the public nested namespace.
 
 Example:
-declare module "./clean.js" with an Outer.Inner augmentation.
+```ts
+import { Outer } from "./clean.js"
+
+declare module "./clean.js" {
+  namespace Outer.Inner {
+    const value: string
+  }
+}
+```
 
 **/
 export namespace Outer.Inner {}

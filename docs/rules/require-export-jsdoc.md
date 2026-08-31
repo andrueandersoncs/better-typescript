@@ -2,51 +2,98 @@
 
 ## What it does
 
-Requires JSDoc directly above every export to use this structure:
+Requires JSDoc directly above every export.
 
-```ts
+Private exports use this structure:
+
+````ts
 /**
 
-Use when: <explanation>
-
-Example: <example>
+Scope: private
 
 **/
+export const internalValue = 1
+````
+
+Public exports use this structure:
+
+````ts
+/**
+
+Scope: public
+
+When to use: Consumers need one stable identifier across package boundaries.
+
+Example:
+```ts
+import { packageIdentifier } from "./package-identifier.js"
+
+console.log(packageIdentifier)
 ```
 
-`Use when:` and `Example:` must be non-empty, ordered, and separated by blank lines. Both sections may span multiple lines. Conventional leading `*` characters are allowed. The rule covers declarations, export lists, re-exports, default exports, and `export =`.
+**/
+export const packageIdentifier = "core"
+````
 
-It reports: `Exports need multi-line JSDoc with non-empty "Use when:" and "Example:" sections.`
+`Scope:` must be the bare word `public` or `private`, without quotes. Private JSDoc must not include `When to use:` or `Example:`. Public JSDoc must include both sections in order and separated by blank lines.
+
+`When to use:` must describe a concise, specific scenario in one non-empty line. It must not give a command. `Example:` must contain only a non-empty fenced TypeScript code block. Write a complete, minimal code example rather than English prose.
+
+Conventional leading `*` characters are allowed. The rule covers declarations, export lists, re-exports, default exports, and `export =`.
+
+It reports: `Exports need structured JSDoc with a "Scope: public" or "Scope: private" section.`
 
 ## When to use it
 
-Use it when every public export must explain when and how to use it.
+Use it when every export must state whether it is public and public exports must show when and how to use them.
 
 ## Conformant
 
-```ts
+````ts
+/**
+ *
+ * Scope: public
+ *
+ * When to use: Multiple consumers need the package's shared timeout value.
+ *
+ * Example:
+ * ```ts
+ * import { timeoutMs } from "./timeout.js"
+ *
+ * console.log(timeoutMs)
+ * ```
+ *
+ */
+export const timeoutMs = 1_000
+
 /**
 
-Use when: callers need the shared value because this module owns its identity
-across package boundaries.
-
-Example: import { shared } from "./shared.js"
-then pass shared to the consumer.
+Scope: private
 
 **/
-export const shared = 2
-```
+export const timeoutSymbol = Symbol("timeout")
+````
 
 ## Non-conformant
 
-```ts
-/** Use this export when callers need the shared value. */
-export const oneLine = 2
+````ts
+/**
+
+Scope: private
+
+When to use: Import this value.
+
+**/
+export const privateValue = 1
 
 /**
 
-Use when: callers need the shared value.
+Scope: public
+
+When to use: Use it when needed.
+
+Example: Import publicValue and then use it.
 
 **/
-export const missingExample = 3
-```
+export const publicValue = 2
+````

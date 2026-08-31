@@ -1,60 +1,125 @@
 export const undocumented = 1
 
-/** Use when: callers need it. Example: import it. */
-export const oneLine = 2
-
-/**
- *
- * Use when: callers need this value.
- *
- */
-export const missingExample = 3
-
 /**
 
-Use when:
+When to use: Import this value.
 
-Example: import emptyUse.
+Example:
+```ts
+import { missingScope } from "./violation.js"
+```
 
 **/
-export const emptyUse = 4
+export const missingScope = 2
 
 /**
+
+Scope: 'public'
+
+**/
+export const invalidScope = 3
+
+/**
+
+Scope: private
+
+When to use: Import this internal value.
+
+**/
+export const privateWhen = 4
+
+/**
+
+Scope: private
+
+Example:
+```ts
+import { privateExample } from "./violation.js"
+```
+
+**/
+export const privateExample = 5
+
+/**
+
+Scope: public
+
+Example:
+```ts
+import { missingWhen } from "./violation.js"
+```
+
+**/
+export const missingWhen = 6
+
+/**
+
+Scope: public
+
+When to use:
+Import this value.
+
+Example:
+```ts
+import { multilineWhen } from "./violation.js"
+```
+
+**/
+export const multilineWhen = 7
+
+/**
+
+Scope: public
+
+When to use: Import this value.
+
+Example: Import proseExample from this module and call it.
+
+**/
+export const proseExample = 8
+
+/**
+
+Scope: public
+
+When to use: Import this value.
+
+Example:
+```ts
+```
+
+**/
+export const emptyExample = 9
+
+/**
+
+Scope: public
+
+When to use: Import this value.
+
+Example:
+```text
+import { wrongFence } from "./violation.js"
+```
+
+**/
+export const wrongFence = 10
+
+/**
+
+Scope: public
 
 Use when: callers need this value.
 
 Example:
+```ts
+import { oldLabel } from "./violation.js"
+```
 
 **/
-export const emptyExample = 5
+export const oldLabel = 11
 
-/**
-
-Example: import reversed.
-
-Use when: callers need this value.
-
-**/
-export const reversed = 6
-
-/**
-
-Use When: callers need this value.
-
-Example: import wrongCase.
-
-**/
-export const wrongCase = 7
-
-/**
-
-Use when: callers need this value.
-Example: import missingSeparator.
-
-**/
-export const missingSeparator = 8
-
-const local = 9
+const local = 12
 type Local = number
 export { local }
 export type { Local }

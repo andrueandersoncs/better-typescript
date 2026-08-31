@@ -7,7 +7,7 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/ruletest"
 )
 
-const expectedMessage = `Exports need multi-line JSDoc with non-empty "Use when:" and "Example:" sections. Check from first principles whether the export and declaration are needed. Remove either when it is not needed. Otherwise, add the required sections directly above the export; separate them with blank lines. Both sections may span multiple lines.`
+const expectedMessage = `Exports need structured JSDoc with a "Scope: public" or "Scope: private" section. Private exports must only declare their scope. Public exports also need a concise, specific scenario in the "When to use:" section and a complete, minimal TypeScript code example in a fenced "Example:" section.`
 
 func expectedViolation(filePath string, line int) analysis.Violation {
 	return analysis.Violation{RuleName: "require-export-jsdoc", Level: "error", Message: expectedMessage, FilePath: filePath, Line: line, Column: 1}
@@ -22,17 +22,20 @@ func TestRule(t *testing.T) {
 		expectedViolation("observed.ts", 11),
 		expectedViolation("observed.ts", 14),
 		expectedViolation("violation.ts", 1),
-		expectedViolation("violation.ts", 4),
-		expectedViolation("violation.ts", 11),
+		expectedViolation("violation.ts", 13),
 		expectedViolation("violation.ts", 20),
 		expectedViolation("violation.ts", 29),
-		expectedViolation("violation.ts", 38),
-		expectedViolation("violation.ts", 47),
-		expectedViolation("violation.ts", 55),
-		expectedViolation("violation.ts", 59),
-		expectedViolation("violation.ts", 60),
-		expectedViolation("violation.ts", 61),
-		expectedViolation("violation.ts", 62),
-		expectedViolation("violation.ts", 63),
+		expectedViolation("violation.ts", 41),
+		expectedViolation("violation.ts", 53),
+		expectedViolation("violation.ts", 68),
+		expectedViolation("violation.ts", 79),
+		expectedViolation("violation.ts", 92),
+		expectedViolation("violation.ts", 106),
+		expectedViolation("violation.ts", 120),
+		expectedViolation("violation.ts", 124),
+		expectedViolation("violation.ts", 125),
+		expectedViolation("violation.ts", 126),
+		expectedViolation("violation.ts", 127),
+		expectedViolation("violation.ts", 128),
 	})
 }
