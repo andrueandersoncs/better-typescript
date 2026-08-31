@@ -51,6 +51,7 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_property_access_after_call"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_raw_object_types"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_reexports"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/no_schema_decode_unknown_sync"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_switch_statements"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_throw"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_trivial_effect_fn"
@@ -190,6 +191,7 @@ var BuiltinRules = []rule.Rule{
 	no_property_access_after_call.Rule,
 	no_raw_object_types.Rule,
 	no_reexports.Rule,
+	no_schema_decode_unknown_sync.Rule,
 	no_switch_statements.Rule,
 	no_throw.Rule,
 	no_trivial_effect_fn.Rule,
