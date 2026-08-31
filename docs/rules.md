@@ -21,7 +21,6 @@ The fixed catalog contains these 135 rules:
 - [`idempotent-retry`](./rules/idempotent-retry.md)
 - [`inflight-dedupe-map`](./rules/inflight-dedupe-map.md)
 - [`layer-forever-acquisition`](./rules/layer-forever-acquisition.md)
-- [`missing-rationale`](./rules/missing-rationale.md)
 - [`no-async-functions`](./rules/no-async-functions.md)
 - [`no-blank-lines-between-single-line-declarations`](./rules/no-blank-lines-between-single-line-declarations.md)
 - [`no-callbacks`](./rules/no-callbacks.md)

@@ -20,7 +20,6 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/rules/idempotent_retry"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/inflight_dedupe_map"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/layer_forever_acquisition"
-	"github.com/andrueandersoncs/better-typescript/internal/rules/missing_rationale"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_async_functions"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_blank_lines_between_single_line_declarations"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_callbacks"
@@ -160,7 +159,6 @@ var BuiltinRules = []rule.Rule{
 	idempotent_retry.IdempotentRetryRule,
 	inflight_dedupe_map.InflightDedupeMapRule,
 	layer_forever_acquisition.LayerForeverAcquisitionRule,
-	missing_rationale.MissingRationaleRule,
 	no_async_functions.NoAsyncFunctionsRule,
 	no_blank_lines_between_single_line_declarations.NoBlankLinesBetweenSingleLineDeclarationsRule,
 	no_callbacks.NoCallbacksRule,
