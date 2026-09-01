@@ -47,7 +47,7 @@
       "source": "andrueandersoncs/skills",
       "sourceType": "github",
       "skillPath": "executable-interactive-plans/SKILL.md",
-      "computedHash": "98ce99e02beb95217bab21112ac432b4acffd27982b70f686c7d5fd5c29f67bc"
+      "computedHash": "ef18f92cc6de1c0e5eadc86f5f65feac64074039838a0b2f6edb4142708ea859"
     },
     "git-guardrails-claude-code": {
       "source": "mattpocock/skills",
@@ -78,6 +78,12 @@
       "sourceType": "github",
       "skillPath": "skills/productivity/handoff/SKILL.md",
       "computedHash": "20e5f4afdef502637510bc5c64d27645d3c85c88df9cb006824bbb0980166319"
+    },
+    "happy-path": {
+      "source": "andrueandersoncs/skills",
+      "sourceType": "github",
+      "skillPath": "happy-path/SKILL.md",
+      "computedHash": "d7a854a6dbd0df146ca4fea5f55044478a51f8df7ca1d7e46ce96b107bfa5773"
     },
     "implement": {
       "source": "mattpocock/skills",

@@ -1,0 +1,29 @@
+{
+  "name": "story-test-template",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "test": "npm run build && vitest run",
+    "test:browser": "node tests/browser.mjs"
+  },
+  "dependencies": {
+    "effect": "4.0.0-beta.107",
+    "monaco-editor": "^0.52.2",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@effect/vitest": "4.0.0-beta.107",
+    "@types/node": "^24.10.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "playwright": "^1.56.0",
+    "typescript": "^5.9.0",
+    "vite": "^7.2.0",
+    "vitest": "^4.1.11"
+  }
+}
