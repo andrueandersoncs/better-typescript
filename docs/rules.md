@@ -1,6 +1,6 @@
 # Built-in rules
 
-The fixed catalog contains these 136 rules:
+The fixed catalog contains these 135 rules:
 
 - [`boundary-schema-decode`](./rules/boundary-schema-decode.md)
 - [`bounded-retry-schedule`](./rules/bounded-retry-schedule.md)
@@ -105,7 +105,6 @@ The fixed catalog contains these 136 rules:
 - [`raw-fetch-abort-signal`](./rules/raw-fetch-abort-signal.md)
 - [`raw-fetch-outside-adapter`](./rules/raw-fetch-outside-adapter.md)
 - [`redundant-alias`](./rules/redundant-alias.md)
-- [`related-kind-files`](./rules/related-kind-files.md) — plain types keep domain ownership.
 - [`require-because-in-comments`](./rules/require-because-in-comments.md)
 - [`require-blank-lines-around-multiline-declarations`](./rules/require-blank-lines-around-multiline-declarations.md)
 - [`require-callable-role-name-consistency`](./rules/require-callable-role-name-consistency.md)
