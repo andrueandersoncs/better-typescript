@@ -11,7 +11,7 @@ import (
 var message = rule.RuleMessage{
 	Id:          "requireExportJSDoc",
 	Description: `Exports need structured JSDoc with a "Scope: public" or "Scope: private" section.`,
-	Help:        `Private exports must only declare their scope. Public exports also need a concise, specific scenario in the "When to use:" section and a complete, minimal TypeScript code example in a fenced "Example:" section.`,
+	Help:        `Private exports must only declare their scope. Public exports also need a concise, specific scenario in the "When to use:" section. Wrap that section so no source line exceeds 80 columns. Public exports also need a complete, minimal TypeScript code example in a fenced "Example:" section.`,
 }
 
 func normalizeLine(line string) string {
@@ -22,17 +22,46 @@ func normalizeLine(line string) string {
 	return line
 }
 
-func hasPublicSections(body []string) bool {
+const maximumWhenLineWidth = 80
+
+func hasPublicSections(body []string, rawBody []string) bool {
 	if len(body) < 8 || body[0] != "Scope: public" || body[1] != "" {
 		return false
 	}
-	if !strings.HasPrefix(body[2], "When to use: ") || strings.TrimSpace(strings.TrimPrefix(body[2], "When to use: ")) == "" {
+
+	whenEnd := -1
+	for index := 3; index < len(body); index++ {
+		if body[index] == "" {
+			whenEnd = index
+			break
+		}
+	}
+	if whenEnd == -1 {
 		return false
 	}
-	if body[3] != "" || body[4] != "Example:" || body[5] != "```ts" || body[len(body)-1] != "```" {
+
+	firstWhenLine := body[2]
+	hasWhenContent := strings.HasPrefix(firstWhenLine, "When to use: ") && strings.TrimSpace(strings.TrimPrefix(firstWhenLine, "When to use: ")) != ""
+	if firstWhenLine != "When to use:" && !hasWhenContent {
 		return false
 	}
-	for _, line := range body[6 : len(body)-1] {
+	for index := 2; index < whenEnd; index++ {
+		if len([]rune(rawBody[index])) > maximumWhenLineWidth {
+			return false
+		}
+		if index > 2 && body[index] != "" {
+			hasWhenContent = true
+		}
+	}
+	if !hasWhenContent {
+		return false
+	}
+
+	exampleIndex := whenEnd + 1
+	if exampleIndex+1 >= len(body) || body[exampleIndex] != "Example:" || body[exampleIndex+1] != "```ts" || body[len(body)-1] != "```" {
+		return false
+	}
+	for _, line := range body[exampleIndex+2 : len(body)-1] {
 		if strings.TrimSpace(line) != "" {
 			return true
 		}
@@ -50,19 +79,21 @@ func isStructuredJSDoc(text string) bool {
 		return false
 	}
 
-	body := make([]string, len(lines)-2)
-	for index, line := range lines[1 : len(lines)-1] {
+	rawBody := lines[1 : len(lines)-1]
+	body := make([]string, len(rawBody))
+	for index, line := range rawBody {
 		body[index] = normalizeLine(line)
 	}
 	if body[0] != "" || body[len(body)-1] != "" {
 		return false
 	}
 	body = body[1 : len(body)-1]
+	rawBody = rawBody[1 : len(rawBody)-1]
 
 	if len(body) == 1 && body[0] == "Scope: private" {
 		return true
 	}
-	return hasPublicSections(body)
+	return hasPublicSections(body, rawBody)
 }
 
 func hasStructuredJSDoc(factory *ast.NodeFactory, source string, node *ast.Node) bool {

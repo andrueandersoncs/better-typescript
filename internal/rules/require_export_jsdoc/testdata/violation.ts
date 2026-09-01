@@ -126,3 +126,52 @@ export type { Local }
 export * from "./dependency.js"
 export * as dependencyNamespace from "./dependency.js"
 export default local
+
+/**
+ *
+ * Scope: public
+ *
+ * When to use: Consumers need this runtime identifier across package boundaries.
+ *
+ * Example:
+ * ```ts
+ * import { overlongFirstLine } from "./violation.js"
+ *
+ * console.log(overlongFirstLine)
+ * ```
+ *
+ */
+export const overlongFirstLine = 13
+
+/**
+ *
+ * Scope: public
+ *
+ * When to use:
+ * Consumers need this runtime identifier across package boundaries and services.
+ *
+ * Example:
+ * ```ts
+ * import { overlongContinuation } from "./violation.js"
+ *
+ * console.log(overlongContinuation)
+ * ```
+ *
+ */
+export const overlongContinuation = 14
+
+/**
+
+Scope: public
+
+When to use:
+
+Example:
+```ts
+import { emptyWhen } from "./violation.js"
+
+console.log(emptyWhen)
+```
+
+**/
+export const emptyWhen = 15

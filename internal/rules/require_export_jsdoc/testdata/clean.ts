@@ -43,3 +43,53 @@ declare module "./clean.js" {
 
 **/
 export namespace Outer.Inner {}
+
+/**
+ *
+ * Scope: public
+ *
+ * When to use: Consumers need this stable identifier across package boundaries.
+ *
+ * Example:
+ * ```ts
+ * import { exactWidth } from "./clean.js"
+ *
+ * console.log(exactWidth)
+ * ```
+ *
+ */
+export const exactWidth = 80
+
+/**
+ *
+ * Scope: public
+ *
+ * When to use: Consumers need a stable package identifier across independent
+ * service boundaries.
+ *
+ * Example:
+ * ```ts
+ * import { wrappedWithStars } from "./clean.js"
+ *
+ * console.log(wrappedWithStars)
+ * ```
+ *
+ */
+export const wrappedWithStars = "stable"
+
+/**
+
+Scope: public
+
+When to use: Consumers need a stable package identifier across independent
+service boundaries.
+
+Example:
+```ts
+import { wrappedWithoutStars } from "./clean.js"
+
+console.log(wrappedWithoutStars)
+```
+
+**/
+export const wrappedWithoutStars = "stable"
