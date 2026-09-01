@@ -28,6 +28,7 @@ The fixed catalog contains these 135 rules:
 - [`no-duplicate-if-bodies`](./rules/no-duplicate-if-bodies.md)
 - [`no-error-type`](./rules/no-error-type.md)
 - [`no-explicit-any-return`](./rules/no-explicit-any-return.md)
+- [`no-first-party-root-class`](./rules/no-first-party-root-class.md)
 - [`no-first-party-schema-declare`](./rules/no-first-party-schema-declare.md)
 - [`no-for-in-loops`](./rules/no-for-in-loops.md)
 - [`no-for-loops`](./rules/no-for-loops.md)

@@ -27,6 +27,7 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_duplicate_if_bodies"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_error_type"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_explicit_any_return"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/no_first_party_root_class"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_first_party_schema_declare"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_for_in_loops"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_for_loops"
@@ -166,6 +167,7 @@ var BuiltinRules = []rule.Rule{
 	no_duplicate_if_bodies.NoDuplicateIfBodiesRule,
 	no_error_type.NoErrorTypeRule,
 	no_explicit_any_return.NoExplicitAnyReturnRule,
+	no_first_party_root_class.Rule,
 	no_first_party_schema_declare.NoFirstPartySchemaDeclareRule,
 	no_for_in_loops.NoForInLoopsRule,
 	no_for_loops.NoForLoopsRule,
