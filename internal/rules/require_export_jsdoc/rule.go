@@ -11,7 +11,7 @@ import (
 var message = rule.RuleMessage{
 	Id:          "requireExportJSDoc",
 	Description: `Exports need structured JSDoc with a "Scope: public" or "Scope: private" section.`,
-	Help:        `Private exports must only declare their scope. Public exports also need a concise, specific scenario in the "When to use:" section. Wrap that section so no source line exceeds 80 columns. Public exports also need a complete, minimal TypeScript code example in a fenced "Example:" section.`,
+	Help:        `Private exports must only declare their scope. Public exports also need a concise, specific scenario in the "When to use:" section. Wrap that section so no source line exceeds 80 columns. Public exports also need a complete, minimal TypeScript code example in a fenced "Example:" section. Do not use console.log. Show ordinary use of the export: assign it, pass it, or return it.`,
 }
 
 func normalizeLine(line string) string {
@@ -61,12 +61,16 @@ func hasPublicSections(body []string, rawBody []string) bool {
 	if exampleIndex+1 >= len(body) || body[exampleIndex] != "Example:" || body[exampleIndex+1] != "```ts" || body[len(body)-1] != "```" {
 		return false
 	}
+	hasContent := false
 	for _, line := range body[exampleIndex+2 : len(body)-1] {
+		if strings.Contains(line, "console.log") {
+			return false
+		}
 		if strings.TrimSpace(line) != "" {
-			return true
+			hasContent = true
 		}
 	}
-	return false
+	return hasContent
 }
 
 func isStructuredJSDoc(text string) bool {

@@ -7,7 +7,7 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/ruletest"
 )
 
-const expectedMessage = `Exports need structured JSDoc with a "Scope: public" or "Scope: private" section. Private exports must only declare their scope. Public exports also need a concise, specific scenario in the "When to use:" section. Wrap that section so no source line exceeds 80 columns. Public exports also need a complete, minimal TypeScript code example in a fenced "Example:" section.`
+const expectedMessage = `Exports need structured JSDoc with a "Scope: public" or "Scope: private" section. Private exports must only declare their scope. Public exports also need a concise, specific scenario in the "When to use:" section. Wrap that section so no source line exceeds 80 columns. Public exports also need a complete, minimal TypeScript code example in a fenced "Example:" section. Do not use console.log. Show ordinary use of the export: assign it, pass it, or return it.`
 
 func expectedViolation(filePath string, line int) analysis.Violation {
 	return analysis.Violation{RuleName: "require-export-jsdoc", Level: "error", Message: expectedMessage, FilePath: filePath, Line: line, Column: 1}
@@ -39,5 +39,7 @@ func TestRule(t *testing.T) {
 		expectedViolation("violation.ts", 144),
 		expectedViolation("violation.ts", 161),
 		expectedViolation("violation.ts", 177),
+		expectedViolation("violation.ts", 193),
+		expectedViolation("violation.ts", 210),
 	})
 }

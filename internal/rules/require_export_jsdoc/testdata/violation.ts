@@ -175,3 +175,36 @@ console.log(emptyWhen)
 
 **/
 export const emptyWhen = 15
+
+/**
+ *
+ * Scope: public
+ *
+ * When to use: Table field metadata needs a scalar schema for adapter columns.
+ *
+ * Example:
+ * ```ts
+ * import { TableFieldScalarSchema } from "./violation.js"
+ *
+ * console.log(TableFieldScalarSchema.make("string"))
+ * ```
+ *
+ */
+export const TableFieldScalarSchema = "string"
+
+/**
+ *
+ * Scope: public
+ *
+ * When to use: Callers need a named scalar after constructing the export.
+ *
+ * Example:
+ * ```ts
+ * import { loggedMixed } from "./violation.js"
+ *
+ * const scalar = loggedMixed
+ * console.log(scalar)
+ * ```
+ *
+ */
+export const loggedMixed = "string"

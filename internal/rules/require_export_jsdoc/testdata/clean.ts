@@ -18,7 +18,7 @@ const listed = 3
  * ```ts
  * import { listed } from "./clean.js"
  *
- * console.log(listed)
+ * Math.max(listed, 0)
  * ```
  *
  */
@@ -54,7 +54,7 @@ export namespace Outer.Inner {}
  * ```ts
  * import { exactWidth } from "./clean.js"
  *
- * console.log(exactWidth)
+ * setTimeout(onDone, exactWidth)
  * ```
  *
  */
@@ -71,7 +71,7 @@ export const exactWidth = 80
  * ```ts
  * import { wrappedWithStars } from "./clean.js"
  *
- * console.log(wrappedWithStars)
+ * cache.get(wrappedWithStars)
  * ```
  *
  */
@@ -88,8 +88,24 @@ Example:
 ```ts
 import { wrappedWithoutStars } from "./clean.js"
 
-console.log(wrappedWithoutStars)
+cache.get(wrappedWithoutStars)
 ```
 
 **/
 export const wrappedWithoutStars = "stable"
+
+/**
+ *
+ * Scope: public
+ *
+ * When to use: A probe that used console.log now needs a named scalar.
+ *
+ * Example:
+ * ```ts
+ * import { mentionedLog } from "./clean.js"
+ *
+ * const scalar = mentionedLog
+ * ```
+ *
+ */
+export const mentionedLog = "string"
