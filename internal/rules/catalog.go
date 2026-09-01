@@ -69,7 +69,6 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_composed_callbacks"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_conditional_return"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_context_service_class"
-	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_curried_data_last_functions"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_direct_boolean_return"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_direct_yield"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_effect_array"
@@ -210,7 +209,6 @@ var BuiltinRules = []rule.Rule{
 	prefer_composed_callbacks.Rule,
 	prefer_conditional_return.Rule,
 	prefer_context_service_class.Rule,
-	prefer_curried_data_last_functions.Rule,
 	prefer_direct_boolean_return.Rule,
 	prefer_direct_yield.Rule,
 	prefer_effect_array.Rule,

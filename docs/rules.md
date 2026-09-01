@@ -1,6 +1,6 @@
 # Built-in rules
 
-The fixed catalog contains these 136 rules:
+The fixed catalog contains these 135 rules:
 
 - [`boundary-schema-decode`](./rules/boundary-schema-decode.md)
 - [`bounded-retry-schedule`](./rules/bounded-retry-schedule.md)
@@ -70,7 +70,6 @@ The fixed catalog contains these 136 rules:
 - [`prefer-composed-callbacks`](./rules/prefer-composed-callbacks.md)
 - [`prefer-conditional-return`](./rules/prefer-conditional-return.md)
 - [`prefer-context-service-class`](./rules/prefer-context-service-class.md)
-- [`prefer-curried-data-last-functions`](./rules/prefer-curried-data-last-functions.md)
 - [`prefer-direct-boolean-return`](./rules/prefer-direct-boolean-return.md)
 - [`prefer-direct-yield`](./rules/prefer-direct-yield.md)
 - [`prefer-effect-array`](./rules/prefer-effect-array.md)
