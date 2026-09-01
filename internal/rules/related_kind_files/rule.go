@@ -48,6 +48,10 @@ type entity struct {
 
 type indexKey struct{}
 
+func relationshipGrouping(kind entityKind) bool {
+	return kind != typeKind
+}
+
 func sourcePath(file *ast.SourceFile) string {
 	return filepath.ToSlash(filepath.Clean(file.FileName()))
 }
@@ -725,7 +729,7 @@ func checkFile(ctx rule.RuleContext) {
 	index := projectIndex(ctx)
 	groups := map[string][]entity{}
 	for _, value := range index {
-		if len(value.anchors) == 0 {
+		if !relationshipGrouping(value.kind) || len(value.anchors) == 0 {
 			continue
 		}
 		key := value.kind.name + ":" + anchorKey(value.anchors)
@@ -739,7 +743,7 @@ func checkFile(ctx rule.RuleContext) {
 		if filepath.Base(value.file.FileName()) != value.kind.fileName {
 			ctx.ReportNode(value.nameNode, wrongFileMessage(value))
 		}
-		if len(value.anchors) == 0 {
+		if !relationshipGrouping(value.kind) || len(value.anchors) == 0 {
 			continue
 		}
 		group := groups[value.kind.name+":"+anchorKey(value.anchors)]
@@ -768,7 +772,7 @@ func checkFile(ctx rule.RuleContext) {
 	}
 	byKind := map[string]map[string][]entity{}
 	for _, value := range index {
-		if sourcePath(value.file) != current || len(value.anchors) == 0 || filepath.Base(value.file.FileName()) != value.kind.fileName {
+		if sourcePath(value.file) != current || !relationshipGrouping(value.kind) || len(value.anchors) == 0 || filepath.Base(value.file.FileName()) != value.kind.fileName {
 			continue
 		}
 		if byKind[value.kind.name] == nil {

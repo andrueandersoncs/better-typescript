@@ -14,8 +14,6 @@ func TestRule(t *testing.T) {
 		{RuleName: "related-kind-files", Level: "error", Message: "stopCron is split from related effects in src/jobs1/effects.ts. Its public signature relates it through {Cron}. Place related effects together in one dedicated module's effects.ts. Choose the module name from the repository domain vocabulary.", FilePath: "src/jobs2/effects.ts", Line: 3, Column: 22},
 		{RuleName: "related-kind-files", Level: "error", Message: "loadUser is mixed with unrelated effects in effects.ts. Its public signature relates it through {User}, while loadOrder relates through {Order}. Separate each relationship into its own domain module's effects.ts. Choose module names from the repository domain vocabulary.", FilePath: "src/mixed/effects.ts", Line: 4, Column: 22},
 		{RuleName: "related-kind-files", Level: "error", Message: "loadOrder is mixed with unrelated effects in effects.ts. Its public signature relates it through {Order}, while loadUser relates through {User}. Separate each relationship into its own domain module's effects.ts. Choose module names from the repository domain vocabulary.", FilePath: "src/mixed/effects.ts", Line: 5, Column: 22},
-		{RuleName: "related-kind-files", Level: "error", Message: "UserRepository is split from related types in src/wrong.ts. Its public signature relates it through {User}. Place related types together in one dedicated module's types.ts. Choose the module name from the repository domain vocabulary.", FilePath: "src/types.ts", Line: 3, Column: 18},
-		{RuleName: "related-kind-files", Level: "error", Message: "OtherRepository is split from related types in src/wrong.ts. Its public signature relates it through {User}. Place related types together in one dedicated module's types.ts. Choose the module name from the repository domain vocabulary.", FilePath: "src/types.ts", Line: 4, Column: 18},
 		{RuleName: "related-kind-files", Level: "error", Message: "findUser is split from related effects in src/admin/effects.ts. Its public signature relates it through {User, UserError}; its Effect requirements are {UserRepository}. Place related effects together in one dedicated module's effects.ts. Choose the module name from the repository domain vocabulary.", FilePath: "src/users/effects.ts", Line: 4, Column: 22},
 		{RuleName: "related-kind-files", Level: "error", Message: "userSchema has kind schema in wrong.ts. Place schema entities in schemas.ts within a dedicated domain module. Choose the module name from the repository domain vocabulary.", FilePath: "src/wrong.ts", Line: 4, Column: 22},
 		{RuleName: "related-kind-files", Level: "error", Message: "UserFromSchema has kind schema in wrong.ts. Place schema entities in schemas.ts within a dedicated domain module. Choose the module name from the repository domain vocabulary.", FilePath: "src/wrong.ts", Line: 5, Column: 13},
@@ -27,13 +25,16 @@ func TestRule(t *testing.T) {
 		{RuleName: "related-kind-files", Level: "error", Message: "program has kind effect in wrong.ts. Place effect entities in effects.ts within a dedicated domain module. Choose the module name from the repository domain vocabulary.", FilePath: "src/wrong.ts", Line: 11, Column: 22},
 		{RuleName: "related-kind-files", Level: "error", Message: "normalizeUser has kind algorithm in wrong.ts. Place algorithm entities in algorithms.ts within a dedicated domain module. Choose the module name from the repository domain vocabulary.", FilePath: "src/wrong.ts", Line: 12, Column: 22},
 		{RuleName: "related-kind-files", Level: "error", Message: "UserView has kind type in wrong.ts. Place type entities in types.ts within a dedicated domain module. Choose the module name from the repository domain vocabulary.", FilePath: "src/wrong.ts", Line: 13, Column: 18},
-		{RuleName: "related-kind-files", Level: "error", Message: "UserView is split from related types in src/types.ts. Its public signature relates it through {User}. Place related types together in one dedicated module's types.ts. Choose the module name from the repository domain vocabulary.", FilePath: "src/wrong.ts", Line: 13, Column: 18},
 		{RuleName: "related-kind-files", Level: "error", Message: "defaultUser has kind constant in wrong.ts. Place constant entities in constants.ts within a dedicated domain module. Choose the module name from the repository domain vocabulary.", FilePath: "src/wrong.ts", Line: 14, Column: 22},
 	})
 }
 
 func TestClean(t *testing.T) {
 	ruletest.Assert(t, "testdata/clean", Rule, []analysis.Violation{})
+}
+
+func TestTypeOwnership(t *testing.T) {
+	ruletest.Assert(t, "testdata/type-ownership", Rule, []analysis.Violation{})
 }
 
 func TestAliases(t *testing.T) {
@@ -61,11 +62,9 @@ func TestClassRelationships(t *testing.T) {
 		{RuleName: "related-kind-files", Level: "error", Message: "FirstError is split from related errors in src/second/errors.ts. Its public signature relates it through {ErrorData}. Place related errors together in one dedicated module's errors.ts. Choose the module name from the repository domain vocabulary.", FilePath: "src/first/errors.ts", Line: 2, Column: 14},
 		{RuleName: "related-kind-files", Level: "error", Message: "FirstModel is split from related schemas in src/second/schemas.ts. Its public signature relates it through {SchemaData}. Place related schemas together in one dedicated module's schemas.ts. Choose the module name from the repository domain vocabulary.", FilePath: "src/first/schemas.ts", Line: 3, Column: 14},
 		{RuleName: "related-kind-files", Level: "error", Message: "FirstService is split from related services in src/second/services.ts. Its public signature relates it through {ServiceData}. Place related services together in one dedicated module's services.ts. Choose the module name from the repository domain vocabulary.", FilePath: "src/first/services.ts", Line: 3, Column: 14},
-		{RuleName: "related-kind-files", Level: "error", Message: "FirstBox is split from related types in src/second/types.ts. Its public signature relates it through {ConstructorData}. Place related types together in one dedicated module's types.ts. Choose the module name from the repository domain vocabulary.", FilePath: "src/first/types.ts", Line: 2, Column: 14},
 		{RuleName: "related-kind-files", Level: "error", Message: "SecondError is split from related errors in src/first/errors.ts. Its public signature relates it through {ErrorData}. Place related errors together in one dedicated module's errors.ts. Choose the module name from the repository domain vocabulary.", FilePath: "src/second/errors.ts", Line: 2, Column: 14},
 		{RuleName: "related-kind-files", Level: "error", Message: "SecondModel is split from related schemas in src/first/schemas.ts. Its public signature relates it through {SchemaData}. Place related schemas together in one dedicated module's schemas.ts. Choose the module name from the repository domain vocabulary.", FilePath: "src/second/schemas.ts", Line: 3, Column: 14},
 		{RuleName: "related-kind-files", Level: "error", Message: "SecondService is split from related services in src/first/services.ts. Its public signature relates it through {ServiceData}. Place related services together in one dedicated module's services.ts. Choose the module name from the repository domain vocabulary.", FilePath: "src/second/services.ts", Line: 3, Column: 14},
-		{RuleName: "related-kind-files", Level: "error", Message: "SecondBox is split from related types in src/first/types.ts. Its public signature relates it through {ConstructorData}. Place related types together in one dedicated module's types.ts. Choose the module name from the repository domain vocabulary.", FilePath: "src/second/types.ts", Line: 2, Column: 14},
 	})
 }
 
@@ -76,11 +75,8 @@ func TestLocalDeclarations(t *testing.T) {
 	})
 }
 
-func TestStaticRelationships(t *testing.T) {
-	ruletest.Assert(t, "testdata/statics", Rule, []analysis.Violation{
-		{RuleName: "related-kind-files", Level: "error", Message: "FirstStatic is split from related types in src/b/types.ts. Its public signature relates it through {StaticData}. Place related types together in one dedicated module's types.ts. Choose the module name from the repository domain vocabulary.", FilePath: "src/a/types.ts", Line: 2, Column: 14},
-		{RuleName: "related-kind-files", Level: "error", Message: "SecondStatic is split from related types in src/a/types.ts. Its public signature relates it through {StaticData}. Place related types together in one dedicated module's types.ts. Choose the module name from the repository domain vocabulary.", FilePath: "src/b/types.ts", Line: 2, Column: 14},
-	})
+func TestStaticTypeOwnership(t *testing.T) {
+	ruletest.Assert(t, "testdata/statics", Rule, []analysis.Violation{})
 }
 
 func TestNestedConfigUsesProgramRoot(t *testing.T) {
@@ -94,7 +90,5 @@ func TestRecursiveEffectChannelPolicy(t *testing.T) {
 	ruletest.Assert(t, "testdata/channel-policy", Rule, []analysis.Violation{
 		{RuleName: "related-kind-files", Level: "error", Message: "first is split from related algorithms in src/b/algorithms.ts. Its public signature relates it through {User, UserError}; its Effect requirements are {RepoA}. Place related algorithms together in one dedicated module's algorithms.ts. Choose the module name from the repository domain vocabulary.", FilePath: "src/a/algorithms.ts", Line: 3, Column: 25},
 		{RuleName: "related-kind-files", Level: "error", Message: "second is split from related algorithms in src/a/algorithms.ts. Its public signature relates it through {User, UserError}; its Effect requirements are {RepoB}. Place related algorithms together in one dedicated module's algorithms.ts. Choose the module name from the repository domain vocabulary.", FilePath: "src/b/algorithms.ts", Line: 3, Column: 25},
-		{RuleName: "related-kind-files", Level: "error", Message: "FirstRunner is split from related types in src/d/types.ts. Its public signature relates it through {SharedRepo}. Place related types together in one dedicated module's types.ts. Choose the module name from the repository domain vocabulary.", FilePath: "src/c/types.ts", Line: 3, Column: 18},
-		{RuleName: "related-kind-files", Level: "error", Message: "SecondRunner is split from related types in src/c/types.ts. Its public signature relates it through {SharedRepo}. Place related types together in one dedicated module's types.ts. Choose the module name from the repository domain vocabulary.", FilePath: "src/d/types.ts", Line: 3, Column: 18},
 	})
 }
