@@ -4,7 +4,7 @@
 
 Reports an object literal created directly at a call site when the matching parameter has a named model type. It checks named functions, methods, arrow functions, and function expressions.
 
-The rule allows an existing model value to cross the call seam. Tested limits also allow calls to an anonymous default function and parameters whose object type is inferred instead of named.
+The rule allows an existing model value to cross the call seam. Tested limits also allow calls to an anonymous default function, parameters whose object type is inferred instead of named, and object literals passed to `make`, `create`, `build`, or `construct`.
 
 ## When to use it
 

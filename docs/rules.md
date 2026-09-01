@@ -1,6 +1,6 @@
 # Built-in rules
 
-The fixed catalog contains these 135 rules:
+The fixed catalog contains these 136 rules:
 
 - [`boundary-schema-decode`](./rules/boundary-schema-decode.md)
 - [`bounded-retry-schedule`](./rules/bounded-retry-schedule.md)
@@ -111,6 +111,7 @@ The fixed catalog contains these 135 rules:
 - [`require-callable-role-name-consistency`](./rules/require-callable-role-name-consistency.md)
 - [`require-command-name-consistency`](./rules/require-command-name-consistency.md)
 - [`require-construction-name-consistency`](./rules/require-construction-name-consistency.md)
+- [`require-construction-record-parameter`](./rules/require-construction-record-parameter.md)
 - [`require-conversion-direction-consistency`](./rules/require-conversion-direction-consistency.md)
 - [`require-export-jsdoc`](./rules/require-export-jsdoc.md): requires private or public export scope, public usage guidance wrapped at 80 columns, and ordinary examples without console.log.
 - [`require-lookup-totality-name-consistency`](./rules/require-lookup-totality-name-consistency.md)

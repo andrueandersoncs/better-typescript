@@ -12,7 +12,7 @@ var Rule = rule.Rule{
 		return rule.RuleListeners{ast.KindCallExpression: func(node *ast.Node) {
 			call := node.AsCallExpression()
 			functionName, parameters := calledFunction(ctx, call.Expression)
-			if functionName == "" {
+			if functionName == "" || functionName == "build" || functionName == "construct" || functionName == "create" || functionName == "make" {
 				return
 			}
 			for index, argument := range call.Arguments.Nodes {

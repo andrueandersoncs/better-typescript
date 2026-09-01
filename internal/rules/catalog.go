@@ -110,6 +110,7 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/rules/require_callable_role_name_consistency"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/require_command_name_consistency"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/require_construction_name_consistency"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/require_construction_record_parameter"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/require_conversion_direction_consistency"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/require_export_jsdoc"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/require_lookup_totality_name_consistency"
@@ -250,6 +251,7 @@ var BuiltinRules = []rule.Rule{
 	require_callable_role_name_consistency.Rule,
 	require_command_name_consistency.Rule,
 	require_construction_name_consistency.Rule,
+	require_construction_record_parameter.Rule,
 	require_conversion_direction_consistency.Rule,
 	require_export_jsdoc.Rule,
 	require_lookup_totality_name_consistency.Rule,

@@ -5,3 +5,6 @@ const command: TaskCommand = { task: "clean", priority: 2 };
 export const clean = runTask(command);
 const runInferred = (command = { task: "" }): string => command.task;
 export const inferred = runInferred({ task: "work" });
+interface TableDefinition { name: string }
+const make = (fields: TableDefinition): string => fields.name
+export const books = make({ name: "books" })
