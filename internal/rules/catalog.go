@@ -25,6 +25,7 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_callbacks"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_duplicate_function_names"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_duplicate_if_bodies"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/no_eager_node_runtime_access"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_error_type"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_explicit_any_return"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_first_party_root_class"
@@ -165,6 +166,7 @@ var BuiltinRules = []rule.Rule{
 	no_callbacks.NoCallbacksRule,
 	no_duplicate_function_names.NoDuplicateFunctionNamesRule,
 	no_duplicate_if_bodies.NoDuplicateIfBodiesRule,
+	no_eager_node_runtime_access.Rule,
 	no_error_type.NoErrorTypeRule,
 	no_explicit_any_return.NoExplicitAnyReturnRule,
 	no_first_party_root_class.Rule,

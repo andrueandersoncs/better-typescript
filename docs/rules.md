@@ -1,6 +1,6 @@
 # Built-in rules
 
-The fixed catalog contains these 135 rules:
+The fixed catalog contains these 136 rules:
 
 - [`boundary-schema-decode`](./rules/boundary-schema-decode.md)
 - [`bounded-retry-schedule`](./rules/bounded-retry-schedule.md)
@@ -26,6 +26,7 @@ The fixed catalog contains these 135 rules:
 - [`no-callbacks`](./rules/no-callbacks.md)
 - [`no-duplicate-function-names`](./rules/no-duplicate-function-names.md)
 - [`no-duplicate-if-bodies`](./rules/no-duplicate-if-bodies.md)
+- [`no-eager-node-runtime-access`](./rules/no-eager-node-runtime-access.md)
 - [`no-error-type`](./rules/no-error-type.md)
 - [`no-explicit-any-return`](./rules/no-explicit-any-return.md)
 - [`no-first-party-root-class`](./rules/no-first-party-root-class.md)
