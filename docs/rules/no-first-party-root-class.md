@@ -2,38 +2,43 @@
 
 ## What it does
 
-Reports unsupported first-party class declarations.
+Reports first-party class declarations and class expressions that do not extend another class. An `implements` clause does not count as inheritance.
 
-A class with an `extends` clause is allowed when it has no private methods. A root class is allowed only when it has exactly one private constructor, at least one public static method, and no other members. Methods without a visibility modifier are public unless their name is a private identifier such as `#run`. Constructor parameter properties are not allowed.
-
-Both `private method()` and `#method()` are private methods. The private constructor of a static utility class is the only private member exception.
+An inherited class is allowed when it has no `private` or `#` methods.
 
 ## When to use it
 
-Use it to keep first-party code structural and function-based while preserving classes required by external inheritance and closed static utility classes.
+Use it to keep first-party modules function- and object-based while preserving classes required by inheritance.
 
 ## Conformant
 
 ```ts
 export class IntegratedRuntime extends Error {}
 
-export class Helpers {
-  private constructor() {}
+const sqlClient = (filename: string) => filename
 
-  static run() {}
+export const SqliteBunRuntime = {
+  sqlClient,
 }
+
+export const DerivedExpression = class extends Error {}
 ```
 
 ## Non-conformant
 
 ```ts
 export class SqliteBunRuntime {
-  constructor(readonly filename: string) {}
+  private constructor() {}
+
+  static sqlClient(filename: string) {
+    return filename
+  }
 }
 
-export class OpenHelpers {
-  static run() {}
-}
+interface Runtime {}
+export class ImplementsOnly implements Runtime {}
+
+export const RootExpression = class {}
 
 export class StatefulIntegration extends Error {
   private run() {}

@@ -5,21 +5,16 @@ export class IntegratedRuntime extends Error {
   value = 1
 }
 
-export class StaticUtility {
-  private constructor() {}
+export class DerivedUtility extends Error {
   static run() {}
-  public static stop() {}
 }
 
-export class OverloadedUtility {
-  private constructor() {}
-  static format(value: string): string
-  static format(value: number): string
-  static format(value: string | number) {
-    return String(value)
-  }
-}
-
-export const ClassExpression = class {
+export const DerivedExpression = class extends Error {
   value = 1
+}
+
+const sqlClient = (filename: string) => filename
+
+export const SqliteBunRuntime = {
+  sqlClient,
 }

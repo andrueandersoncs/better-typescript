@@ -1,8 +1,8 @@
 const makeLayer = (filename: string) => filename
 export class SqliteBunRuntime {
-  constructor(readonly filename: string) {}
-  get layer() {
-    return makeLayer(this.filename)
+  private constructor() {}
+  static sqlClient(filename: string) {
+    return makeLayer(filename)
   }
 }
 interface Runtime {}
@@ -54,3 +54,21 @@ export class ParameterProperty {
     return new ParameterProperty(value)
   }
 }
+
+export class StaticUtility {
+  private constructor() {}
+  static run() {}
+  public static stop() {}
+}
+
+export class OverloadedUtility {
+  private constructor() {}
+  static format(value: string): string
+  static format(value: number): string
+  static format(value: string | number) {
+    return String(value)
+  }
+}
+
+const Named = class Root {}
+const Anonymous = class {}

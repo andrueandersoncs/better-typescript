@@ -7,12 +7,12 @@ import (
 
 var message = rule.RuleMessage{
 	Id:          "no-first-party-root-class",
-	Description: "Avoid unsupported first-party class declarations.",
-	Help:        "Use a class only when it extends another class without private methods, or when it contains one private constructor and only public static methods. Replace other classes with factory functions and structural data.",
+	Description: "Avoid unsupported first-party classes.",
+	Help:        "Use a class only when it extends another class without private methods. Replace root classes with functions, grouping them in a plain object when the namespace is part of the API.",
 }
 
 func hasExtendsClause(node *ast.Node) bool {
-	clauses := node.AsClassDeclaration().HeritageClauses
+	clauses := node.ClassLikeData().HeritageClauses
 	if clauses == nil {
 		return false
 	}
@@ -24,32 +24,13 @@ func hasExtendsClause(node *ast.Node) bool {
 	return false
 }
 
-func privateConstructor(node *ast.Node) bool {
-	if !ast.HasSyntacticModifier(node, ast.ModifierFlagsPrivate) {
-		return false
-	}
-	for _, parameter := range node.Parameters() {
-		if ast.HasSyntacticModifier(parameter, ast.ModifierFlagsParameterPropertyModifier) {
-			return false
-		}
-	}
-	return true
-}
-
 func privateMethod(node *ast.Node) bool {
 	return ast.IsMethodDeclaration(node) &&
 		(ast.HasSyntacticModifier(node, ast.ModifierFlagsPrivate) || ast.IsPrivateIdentifier(node.Name()))
 }
 
-func publicStaticMethod(node *ast.Node) bool {
-	return ast.IsMethodDeclaration(node) &&
-		ast.HasSyntacticModifier(node, ast.ModifierFlagsStatic) &&
-		!ast.HasSyntacticModifier(node, ast.ModifierFlagsPrivate|ast.ModifierFlagsProtected) &&
-		!ast.IsPrivateIdentifier(node.Name())
-}
-
 func hasPrivateMethod(node *ast.Node) bool {
-	for _, member := range node.AsClassDeclaration().Members.Nodes {
+	for _, member := range node.ClassLikeData().Members.Nodes {
 		if privateMethod(member) {
 			return true
 		}
@@ -57,34 +38,11 @@ func hasPrivateMethod(node *ast.Node) bool {
 	return false
 }
 
-func staticUtilityClass(node *ast.Node) bool {
-	members := node.AsClassDeclaration().Members
-	if members == nil || len(members.Nodes) == 0 {
-		return false
-	}
-	constructors := 0
-	methods := 0
-	for _, member := range members.Nodes {
-		switch {
-		case ast.IsConstructorDeclaration(member):
-			constructors++
-			if !privateConstructor(member) {
-				return false
-			}
-		case publicStaticMethod(member):
-			methods++
-		default:
-			return false
-		}
-	}
-	return constructors == 1 && methods > 0
-}
-
 var Rule = rule.Rule{
 	Name: "no-first-party-root-class",
 	Run: func(ctx rule.RuleContext, _ any) rule.RuleListeners {
-		return rule.RuleListeners{ast.KindClassDeclaration: func(node *ast.Node) {
-			if !hasPrivateMethod(node) && (hasExtendsClause(node) || staticUtilityClass(node)) {
+		check := func(node *ast.Node) {
+			if hasExtendsClause(node) && !hasPrivateMethod(node) {
 				return
 			}
 			target := node.Name()
@@ -92,6 +50,10 @@ var Rule = rule.Rule{
 				target = node
 			}
 			ctx.ReportNode(target, message)
-		}}
+		}
+		return rule.RuleListeners{
+			ast.KindClassDeclaration: check,
+			ast.KindClassExpression:  check,
+		}
 	},
 }
