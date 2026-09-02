@@ -1,8 +1,7 @@
 declare const someObj: Chain
 const result = someObj.callSomeMethod()
-const property = result.accessSomeProperty
+void result.accessSomeProperty
 someObj.someCall1().someCall2().someCall3()
-void property
 
 interface Chain {
   readonly accessSomeProperty: string

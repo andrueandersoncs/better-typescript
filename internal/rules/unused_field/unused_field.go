@@ -7,7 +7,7 @@ import (
 	"github.com/andrueandersoncs/typescript-go/ast"
 )
 
-const unusedFieldHelp = "Delete the speculative field or connect it to behavior that consumes its semantics. Mechanical forwarding into another representation is not a read and instead indicates parallel concepts."
+const unusedFieldHelp = "Delete the speculative field or connect it to behavior that consumes its semantics."
 
 func unusedFieldMessage(entryName string, fieldName string) rule.RuleMessage {
 	return rule.RuleMessage{
@@ -40,22 +40,6 @@ func isDeclarationName(node *ast.Node, symbol *ast.Symbol) bool {
 		}
 	}
 	return false
-}
-
-func isMechanicalForwarding(node *ast.Node) bool {
-	accessNode := node.Parent
-	if accessNode == nil || !ast.IsPropertyAccessExpression(accessNode) || accessNode.Name() != node {
-		return false
-	}
-
-	assignmentNode := accessNode.Parent
-	if assignmentNode == nil || !ast.IsPropertyAssignment(assignmentNode) {
-		return false
-	}
-
-	assignment := assignmentNode.AsPropertyAssignment()
-	assignmentName := assignmentNode.Name()
-	return assignment.Initializer == accessNode && assignmentName != nil && ast.IsIdentifier(assignmentName) && assignmentName.Text() == node.Text()
 }
 
 func canonicalSymbol(ctx rule.RuleContext, symbol *ast.Symbol) *ast.Symbol {
@@ -101,9 +85,7 @@ func collectReads(ctx rule.RuleContext) (map[*ast.Symbol]struct{}, map[string]st
 			if ast.IsIdentifier(node) {
 				symbol := ctx.TypeChecker.GetSymbolAtLocation(node)
 				if symbol != nil && !isDeclarationName(node, symbol) {
-					if !isMechanicalForwarding(node) {
-						readSymbols[symbol] = struct{}{}
-					}
+					readSymbols[symbol] = struct{}{}
 					if isInsideExportedFunction(node) {
 						usedByExportedFunction[canonicalSymbol(ctx, symbol)] = struct{}{}
 					}

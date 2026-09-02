@@ -66,10 +66,20 @@ func dataShape(file *ast.SourceFile, node *ast.Node) (string, string, bool) {
 	name := nameNode.Text()
 	content := ""
 	if ast.IsInterfaceDeclaration(node) {
-		content = nodeText(file, node)
-		if i := strings.Index(content, "{"); i >= 0 {
-			content = content[i:]
+		declaration := node.AsInterfaceDeclaration()
+		body := nodeText(file, node)
+		if i := strings.Index(body, "{"); i >= 0 {
+			body = body[i:]
+		} else {
+			body = ""
 		}
+		heritage := ""
+		if declaration.HeritageClauses != nil {
+			for _, clause := range declaration.HeritageClauses.Nodes {
+				heritage += nodeText(file, clause)
+			}
+		}
+		content = heritage + body
 	} else {
 		content = nodeText(file, node.AsTypeAliasDeclaration().Type)
 	}

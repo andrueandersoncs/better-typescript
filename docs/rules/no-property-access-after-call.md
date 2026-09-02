@@ -12,7 +12,7 @@ Use it to give a function call result a name before reading one of its propertie
 
 ```ts
 const result = someObj.callSomeMethod()
-const property = result.accessSomeProperty
+void result.accessSomeProperty
 
 someObj.someCall1().someCall2().someCall3()
 ```

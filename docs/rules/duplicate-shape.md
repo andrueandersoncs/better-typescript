@@ -2,7 +2,7 @@
 
 ## What it does
 
-Groups project interfaces and type aliases by normalized source shape. For each shape, the lexicographically smallest `filename:name` key is silent; a matching declaration reports only when its key differs from that selected key. Declarations sharing the selected key are also silent. For an interface, it discards all text before the first `{`, including heritage and generic headers. Alias RHS types are not resolved. Normalization removes whitespace and every lowercase `readonly` substring, and ignores the order of semicolon-separated object members, union members, and intersection members.
+Groups project interfaces and type aliases by normalized source shape. For each shape, the lexicographically smallest `filename:name` key is silent; a matching declaration reports only when its key differs from that selected key. Declarations sharing the selected key are also silent. For an interface, shape is heritage clause text plus the body from `{`. Alias RHS types are not resolved. Normalization removes whitespace and every lowercase `readonly` substring, and ignores the order of semicolon-separated object members, union members, and intersection members.
 
 ## When to use it
 
@@ -18,6 +18,9 @@ interface UserRecord {
 interface AuditRecord {
   createdAt: number
 }
+
+interface Task extends Schema.Schema.Type<typeof TaskSchema> {}
+interface Mime extends Schema.Schema.Type<typeof MimeSchema> {}
 ```
 
 ## Non-conformant

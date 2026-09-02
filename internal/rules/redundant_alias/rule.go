@@ -11,6 +11,7 @@ import (
 )
 
 var reference = regexp.MustCompile(`^(?:Omit|Partial|Pick|Readonly|Required)?\s*<?\s*([A-Za-z_$][\w$]*)`)
+var schemaDecodedType = regexp.MustCompile(`^Schema\.Schema\.Type\s*<\s*typeof\s+[A-Za-z_$][\w$]*\s*>$`)
 var Rule = rule.Rule{Name: "redundant-alias", Run: func(ctx rule.RuleContext, _ any) rule.RuleListeners {
 	return rule.RuleListeners{
 		ast.KindInterfaceDeclaration: func(node *ast.Node) {
@@ -23,6 +24,9 @@ var Rule = rule.Rule{Name: "redundant-alias", Run: func(ctx rule.RuleContext, _ 
 				return
 			}
 			target := strings.TrimSpace(scanner.GetTextOfNodeFromSourceText(ctx.SourceFile.Text(), h.Types.Nodes[0], false))
+			if schemaDecodedType.MatchString(target) {
+				return
+			}
 			report(ctx, d.Name(), target)
 		},
 		ast.KindTypeAliasDeclaration: func(node *ast.Node) {
@@ -31,6 +35,9 @@ var Rule = rule.Rule{Name: "redundant-alias", Run: func(ctx rule.RuleContext, _ 
 				return
 			}
 			text := strings.TrimSpace(scanner.GetTextOfNodeFromSourceText(ctx.SourceFile.Text(), d.Type, false))
+			if schemaDecodedType.MatchString(text) {
+				return
+			}
 			m := reference.FindStringSubmatch(text)
 			if len(m) > 1 {
 				report(ctx, d.Name(), m[1])
