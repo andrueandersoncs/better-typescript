@@ -4,7 +4,7 @@
 
 Reports an object literal created directly at a call site when the matching parameter has a named model type. It checks named functions, methods, arrow functions, and function expressions.
 
-The rule allows an existing model value to cross the call seam. Tested limits also allow calls to an anonymous default function, parameters whose object type is inferred instead of named, and object literals passed to `make`, `create`, `build`, or `construct`.
+The rule allows an existing model value to cross the call seam. Tested limits also allow calls to an anonymous default function, parameters whose object type is inferred instead of named, object literals passed to `make`, `create`, `build`, or `construct`, and field maps passed to `Schema.Struct`, `Schema.TaggedStruct`, and the other Schema record combinators.
 
 ## When to use it
 
@@ -32,6 +32,22 @@ An inferred parameter object is also outside this rule's checked limit.
 const runInferred = (command = { task: "" }): string => command.task;
 
 export const clean = runInferred({ task: "work" });
+```
+
+A Schema record combinator may take a field map at the call site.
+
+```ts
+interface BookFields {
+  title: string;
+}
+
+const Schema = {
+  Struct(fields: BookFields): BookFields {
+    return fields;
+  },
+};
+
+export const BookSchema = Schema.Struct({ title: "Dune" });
 ```
 
 ## Non-conformant

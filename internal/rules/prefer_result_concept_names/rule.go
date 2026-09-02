@@ -29,7 +29,8 @@ func definition(node *ast.Node) (name, body *ast.Node, ok bool) {
 	}
 	return nil, nil, false
 }
-func propertyResults(source *ast.SourceFile, node *ast.Node, params map[*ast.Symbol]bool, checker interface{ GetSymbolAtLocation(*ast.Node) *ast.Symbol }, allowAnyReceiver bool, out map[string]bool) {
+func returnedProperty(node *ast.Node, params map[*ast.Symbol]bool, checker interface{ GetSymbolAtLocation(*ast.Node) *ast.Symbol }, allowAnyReceiver bool, out map[string]bool) {
+	node = unwrapReturn(node)
 	if ast.IsPropertyAccessExpression(node) {
 		a := node.AsPropertyAccessExpression()
 		recv := a.Expression
@@ -38,6 +39,7 @@ func propertyResults(source *ast.SourceFile, node *ast.Node, params map[*ast.Sym
 		if !isCallee && ((ast.IsIdentifier(recv) && (allowAnyReceiver || params[checker.GetSymbolAtLocation(recv)])) || thisChain) {
 			out[strings.ToLower(a.Name().Text())] = true
 		}
+		return
 	}
 	if ast.IsElementAccessExpression(node) {
 		a := node.AsElementAccessExpression()
@@ -47,10 +49,18 @@ func propertyResults(source *ast.SourceFile, node *ast.Node, params map[*ast.Sym
 			out[strings.ToLower(arg.AsStringLiteral().Text)] = true
 		}
 	}
-	ast.ForEachChildAndJSDoc(node, source, func(ch *ast.Node) bool {
-		propertyResults(source, ch, params, checker, allowAnyReceiver, out)
-		return false
-	})
+}
+
+func unwrapReturn(node *ast.Node) *ast.Node {
+	for node != nil {
+		switch node.Kind {
+		case ast.KindParenthesizedExpression, ast.KindAsExpression, ast.KindTypeAssertionExpression, ast.KindNonNullExpression, ast.KindSatisfiesExpression:
+			node = node.Expression()
+		default:
+			return node
+		}
+	}
+	return node
 }
 
 func returnExpressions(source *ast.SourceFile, node *ast.Node) []*ast.Node {
@@ -92,11 +102,11 @@ var PreferResultConceptNamesRule = rule.Rule{Name: "prefer-result-concept-names"
 		bodyText := ctx.SourceFile.Text()[body.Pos():body.End()]
 		allowAnyReceiver := strings.Contains(bodyText, ".map(") || strings.Contains(bodyText, "Array.map(")
 		returns := returnExpressions(ctx.SourceFile, body)
-		for _, result := range returns {
-			propertyResults(ctx.SourceFile, result, params, ctx.TypeChecker, allowAnyReceiver, found)
+		if !ast.IsBlock(body) {
+			returns = []*ast.Node{body}
 		}
-		if len(found) == 0 {
-			propertyResults(ctx.SourceFile, body, params, ctx.TypeChecker, allowAnyReceiver, found)
+		for _, result := range returns {
+			returnedProperty(result, params, ctx.TypeChecker, allowAnyReceiver, found)
 		}
 		if len(found) != 1 {
 			return

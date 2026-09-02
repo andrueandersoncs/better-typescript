@@ -51,12 +51,18 @@ func isDirectForward(ctx rule.RuleContext, symbol *ast.Symbol, body *ast.Node) b
 	if !ast.IsCallExpression(body) {
 		return false
 	}
-	arguments := body.AsCallExpression().Arguments.Nodes
-	if len(arguments) != 1 {
-		return false
+	direct := false
+	for _, argument := range body.AsCallExpression().Arguments.Nodes {
+		argument = unwrap(argument)
+		if ast.IsIdentifier(argument) && ctx.TypeChecker.GetSymbolAtLocation(argument) == symbol {
+			direct = true
+			continue
+		}
+		if referencesSymbol(ctx, symbol, argument) {
+			return false
+		}
 	}
-	argument := unwrap(arguments[0])
-	return ast.IsIdentifier(argument) && ctx.TypeChecker.GetSymbolAtLocation(argument) == symbol
+	return direct
 }
 func referencesSymbol(ctx rule.RuleContext, symbol *ast.Symbol, node *ast.Node) bool {
 	if ast.IsIdentifier(node) && ctx.TypeChecker.GetSymbolAtLocation(node) == symbol {

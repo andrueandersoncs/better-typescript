@@ -20,11 +20,6 @@ var Rule = rule.Rule{Name: "require-construction-name-consistency", Run: func(ct
 		}
 		op := first(c.words)
 		construction := c.construction
-		lookup := strings.Contains(c.body, ".find(") || regexp.MustCompile(`\w+\[[^]]+\]`).MatchString(c.body)
-		if factories[op] && !construction && lookup {
-			ctx.ReportNode(c.nameNode, rule.RuleMessage{Id: "require-construction-name-consistency", Description: fmt.Sprintf("%s claims factory construction via %s, but looks up or projects existing data.", c.name, op), Help: "Rename with lookup or projection vocabulary, or return a freshly constructed value."})
-			return
-		}
 		claimed := claimedResult(c.words)
 		if construction && !factories[op] && !variants[op] && claimed == concept(c.returnType) {
 			ctx.ReportNode(c.nameNode, rule.RuleMessage{Id: "require-construction-name-consistency", Description: fmt.Sprintf("%s constructs a value, but does not use construction vocabulary.", c.name), Help: "Rename with make/create/build/construct (for example makeUser), or use a recognized variant constructor such as some/none/left/right/succeed/fail/of."})

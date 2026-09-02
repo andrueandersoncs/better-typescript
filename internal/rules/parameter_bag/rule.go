@@ -12,7 +12,7 @@ var Rule = rule.Rule{
 		return rule.RuleListeners{ast.KindCallExpression: func(node *ast.Node) {
 			call := node.AsCallExpression()
 			functionName, parameters := calledFunction(ctx, call.Expression)
-			if functionName == "" || functionName == "build" || functionName == "construct" || functionName == "create" || functionName == "make" {
+			if functionName == "" || functionName == "build" || functionName == "construct" || functionName == "create" || functionName == "make" || schemaFieldMapCall(call) {
 				return
 			}
 			for index, argument := range call.Arguments.Nodes {
@@ -90,6 +90,31 @@ func referencedTypeName(node *ast.Node) string {
 		return name.AsQualifiedName().Right.Text()
 	}
 	return ""
+}
+
+var schemaFieldMapOps = map[string]bool{
+	"Class":            true,
+	"Struct":           true,
+	"TaggedClass":      true,
+	"TaggedError":      true,
+	"TaggedErrorClass": true,
+	"TaggedStruct":     true,
+}
+
+func schemaFieldMapCall(call *ast.CallExpression) bool {
+	expression := unwrap(call.Expression)
+	if ast.IsPropertyAccessExpression(expression) {
+		name := expression.AsPropertyAccessExpression().Name()
+		if name == nil || !schemaFieldMapOps[name.Text()] {
+			return false
+		}
+		receiver := unwrap(expression.AsPropertyAccessExpression().Expression)
+		return ast.IsIdentifier(receiver) && receiver.Text() == "Schema"
+	}
+	if ast.IsIdentifier(expression) {
+		return schemaFieldMapOps[expression.Text()]
+	}
+	return false
 }
 func unwrap(node *ast.Node) *ast.Node {
 	for node != nil {

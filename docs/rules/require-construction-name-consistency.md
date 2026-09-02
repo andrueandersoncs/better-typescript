@@ -2,7 +2,7 @@
 
 ## What it does
 
-Reports a callable that constructs its named return concept without construction vocabulary. For the tested case, it reports: `user constructs a value, but does not use construction vocabulary.` It recognizes `make`, `create`, `build`, and `construct`, plus common variant constructors. It also rejects those factory verbs when the body uses `.find` or indexed lookup instead of construction.
+Reports a callable that constructs its named return concept without construction vocabulary. For the tested case, it reports: `user constructs a value, but does not use construction vocabulary.` It recognizes `make`, `create`, `build`, and `construct`, plus common variant constructors.
 
 ## When to use it
 

@@ -2,7 +2,7 @@
 
 ## What it does
 
-Reports an inline, one-parameter, expression-bodied arrow callback when its parameter is referenced within an argument to a call in the callback expression. A direct one-argument forward such as `value => normalize(value)` is allowed. This allowed limit is covered by the rule fixture.
+Reports an inline, one-parameter, expression-bodied arrow callback when its parameter is referenced within an argument to a call in the callback expression. A direct forward such as `value => normalize(value)` or a multi-argument call that passes the parameter as an identifier argument is allowed. This allowed limit is covered by the rule fixture.
 
 ## When to use it
 
@@ -16,6 +16,15 @@ This callback forwards its parameter directly to one function.
 declare const normalize: (value: string) => string;
 
 export const clean = ["a"].map(value => normalize(value));
+```
+
+A capturing call may still pass the parameter by identifier.
+
+```ts
+declare const update: (previous: number, extra: number) => number;
+declare const extra: number;
+
+export const commit = [1].map(previous => update(previous, extra));
 ```
 
 ## Non-conformant
