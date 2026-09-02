@@ -21,3 +21,15 @@ For compiler dependency updates, read `docs/compiler-foundation.md` and run `./s
 Check `skills/` after behavior changes.
 
 Issues and specs are local Markdown under `.scratch/`; see `docs/agents/issue-tracker.md`. Use the canonical triage labels in `docs/agents/triage-labels.md`. Use the domain layout in `docs/agents/domain.md`.
+
+Always use ShadCN and TailwindCSS in any web app front end.
+
+Follow the advice from the software-laws skill as closely as you can, in general. Cite them frequently in your work.
+
+Golden Rule: Always produce the **simplest**, most **direct**, most **concise**, most **correct**, and most **complete** output possible, regardless of the task.
+
+Avoid complexity at all costs, except where it conflicts with the Golden Rule.
+
+Maintain simplicity at all costs, except where it conflicts with the Golden Rule.
+
+Follow the campsite rule with every change you make: leave the codebase cleaner than you found it.
