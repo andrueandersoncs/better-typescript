@@ -5,7 +5,7 @@ description: Standardize, build, pack, verify, version, and publish TypeScript n
 
 # npm Publish Tool
 
-Use Bun as the package manager and release runner. Publish standard npm-compatible artifacts. Make the project conform to one of the two approved layouts below, then run the complete publishing workflow. Apply the package-shape and registry advice in [the npm publishing research](../docs/research/npm-publishing.md) through Bun commands.
+Use Bun as the package manager and release runner. Publish standard npm-compatible artifacts. Make the project conform to one of the two approved layouts below, then run the complete publishing workflow. Apply the package-shape and registry advice in [the npm publishing research](references/npm-publishing.md) through Bun commands.
 
 ## Approved Layouts
 

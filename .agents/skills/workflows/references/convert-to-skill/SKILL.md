@@ -1,7 +1,7 @@
 ---
 name: convert-to-skill
 description: "Create a repository workflow skill as concise, dependency-driven, subagent-ready tasks with completion checks for a repeatable workflow. Use when the user asks to create, design, document, or improve a workflow skill."
-compatibility: Requires a runtime that provides the skill-creator skill and concurrent fresh-subagent delegation.
+compatibility: Requires the skill-creator skill and concurrent fresh-subagent delegation.
 ---
 
 # Workflow to Skill
@@ -11,7 +11,7 @@ Create a **workflow skill** for the user's repeatable task; this skill governs d
 Use this global `workflow-model`:
 
 - **Delegation:** Run each step in this skill and the resulting workflow skill once in a new,
-  fresh subagent.
+  fresh subagent (by whatever means are available to you).
 - **Ownership:** The invoking agent is the single accountable workflow owner. Fresh subagents
   execute steps, while the owner launches ready work, maintains state, resolves handoffs, and
   returns the final result.
@@ -99,13 +99,11 @@ Make this draft workflow contract executable: $draft-workflow-contract. Resolve 
 - actionable-workflow-contract: The complete resolved workflow contract.
 - blocking-question: One blocking question when the contract remains incomplete.
 
-### confirm-skill-creator: Confirm the runtime can invoke `skill-creator`
+### confirm-skill-creator: Confirm skill-creator is available
 
-Find `skill-creator` in this runtime registry: $runtime-skill-registry. Return whether the dependency is ready and its exact invocation form. If it is unavailable, report that and stop before editing.
+Find `skill-creator` by whatever means are available. Return whether the dependency is ready and how to invoke it. If it is unavailable, report that and stop before editing.
 
 **Inputs:**
-
-- Use runtime value runtime-skill-registry.
 
 **Constraints:**
 
@@ -235,9 +233,9 @@ Use this output contract: $target-output-requirements. Use these task requiremen
 - final-result-requirement: The exact result the final task must report.
 - workflow-completion-condition: The condition that makes the workflow complete.
 
-### invoke-skill-creator: Invoke `/skill-creator` with the contract and requirements
+### invoke-skill-creator: Invoke skill-creator with the contract and requirements
 
-Create the target skill for this workflow contract: $actionable-workflow-contract. Stay within these boundaries: $target-skill-boundaries. Apply this workflow model: $workflow-model. Apply the shell, input, output, and task requirements: $skill-shell-requirements; $target-input-requirements; $target-output-requirements; $target-task-requirements. Integrate the branches, invariants, and supporting-detail rules: $branch-requirements; $invariant-requirements; $supporting-detail-requirements. End with $final-result-requirement and complete only when $workflow-completion-condition. Preserve $task-specific-requirements and treat $repository-facts as authoritative. Invoke `skill-creator` using $dependency-readiness-decision and return its result.
+Create the target skill for this workflow contract: $actionable-workflow-contract. Stay within these boundaries: $target-skill-boundaries. Apply this workflow model: $workflow-model. Apply the shell, input, output, and task requirements: $skill-shell-requirements; $target-input-requirements; $target-output-requirements; $target-task-requirements. Integrate the branches, invariants, and supporting-detail rules: $branch-requirements; $invariant-requirements; $supporting-detail-requirements. End with $final-result-requirement and complete only when $workflow-completion-condition. Preserve $task-specific-requirements and treat $repository-facts as authoritative. Invoke `skill-creator` by whatever means are available, using $dependency-readiness-decision, and return its result.
 
 **Inputs:**
 

@@ -6,7 +6,7 @@ compatibility: Requires fresh-subagent delegation and research capability; uses 
 
 This skill reviews bounded code read-only and reports evidence-adjudicated conclusions.
 
-Run every numbered task in this skill in a new, fresh subagent. Bind every declared `Input` to its value, including required prior-task outputs, replace each `$variable-name` in the task text, and pass the entire rendered task—title, task text, resolved `Inputs`, `Constraints`, and expected `Outputs`—to the subagent.
+Run every numbered task in this skill in a new, fresh subagent (by whatever means are available to you). Bind every declared `Input` to its value, including required prior-task outputs, replace each `$variable-name` in the task text, and pass the entire rendered task—title, task text, resolved `Inputs`, `Constraints`, and expected `Outputs`—to the subagent.
 
 ## Inputs
 

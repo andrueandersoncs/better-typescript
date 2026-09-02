@@ -15,7 +15,7 @@ Capture the user's requested change exactly. If the request is ambiguous, ask on
 
 ### 1. Get the proposed plan
 
-Spawn a planner child with `await rlm(...)`. Include the original request and the following instructions verbatim. Ask the child to send its complete response to its parent with `await agent_message.send(..., receiver_role="parent")`.
+Spawn a planner child (by whatever means are available to you). Include the original request and the following instructions verbatim. Ask the child to return its complete response to its parent.
 
 > Plan an implementation for this request without implementing it.
 > Only plan for the normal, valid input and expected environment.
@@ -27,11 +27,11 @@ Spawn a planner child with `await rlm(...)`. Include the original request and th
 > Your target implementation **must be**: (1) minimal, (2) simple, and (3) complete.
 > Return only the implementation plan.
 
-Wait for the planner's message and preserve its complete output as the proposed plan.
+Wait for the planner's complete response and preserve it as the proposed plan.
 
 ### 2. Verify the proposed plan
 
-Spawn a separate verifier child. Include the original request, the complete proposed plan verbatim, and the following instructions verbatim. Ask the child to send its complete response to its parent with `await agent_message.send(..., receiver_role="parent")`.
+Spawn a separate verifier child (by whatever means are available to you). Include the original request, the complete proposed plan verbatim, and the following instructions verbatim. Ask the child to return its complete response to its parent.
 
 > Analyze the proposed plan against this exact rule:
 >
@@ -58,7 +58,7 @@ Do not make planning or verification decisions yourself: preserve the planner ou
 
 ### 4. Save and report
 
-Create `.scratch/plans/` if needed. Write a descriptively named Markdown document that contains:
+Write a descriptively named Markdown document in a repository-local plans directory (create it if needed) that contains:
 
 1. The original request
 2. The finalized plan

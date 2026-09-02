@@ -8,7 +8,7 @@ compatibility: Requires convert-to-skill, simulate-callstack, repository delegat
 
 decompose owns decomposition, approval, orchestration, validation, and reporting. `convert-to-skill` creates children; `simulate-callstack` simulates.
 
-Run every numbered procedure step in this skill and the resulting workflow skill in a new, fresh subagent. Give each subagent only its step definition and declared inputs, including required prior-step outputs.
+Run every numbered procedure step in this skill and the resulting workflow skill in a new, fresh subagent (by whatever means are available to you). Give each subagent only its step definition and declared inputs, including required prior-step outputs.
 
 ## Inputs
 

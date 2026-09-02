@@ -10,7 +10,7 @@ Manage one project through owned, evidence-backed tasks; this skill coordinates 
 
 Use this global `workflow-model`:
 
-- Run every step in a new, fresh subagent.
+- Run every step in a new, fresh subagent (by whatever means are available to you).
 - Keep the invoking agent as the single accountable project owner; subagents may plan, execute, monitor, or review, but the owner maintains the project record, resolves handoffs, and reports the result.
 - Give every step, workflow input, and output a unique kebab-case identifier and bind each input or output ID to `$<id>` in task text.
 - Treat only `Wait` inputs as dependencies; every `Use` value is available initially.
