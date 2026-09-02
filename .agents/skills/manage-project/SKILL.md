@@ -1,7 +1,7 @@
 ---
 name: manage-project
-description: "Manage an AI-agent project from request through decomposition, preparation, routing, execution, monitoring, review, and closure using durable task records. Use when asked to manage, coordinate, run, or track a multi-task project."
-compatibility: Requires concurrent fresh-subagent delegation and a durable project record accessible to all participating agents.
+description: "Manage an AI-agent project from request through decomposition, preparation, routing, execution, monitoring, review, and closure using durable task records. Use when asked to manage, coordinate, run, or track a multi-task project, or to use the manage-project CLI or project board."
+compatibility: Requires concurrent fresh-subagent delegation, the `andrue-cli` command from `@andrue/cli`, and a durable project record accessible to all participating agents.
 ---
 
 # Manage Project
@@ -17,17 +17,36 @@ Use this global `workflow-model`:
 - Launch all ready steps concurrently and launch newly ready steps immediately.
 - A step is ready only when its inputs, context, tools, permissions, and environment are available.
 - When a requirement is unavailable, mark the affected work `Blocked`, record the unmet condition and its review event or time, and do not launch dependents.
-- After each meaningful action, persist artifacts, evidence, decisions, active job handles, status changes, and the next action in the project record.
+- After each meaningful action, persist artifacts, evidence, decisions, status changes, and the next action through the CLI into the project record.
 - Start asynchronous work once, save its handle and output location, and inspect it only when its completion event occurs.
 - Keep task status equal to its current condition: `Not started`, `Ready`, `In progress`, `Blocked`, `In review`, or `Done`.
 - Move no task to `Ready` without the complete Ready gate and move no task to `Done` without review of both its definition of done and outcome.
 - Use `references/ai-agent-processes.md` as the global `task-management-reference` for field meanings, gates, transitions, and role responsibilities.
 
+## Record
+
+Persist state with:
+
+```sh
+andrue-cli manage-project --record $project-record-location <command>
+```
+
+| Step | Command |
+| --- | --- |
+| interpret-project | `init --outcome --done`, then `add <id> --task --outcome --done` |
+| prepare-project-work | `prepare <id> --owner --next` |
+| plan-and-route-project | `route <id> --priority --effort` |
+| execute-and-control-project | `start`, `pause --next`, `block --dependency --follow-up`, `submit --evidence` |
+| review-project-outcome | `review-task <id> --verdict Passed` or `Failed`, then `review --verdict Passed`, `Failed`, or `Incomplete` |
+| report-project-result | `report` |
+
+Start the operator board with `serve` (http://127.0.0.1:4373). The board reads and writes the same record.
+
 ## Inputs
 
 - **project-request:** The requested project, intended outcome, constraints, and known completion conditions in any workable form.
 - **project-context:** Available source locations, repository instructions, prior decisions, tools, permissions, people, deadlines, and existing project records.
-- **project-record-location:** A durable file or system location for project state; when omitted, choose a clear repository-local Markdown path.
+- **project-record-location:** A durable file for project state; when omitted, use `project.json`.
 
 ## Outputs
 

@@ -53,7 +53,13 @@
       "source": "andrueandersoncs/skills",
       "sourceType": "github",
       "skillPath": "skills/effect-arbitrary/SKILL.md",
-      "computedHash": "70d6674c6324f6fe4c3ac01070a5d5cd8437c8f9003983fb71687a0885a20f5c"
+      "computedHash": "a450f41e2464a45476124ad4c355ddf9db9f6b1d57f036241ef03d80f2ffde31"
+    },
+    "elicit-llm-creativity": {
+      "source": "andrueandersoncs/skills",
+      "sourceType": "github",
+      "skillPath": "skills/elicit-llm-creativity/SKILL.md",
+      "computedHash": "22ad8900c49aafb533a79b68e8eb4f593f4d746b8b3167245e5146acf95730e7"
     },
     "executable-interactive-plans": {
       "source": "andrueandersoncs/skills",
@@ -125,7 +131,7 @@
       "source": "andrueandersoncs/skills",
       "sourceType": "github",
       "skillPath": "skills/initialize-skills/SKILL.md",
-      "computedHash": "5e06d4941bd41be96081f31298f775b306bbfb3980944e58bac236c14b3b9399"
+      "computedHash": "e89384111c2b15ca59b0484ecca268b21f85ccb68a597467fe735cf89d3c16e0"
     },
     "llm-wiki": {
       "source": "andrueandersoncs/skills",
@@ -143,7 +149,7 @@
       "source": "andrueandersoncs/skills",
       "sourceType": "github",
       "skillPath": "skills/manage-project/SKILL.md",
-      "computedHash": "42c6aff577af91e03ba87b0c1202ffa41e39560a140e0a0f9bc1cd4abb8a9146"
+      "computedHash": "b388b624f2616d1461077af1d79570e7457231bcc83551edf541ff759a0a0575"
     },
     "migrate-to-shoehorn": {
       "source": "mattpocock/skills",

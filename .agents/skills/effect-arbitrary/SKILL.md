@@ -1,7 +1,7 @@
 ---
 name: effect-arbitrary
 description: This skill should be used when the user asks to "generate arbitrary values", "generate sample data from a schema", "use Effect Arbitrary", "Schema.toArbitrary", or to produce Effect Schema test data, fixtures, or FastCheck samples.
-compatibility: Requires Bun and Effect v4 (effect@rc).
+compatibility: Requires `@andrue/cli` and Effect v4 (effect@rc).
 ---
 
 # Effect Arbitrary
@@ -18,5 +18,5 @@ const samples = FastCheck.sample(Schema.toArbitrary(schema)(FastCheck), 10)
 Default-export the schema from a module. Run the CLI:
 
 ```sh
-bun apps/effect-arbitrary/generate.ts <schema-module> --count 10
+andrue-cli generate <schema-module> --count 10
 ```
