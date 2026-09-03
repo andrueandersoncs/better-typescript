@@ -4,7 +4,7 @@ description:
   Find and implement the first Better TypeScript rule missing from Effect AI documentation. Use when
   asked to survey repos/effect/ai-docs, add the next Effect rule, or check Effect rule overlap.
 compatibility:
-  Requires repository access, the project TypeScript toolchain, and fresh-context subagent review.
+  Requires repository access, Go 1.26 through mise, Bun, and fresh-context subagent review.
 ---
 
 # Next Effect Rule
@@ -23,7 +23,7 @@ after an optional UTF-8 BOM and whitespace, starts with one JSDoc block containi
 
 ### B. Better TypeScript rule catalog
 
-The required comparison set is the current `builtinRules` catalog, each rule implementation, its
+The required comparison set is the current `rules.BuiltinRules` catalog, each rule implementation, its
 message, and its tests and fixtures. Names and messages alone are insufficient evidence of coverage.
 
 ### C. Repository constraints
@@ -35,9 +35,10 @@ source under `repos/effect/` are authoritative. Preserve unrelated worktree chan
 
 ### A. Built-in rule
 
-When a unique uncovered situation exists, add exactly one built-in rule under the current
-`packages/rules` conventions. Register it in the full catalog and self-hosting configuration, and
-add tests under `tests/`. Treat `repos/effect/` as read-only evidence. The rule is complete when
+When a unique uncovered situation exists, add exactly one built-in Go rule under
+`internal/rules/<snake_case_name>/`. Register it in `internal/rules/catalog.go`, add focused
+`_test.go` and `testdata/` coverage, and update the public rule docs. Treat `repos/effect/` as
+read-only evidence. The rule is complete when
 its observable applicability predicate and advice match the source JSDoc without overlapping another
 rule's situation.
 
@@ -49,14 +50,13 @@ dropping `.ts` and replacing each `/` with `--`. Revise an existing report only 
 the same example; stop on a path collision. The report links and quotes the JSDoc, states the
 situation, noncompliant pattern, advice, and competing predicates, gives a minimal witness, records
 every attempted source-grounded distinction, and includes the earlier-example ledger. This branch
-leaves no candidate TypeScript or test changes and replaces Output A for that run.
+leaves no candidate rule or test changes and replaces Output A for that run.
 
 ### C. Completion report
 
 Report the selected example, the JSDoc's unique situation, prior examples classified as covered or
-ineligible, the rule or overlap-report path, changed files, checks, and benchmark minimum, median,
-and maximum when TypeScript changed. A no-candidate result reports the complete surveyed range and
-makes no files.
+ineligible, the rule or overlap-report path, changed files, and checks. A no-candidate result reports
+the complete surveyed range and makes no files.
 
 ## Procedure
 
@@ -134,23 +134,21 @@ fixtures and expectations mechanically define detection, boundaries, and non-ove
 
 ### 5. Implement one rule
 
-Implement the smallest rule that satisfies the tests. Resolve Effect APIs through compiler symbols
-and types following existing helpers; avoid text-only API detection when aliases or unrelated
-lookalikes would create overlap. Reuse a helper only when it preserves a single clear ownership
-boundary. Register the rule in every current built-in catalog assertion and keep all built-in rules
-enabled for `core`, `rules`, and `cli` self-hosting. Update `skills/` only when Step 1 found affected
-public guidance. This step is complete when the focused rule and overlap tests pass without
-weakening another rule.
+Implement the smallest Go rule that satisfies the tests. Resolve Effect APIs through the pinned
+public `typescript-go` AST and checker adapters; avoid text-only API detection when aliases or
+unrelated lookalikes would create overlap. Preserve one listener registration and one AST traversal
+per file. Reuse a helper only when it preserves a single clear ownership boundary. Register the rule
+exactly once in the sorted `internal/rules/catalog.go`, update `docs/rules.md` and
+`docs/rules/<rule-name>.md`, and update `skills/` only when Step 1 found affected public guidance.
+This step is complete when the focused rule and overlap tests pass without weakening another rule.
 
 ### 6. Validate the repository
 
-For TypeScript changes, run the focused tests, the full test command, type checking, `bun run format`,
-`bun run dev`, and `bun run bench:self`. Fix every failure and every self-hosting Violation; rerun
-formatting after each TypeScript edit and rerun the benchmark after the final TypeScript state.
-Record benchmark minimum, median, and maximum. For an overlap-report-only run, format checks and
-code gates are not required. If validation cannot be repaired, report the failure without claiming
-completion; never substitute an overlap report for an implementation failure. This step is complete
-when all required checks pass and self-hosting output is empty.
+For rule changes, run the focused Go package test and `./scripts/check.sh`. Fix every failure and
+rerun affected checks. For an overlap-report-only run, code gates are not required unless the current
+repository instructions say otherwise. If validation cannot be repaired, report the failure without
+claiming completion; never substitute an overlap report for an implementation failure. This step is
+complete when all required checks pass.
 
 ### 7. Recheck scope and report
 
@@ -220,7 +218,7 @@ workflow is complete only when these checks and the selected output branch agree
 │   │
 │   ├─ else if (a genuine witness remains):
 │   │ │
-│   │ ├─ **Remove Candidate TypeScript And Test Changes**(candidate-only changes, preserved unrelated changes)
+│   │ ├─ **Remove Candidate Rule And Test Changes**(candidate-only changes, preserved unrelated changes)
 │   │ │
 │   │ └─ **Write Overlap Report**(collision-safe example path, quoted JSDoc, S, N, A, competing predicates, witness, attempted distinctions, earlier ledger)
 │   │
@@ -240,15 +238,15 @@ workflow is complete only when these checks and the selected output branch agree
 │ │
 │ └─ **Resolve Test Evidence**(fixtures, expectations, overlap witness)
 │   │
-│   ├─ if (a witness reveals unresolvable source-grounded overlap): remove candidate TypeScript and test changes, then take Step 3's overlap-report branch
+│   ├─ if (a witness reveals unresolvable source-grounded overlap): remove candidate rule and test changes, then take Step 3's overlap-report branch
 │   │
 │   └─ else: continue to implementation
 │
 ├─ **Implement One Rule**(mechanically defined detection, boundaries, non-overlap)
 │ │
-│ ├─ **Implement Smallest Symbol And Type Aware Rule**(candidate predicate and advice, read-only Effect evidence)
+│ ├─ **Implement Smallest Symbol And Type Aware Go Rule**(candidate predicate and advice, read-only Effect evidence)
 │ │
-│ ├─ **Register Rule Everywhere**(built-in catalog assertions, core self-hosting, rules self-hosting, cli self-hosting)
+│ ├─ **Register And Document Rule**(sorted built-in catalog, catalog assertions, public rule docs)
 │ │
 │ ├─ **Update Public Skill Guidance**(recorded Step 1 impact)
 │ │ │
@@ -258,20 +256,20 @@ workflow is complete only when these checks and the selected output branch agree
 │
 ├─ **Validate The Repository**(selected output branch, validation results)
 │ │
-│ ├─ if (TypeScript changed): run focused tests, full tests, type checking, format, self-hosting, and whole-process benchmark
+│ ├─ if (a rule changed): run the focused Go package test and `./scripts/check.sh`
 │ │
 │ ├─ else if (only an overlap report changed): require no format or code gates
 │ │
-│ ├─ **Repair Validation Failures**(failures, self-hosting Violations)
+│ ├─ **Repair Validation Failures**(focused or full-check failures)
 │ │ │
-│ │ ├─ if (repair succeeds): rerun format after TypeScript edits and benchmark after the final TypeScript state
+│ │ ├─ if (repair succeeds): rerun every affected check
 │ │ │
 │ │ └─ else: report failure without completion and never substitute an overlap report
 │ │
-│ └─ **Record Benchmark Statistics**(minimum, median, maximum from final TypeScript state)
+│ └─ **Record Validation Results**(focused test and full repository check)
 │
 └─ **Recheck Scope And Report**(final diff, earlier-example ledger, selected output)
   │
   ├─ **Confirm Final Invariants**(one rule or one overlap report, boundary proof, nearby-rule separation, skills checked, unrelated changes intact, bounded semantic complexity)
   │
-  └─ **Publish Completion Report**(selected example, unique situation, prior classifications, output path, changed files, checks, benchmark statistics when applicable)
+  └─ **Publish Completion Report**(selected example, unique situation, prior classifications, output path, changed files, checks)

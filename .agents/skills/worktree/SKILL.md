@@ -41,7 +41,7 @@ Once inside the worktree, complete the task fully. Follow normal project rules f
 `CLAUDE.md` for implementation, verification, and commits:
 
 - Leave changes uncommitted unless the user explicitly asks to commit.
-- After code changes, run `bun run dev` and `bun run bench` as required by those rules.
+- After code changes, run the verification required by the worktree's current repository instructions.
 - Do not clean up, remove, or prune the worktree unless asked.
 
 ## Keep changes on the worktree

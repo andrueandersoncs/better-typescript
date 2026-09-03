@@ -1,8 +1,8 @@
 ---
 name: plan-pattern-remediation
 description:
-  Produces a concrete Better TypeScript remediation plan for an observed code pattern. Use when the
-  user asks to plan a check, policy, advice, or pattern remediation without implementing it.
+  Use when asked to plan a Better TypeScript rule, configuration, or local pattern remediation
+  without implementing it.
 ---
 
 # Plan Pattern Remediation
@@ -13,18 +13,18 @@ Turn the following maintainer observation into a concrete Better TypeScript reme
 
 $ARGUMENTS
 
-This is a planning command. Do not implement the plan, modify TypeScript, alter the preset, or
-commit changes unless the maintainer explicitly asks for that in a later request.
+This is a planning command. Do not implement the plan or change the repository.
 
 ## Goal
 
 Start from: “I do not like this code pattern in code Better TypeScript was applied to.” End with a
 small, reviewable plan that chooses deliberately among:
 
-- adding a check;
-- updating a check;
-- deleting or merging checks;
-- changing derived advice;
+- adding a rule;
+- updating a rule;
+- deleting or merging rules;
+- changing project configuration; or
+- refactoring only the observed code.
 
 ## 1. Establish the candidate policy
 
@@ -40,91 +40,78 @@ first. Ask only for the remaining material decision; do not invent a policy boun
 
 ## 2. Locate the owning behavior
 
-Read the relevant Policy definitions in `packages/guidance/src/` and their Matchers in
-`packages/matchers/src/`. Inspect each Policy's Detection message and hint, then its Matcher and
-example/test coverage. Search by domain concept and Policy name so existing ownership is not
-duplicated.
+Read `AGENTS.md`, `CONTEXT.md`, `internal/rules/catalog.go`, `docs/rules.md`, and the closest existing
+rule docs. Search `internal/rules/` by domain concept, public rule name, message, and help text. Read
+two or three closest rule implementations together with their `_test.go` and `testdata/` coverage.
 
-Determine whether the behavior comes from:
+Determine whether the behavior is:
 
-- a reported Policy that emits visible Detections;
-- a silent Policy that supplies derivation evidence;
-- Advice emitted by the owning `derive` function, including `defaultDerive`; or
-- a Wiring configuration choice.
+- already owned by one built-in rule;
+- a missing boundary of the closest rule;
+- duplicated across rules;
+- a stable new repository-wide policy;
+- a project-specific selection concern for `better-typescript.json`; or
+- a local implementation concern that should not become a linter rule.
 
-Read 2–3 closest Policy, Matcher, and derivation implementations before proposing TypeScript
-changes.
-
-Also audit overlap and derivation effects. Policies must not depend on one another; cross-Policy
-interpretation belongs in the owning `derive` function. Changing a Policy's Detection count,
-locations, reported state, or name can change Signals and therefore density, dominance,
-hot-subsystem, collision, and systemic Advice.
+Audit overlap against the full catalog. Compare executable predicates, report targets, messages,
+tests, and clean boundaries rather than names alone. Complete this step when one existing or proposed
+owner has a non-overlapping responsibility.
 
 ## 3. Choose one remediation shape
 
 Use this decision table and state the reason for the choice:
 
-| Finding                                                                                              | Chosen action                                                     |
-| ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| The pattern is one local implementation and has no stable, reusable boundary.                        | Refactor the code; do not add a check.                            |
-| The existing check owns the policy but matches too broadly, narrowly, or unclearly.                  | Update that check and its boundary tests.                         |
-| The pattern is stable, broadly useful, mechanically recognizable, and has an actionable replacement. | Add a narrowly scoped check.                                      |
-| Two checks express the same policy or one is obsolete.                                               | Merge or delete the obsolete check and migrate intended coverage. |
-| The local checks are correct but their combined presentation is wrong.                               | Change derived advice or its threshold/evidence.                  |
-| The policy belongs only to one project.                                                              | Keep the preset unchanged; use explicit project wiring.           |
+| Finding                                                                                              | Chosen action                                                    |
+| ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| The pattern is one local implementation and has no stable, reusable boundary.                        | Refactor the code; do not add a rule.                            |
+| An existing rule owns the policy but matches too broadly, narrowly, or unclearly.                    | Update that rule and its boundary coverage.                      |
+| The pattern is stable, broadly useful, mechanically recognizable, and has an actionable replacement. | Add one narrowly scoped rule.                                    |
+| Two rules express the same policy or one is obsolete.                                                | Merge or delete the obsolete rule and migrate intended coverage. |
+| The policy belongs only to selected files or one consumer project.                                   | Use ordered `better-typescript.json` commands.                   |
 
-A default check must have a clear rationale, a predictable boundary, and an actionable hint.
-Otherwise, prefer a refactor or an investigation plan.
+A built-in rule must have a clear rationale, a predictable boundary, and actionable help. Otherwise,
+prefer a refactor or an investigation plan.
 
 ## 4. Specify executable acceptance criteria
 
-Turn the actual example into a compiling fixture before implementation:
+Plan compiling fixtures under `internal/rules/<snake_case_name>/testdata/`. Include the smallest
+violation, the nearest clean boundary, and extra files only when module or symbol context requires
+them.
 
-- `tests/fixtures/<check-name>/src/cases.ts` contains every must-report case;
-- `tests/fixtures/<check-name>/src/allowed.ts` contains close must-not-report boundaries; and
-- extra fixture files preserve type or module context when necessary.
-
-Specify exact expected locations, messages, and hints. The direct check test must assert the
-complete detection set, not only the desired detection. If the proposal changes advice, define the
-advice title, remediation/evidence, and the threshold boundary in an advice/default-derive test.
+Specify every expected `analysis.Violation`: rule name, `error` level, combined message and help,
+relative file path, line, and column. The focused `_test.go` must use `ruletest.Assert` to assert the
+complete violation set. Add aliases, unrelated lookalikes, and pairwise overlap cases only when the
+predicate needs them.
 
 ## 5. Write the file-level implementation plan
 
 For each action, name the expected files and responsibility:
 
-- **Add a reported check:** `src/checks/<name>.ts`, the barrel export,
-  `namedCheck("<kebab-name>", ...)` in `src/preset/defaultWiring.ts`, fixture, and focused test.
-- **Add evidence-only behavior:** use `silentCheck(...)`; update derivation and its tests instead of
-  rendering a local block.
-- **Update a check:** change only its matcher, detection location, message, hint, or exemptions
-  required by the stated policy; update its fixture/test.
-- **Delete or merge:** remove the module, barrel export, preset entry, tests, fixtures,
-  documentation, and any stale `signalOf(...)` lookup. Move retained coverage to the replacement
-  check.
-- **Change derived advice:** modify `defaultDerive` or the advice module; do not add check-to-check
-  dependencies.
+- **Add a rule:** implementation, `_test.go`, and `testdata/` under
+  `internal/rules/<snake_case_name>/`; sorted import and rule value in `internal/rules/catalog.go`;
+  `docs/rules.md`; `docs/rules/<kebab-case-name>.md`; and affected public skills.
+- **Update a rule:** change only the owning package behavior, focused coverage, and public text
+  required by the policy boundary.
+- **Delete or merge:** remove the obsolete package, catalog entries, tests, fixtures, and rule docs;
+  move retained coverage to the surviving rule.
+- **Configure selection:** plan ordered `better-typescript.json` commands with explicit file and rule
+  selectors; do not change the built-in catalog.
+- **Refactor locally:** name only the consumer code and its existing tests; do not add a linter rule.
 
-Audit public behavior explicitly. Rule name, message, and hint form a local report/watch identity;
-advice level, path, and title form advice identity. A rename, rewording, deletion, or
-reported/silent change is a deliberate compatibility decision and needs affected report, CLI, and
-watch tests.
+Audit public behavior explicitly. A rule's name, message, help, report location, and default-enabled
+status are compatibility decisions. Plan only the changes required by the chosen policy.
 
 ## 6. Define verification and handoff
 
-List verification in this order:
+For rule changes, list verification in this order:
 
-1. Focused check or advice test.
-2. Fixture compilation.
-3. Affected default-derive, report, CLI, and watch tests.
-4. `bun run test`.
-5. `bun run typecheck`.
-6. `bun run format:check`.
-7. `bun run build`.
-8. `bun run dev`, beginning at `No signals`.
-9. `bun run bench` when the change affects rule performance or the full verification bar is
-   requested.
+1. `mise exec go@1.26 -- go test ./internal/rules/<snake_case_name>`.
+2. `./scripts/check.sh`.
+3. Final diff inspection for unrelated edits, duplicate ownership, stale catalog or docs, and extra
+   listener registrations or traversals.
 
-Leave changes uncommitted on the current branch unless the maintainer explicitly requests a commit.
+For configuration or local-refactor plans, use the narrowest current consumer checks plus any
+repository-required full check. Leave changes uncommitted unless the maintainer asks for a commit.
 
 ## Required response format
 
