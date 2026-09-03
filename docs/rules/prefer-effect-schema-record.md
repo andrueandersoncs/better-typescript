@@ -2,7 +2,7 @@
 
 ## What it does
 
-Reports every tuple type alias. It also reports an interface or object type alias when a project `.ts` file constructs that type with a contextually typed object literal. Object declarations with no detected construction are allowed.
+Reports every tuple type alias. It also reports an interface or object type alias when a project `.ts` file constructs that type with a contextually typed object literal. Object declarations with no detected construction and runtime records with callable properties are allowed.
 
 ## When to use it
 

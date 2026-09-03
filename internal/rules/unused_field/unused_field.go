@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
+	"github.com/andrueandersoncs/better-typescript/internal/utils"
 	"github.com/andrueandersoncs/typescript-go/ast"
 )
 
@@ -163,7 +164,42 @@ func stableFieldName(sourceFile *ast.SourceFile, field *ast.Symbol, declaration 
 	return field.Name
 }
 
+func effectSchemaDecodedInterface(ctx rule.RuleContext, declaration *ast.Node) bool {
+	if !ast.IsInterfaceDeclaration(declaration) {
+		return false
+	}
+	clauses := declaration.AsInterfaceDeclaration().HeritageClauses
+	if clauses == nil {
+		return false
+	}
+	for _, clause := range clauses.Nodes {
+		for _, heritage := range clause.AsHeritageClause().Types.Nodes {
+			if !ast.IsExpressionWithTypeArguments(heritage) {
+				continue
+			}
+			expression := heritage.AsExpressionWithTypeArguments()
+			if expression.TypeArguments == nil || len(expression.TypeArguments.Nodes) != 1 || !ast.IsPropertyAccessExpression(expression.Expression) {
+				continue
+			}
+			typeAccess := expression.Expression.AsPropertyAccessExpression()
+			schemaAccess := typeAccess.Expression
+			if typeAccess.Name() == nil || typeAccess.Name().Text() != "Type" || !ast.IsPropertyAccessExpression(schemaAccess) {
+				continue
+			}
+			schemaNamespace := schemaAccess.AsPropertyAccessExpression()
+			root := schemaNamespace.Expression
+			if schemaNamespace.Name() != nil && schemaNamespace.Name().Text() == "Schema" && ast.IsIdentifier(root) && utils.IsEffectSchemaSymbolAtLocation(ctx.TypeChecker, root) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func reportUnusedFields(ctx rule.RuleContext, declaration *ast.Node, readSymbols map[*ast.Symbol]struct{}, readFieldNames map[string]struct{}, usedByExportedFunction map[*ast.Symbol]struct{}) {
+	if effectSchemaDecodedInterface(ctx, declaration) {
+		return
+	}
 	nameNode := declaration.Name()
 	if nameNode == nil || !ast.IsIdentifier(nameNode) {
 		return

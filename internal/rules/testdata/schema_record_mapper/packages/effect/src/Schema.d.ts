@@ -15,3 +15,4 @@ export declare namespace Schema {
 }
 export declare const String: () => Schema<string>
 export declare const Struct: <Fields extends object>(fields: Fields) => Schema<{ readonly [K in keyof Fields]: unknown }>
+export declare const decodeUnknownSync: <A>(schema: Schema<A>) => (input: unknown) => A

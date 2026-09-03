@@ -3,6 +3,7 @@ package prefer_effect_schema_record
 import (
 	"fmt"
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
+	"github.com/andrueandersoncs/better-typescript/internal/utils"
 	"github.com/andrueandersoncs/typescript-go/ast"
 	"github.com/andrueandersoncs/typescript-go/checker"
 	"path/filepath"
@@ -24,6 +25,9 @@ var Rule = rule.Rule{Name: "prefer-effect-schema-record", Run: func(ctx rule.Rul
 		symbol := ctx.TypeChecker.GetSymbolAtLocation(name)
 		file, ok := constructed[symbol]
 		if !ok {
+			return
+		}
+		if utils.HasCallableProperty(ctx.TypeChecker, ctx.TypeChecker.GetTypeAtLocation(name), name) {
 			return
 		}
 		typeName := name.AsIdentifier().Text

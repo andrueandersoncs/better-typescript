@@ -21,7 +21,7 @@ var Rule = rule.Rule{Name: "prefer-effect-schema-constructor", Run: func(ctx rul
 	}
 	check := func(expression *ast.Node) {
 		for _, branch := range branches(expression) {
-			if ast.IsObjectLiteralExpression(branch) && len(branch.AsObjectLiteralExpression().Properties.Nodes) > 0 && !identifierShorthandBag(branch) {
+			if ast.IsObjectLiteralExpression(branch) && len(branch.AsObjectLiteralExpression().Properties.Nodes) > 0 && !identifierShorthandBag(branch) && !utils.HasCallableProperty(ctx.TypeChecker, ctx.TypeChecker.GetTypeAtLocation(branch), branch) {
 				report(branch)
 			}
 		}

@@ -1,10 +1,8 @@
 package schema_record_interface
 
 import (
-	"path/filepath"
-	"strings"
-
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
+	"github.com/andrueandersoncs/better-typescript/internal/utils"
 	"github.com/andrueandersoncs/typescript-go/ast"
 )
 
@@ -64,39 +62,6 @@ func expressionRoot(node *ast.Node) *ast.Node {
 	return nil
 }
 
-func symbolInEffectSchema(symbol *ast.Symbol) bool {
-	if symbol == nil || symbol.Flags&ast.SymbolFlagsAlias != 0 {
-		return false
-	}
-	for _, declaration := range symbol.Declarations {
-		file := ast.GetSourceFileOfNode(declaration)
-		if file == nil {
-			continue
-		}
-		name := strings.ReplaceAll(file.FileName(), "\\", "/")
-		base := filepath.Base(name)
-		if base != "Schema.ts" && base != "Schema.d.ts" {
-			continue
-		}
-		if strings.Contains(name, "/node_modules/effect/") || strings.Contains(name, "/packages/effect/src/") {
-			return true
-		}
-	}
-	return false
-}
-
-func resolvedSymbol(ctx rule.RuleContext, node *ast.Node) *ast.Symbol {
-	symbol := ctx.TypeChecker.GetSymbolAtLocation(node)
-	if symbol != nil && symbol.Flags&ast.SymbolFlagsAlias != 0 {
-		return ctx.TypeChecker.GetAliasedSymbol(symbol)
-	}
-	return symbol
-}
-
-func importedEffectSymbol(ctx rule.RuleContext, node *ast.Node) bool {
-	return symbolInEffectSchema(resolvedSymbol(ctx, node))
-}
-
 func decodedInterface(ctx rule.RuleContext, node *ast.Node, schemaName string) *ast.Symbol {
 	clauses := node.AsInterfaceDeclaration().HeritageClauses
 	if clauses == nil {
@@ -110,7 +75,7 @@ func decodedInterface(ctx rule.RuleContext, node *ast.Node, schemaName string) *
 			expression := heritage.AsExpressionWithTypeArguments()
 			path := expressionPath(expression.Expression)
 			root := expressionRoot(expression.Expression)
-			if len(path) != 3 || path[1] != "Schema" || path[2] != "Type" || root == nil || !importedEffectSymbol(ctx, root) || expression.TypeArguments == nil || len(expression.TypeArguments.Nodes) != 1 {
+			if len(path) != 3 || path[1] != "Schema" || path[2] != "Type" || root == nil || !utils.IsEffectSchemaSymbolAtLocation(ctx.TypeChecker, root) || expression.TypeArguments == nil || len(expression.TypeArguments.Nodes) != 1 {
 				continue
 			}
 			argument := expression.TypeArguments.Nodes[0]
@@ -147,11 +112,11 @@ func effectStructCall(ctx rule.RuleContext, call *ast.CallExpression) bool {
 	if ast.IsPropertyAccessExpression(callee) {
 		access := callee.AsPropertyAccessExpression()
 		receiver := skipTransparent(access.Expression)
-		return access.Name() != nil && access.Name().Text() == "Struct" && receiver != nil && ast.IsIdentifier(receiver) && importedEffectSymbol(ctx, receiver)
+		return access.Name() != nil && access.Name().Text() == "Struct" && receiver != nil && ast.IsIdentifier(receiver) && utils.IsEffectSchemaSymbolAtLocation(ctx.TypeChecker, receiver)
 	}
 	if ast.IsIdentifier(callee) {
-		symbol := resolvedSymbol(ctx, callee)
-		return symbol != nil && symbol.Name == "Struct" && symbolInEffectSchema(symbol)
+		symbol := utils.ResolvedSymbol(ctx.TypeChecker, callee)
+		return symbol != nil && symbol.Name == "Struct" && utils.IsEffectSchemaSymbol(symbol)
 	}
 	return false
 }

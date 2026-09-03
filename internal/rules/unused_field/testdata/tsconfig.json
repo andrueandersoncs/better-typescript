@@ -3,6 +3,10 @@
     "target": "ES2022",
     "module": "ESNext",
     "strict": true,
+    "moduleResolution": "Bundler",
+    "paths": {
+      "effect": ["./packages/effect/src/index.d.ts"]
+    },
     "noEmit": true
   },
   "include": ["src/**/*.ts"]
