@@ -7,6 +7,12 @@
       "skillPath": "skills/absurd-code-review/SKILL.md",
       "computedHash": "3771886151e83c658c1582cdfdca37b9ec460153dd8294a5c386b8c673c18651"
     },
+    "ai-opportunity-assessment": {
+      "source": "andrueandersoncs/skills",
+      "sourceType": "github",
+      "skillPath": "skills/ai-opportunity-assessment/SKILL.md",
+      "computedHash": "17802fd9ac32933a9b76911f1edbbdc9b07ea8d61323deefdc19bebaca9c5a82"
+    },
     "ask-matt": {
       "source": "mattpocock/skills",
       "sourceType": "github",
