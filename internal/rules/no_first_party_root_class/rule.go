@@ -8,7 +8,7 @@ import (
 var message = rule.RuleMessage{
 	Id:          "no-first-party-root-class",
 	Description: "Avoid unsupported first-party classes.",
-	Help:        "Use a class only when it extends another class without private methods. Replace root classes with functions, grouping them in a plain object when the namespace is part of the API.",
+	Help:        "Use a class only when it extends another class. Keep methods static unless they declare override; private methods are not allowed. Replace root classes with functions, grouping them in a plain object when the namespace is part of the API.",
 }
 
 func hasExtendsClause(node *ast.Node) bool {
@@ -24,14 +24,20 @@ func hasExtendsClause(node *ast.Node) bool {
 	return false
 }
 
-func privateMethod(node *ast.Node) bool {
-	return ast.IsMethodDeclaration(node) &&
-		(ast.HasSyntacticModifier(node, ast.ModifierFlagsPrivate) || ast.IsPrivateIdentifier(node.Name()))
+func unsupportedMethod(node *ast.Node) bool {
+	if !ast.IsMethodDeclaration(node) {
+		return false
+	}
+	if ast.HasSyntacticModifier(node, ast.ModifierFlagsPrivate) || ast.IsPrivateIdentifier(node.Name()) {
+		return true
+	}
+	return !ast.HasSyntacticModifier(node, ast.ModifierFlagsStatic) &&
+		!ast.HasSyntacticModifier(node, ast.ModifierFlagsOverride)
 }
 
-func hasPrivateMethod(node *ast.Node) bool {
+func hasUnsupportedMethod(node *ast.Node) bool {
 	for _, member := range node.ClassLikeData().Members.Nodes {
-		if privateMethod(member) {
+		if unsupportedMethod(member) {
 			return true
 		}
 	}
@@ -42,7 +48,7 @@ var Rule = rule.Rule{
 	Name: "no-first-party-root-class",
 	Run: func(ctx rule.RuleContext, _ any) rule.RuleListeners {
 		check := func(node *ast.Node) {
-			if hasExtendsClause(node) && !hasPrivateMethod(node) {
+			if hasExtendsClause(node) && !hasUnsupportedMethod(node) {
 				return
 			}
 			target := node.Name()

@@ -1,6 +1,6 @@
 # Built-in rules
 
-The fixed catalog contains these 135 rules:
+The fixed catalog contains these 134 rules:
 
 - [`boundary-schema-decode`](./rules/boundary-schema-decode.md)
 - [`bounded-retry-schedule`](./rules/bounded-retry-schedule.md)
@@ -82,10 +82,10 @@ The fixed catalog contains these 135 rules:
 - [`prefer-effect-object`](./rules/prefer-effect-object.md)
 - [`prefer-effect-property-accessors`](./rules/prefer-effect-property-accessors.md)
 - [`prefer-effect-record-filter-map`](./rules/prefer-effect-record-filter-map.md)
+- [`prefer-effect-schema-class`](./rules/prefer-effect-schema-class.md)
 - [`prefer-effect-schema-constructor`](./rules/prefer-effect-schema-constructor.md)
 - [`prefer-effect-schema-guard`](./rules/prefer-effect-schema-guard.md)
 - [`prefer-effect-schema-is`](./rules/prefer-effect-schema-is.md)
-- [`prefer-effect-schema-record`](./rules/prefer-effect-schema-record.md)
 - [`prefer-effectful-function`](./rules/prefer-effectful-function.md)
 - [`prefer-equivalence-strict-equal`](./rules/prefer-equivalence-strict-equal.md)
 - [`prefer-eta-reduction`](./rules/prefer-eta-reduction.md)
@@ -118,7 +118,6 @@ The fixed catalog contains these 135 rules:
 - [`require-result-cardinality-name-consistency`](./rules/require-result-cardinality-name-consistency.md)
 - [`require-result-shape-name-consistency`](./rules/require-result-shape-name-consistency.md)
 - [`retry-without-jitter`](./rules/retry-without-jitter.md)
-- [`schema-class-models`](./rules/schema-class-models.md)
 - [`schema-error-class`](./rules/schema-error-class.md)
 - [`schema-name-suffix`](./rules/schema-name-suffix.md)
 - [`schema-optional-key`](./rules/schema-optional-key.md)

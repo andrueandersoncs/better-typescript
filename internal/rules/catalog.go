@@ -81,10 +81,10 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_effect_object"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_effect_property_accessors"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_effect_record_filter_map"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_effect_schema_class"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_effect_schema_constructor"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_effect_schema_guard"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_effect_schema_is"
-	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_effect_schema_record"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_effectful_function"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_equivalence_strict_equal"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_eta_reduction"
@@ -117,7 +117,6 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/rules/require_result_cardinality_name_consistency"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/require_result_shape_name_consistency"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/retry_without_jitter"
-	"github.com/andrueandersoncs/better-typescript/internal/rules/schema_class_models"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/schema_error_class"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/schema_name_suffix"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/schema_optional_key"
@@ -221,10 +220,10 @@ var BuiltinRules = []rule.Rule{
 	prefer_effect_object.Rule,
 	prefer_effect_property_accessors.Rule,
 	prefer_effect_record_filter_map.Rule,
+	prefer_effect_schema_class.Rule,
 	prefer_effect_schema_constructor.Rule,
 	prefer_effect_schema_guard.Rule,
 	prefer_effect_schema_is.Rule,
-	prefer_effect_schema_record.Rule,
 	prefer_effectful_function.PreferEffectfulFunctionRule,
 	prefer_equivalence_strict_equal.PreferEquivalenceStrictEqualRule,
 	prefer_eta_reduction.PreferEtaReductionRule,
@@ -257,7 +256,6 @@ var BuiltinRules = []rule.Rule{
 	require_result_cardinality_name_consistency.Rule,
 	require_result_shape_name_consistency.Rule,
 	retry_without_jitter.Rule,
-	schema_class_models.Rule,
 	schema_error_class.SchemaErrorClassRule,
 	schema_name_suffix.Rule,
 	schema_optional_key.SchemaOptionalKeyRule,

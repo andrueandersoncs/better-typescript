@@ -9,8 +9,8 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/rules/duplicate_shape"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_property_access_after_call"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_value_aliases"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_effect_schema_class"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_effect_schema_constructor"
-	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_effect_schema_record"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/redundant_alias"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/schema_record_interface"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/unused_field"
@@ -26,7 +26,7 @@ func TestSchemaRecordConjunction(t *testing.T) {
 		no_property_access_after_call.Rule,
 		no_value_aliases.Rule,
 		prefer_effect_schema_constructor.Rule,
-		prefer_effect_schema_record.Rule,
+		prefer_effect_schema_class.Rule,
 		redundant_alias.Rule,
 		schema_record_interface.Rule,
 		unused_field.UnusedFieldRule,

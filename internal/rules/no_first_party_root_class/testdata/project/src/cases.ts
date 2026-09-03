@@ -72,3 +72,27 @@ export class OverloadedUtility {
 
 const Named = class Root {}
 const Anonymous = class {}
+
+declare const Schema: any
+declare const AgentPolicyFields: any
+export class AgentPolicy extends Schema.Class<AgentPolicy>("AgentPolicy")(AgentPolicyFields) {
+  static resolve(): AgentPolicy {
+    return AgentPolicy.make({})
+  }
+
+  static override make(input: unknown): AgentPolicy {
+    return super.make(input)
+  }
+}
+
+export class StatefulAgentPolicy extends Schema.Class<StatefulAgentPolicy>("StatefulAgentPolicy")(AgentPolicyFields) {
+  resolve(): StatefulAgentPolicy {
+    return this
+  }
+}
+
+export class ErrorWithOverride extends Error {
+  override toString(): string {
+    return super.toString()
+  }
+}
