@@ -80,16 +80,16 @@ db.close();
 - Observable shape: An ISO timestamp literal is assigned to `now` and reused as migration creation and update times.
 - Existing rules: none
 - Pattern: [hardcoded-timestamp-string-literal](../patterns/hardcoded-timestamp-string-literal.md)
-- Emergence: new-prospective
-- Reason: The variable role and literal are AST-detectable, and the value can come from an injected clock or `new Date().toISOString()`. Fixed fixture timestamps remain allowed.
+- Emergence: attached
+- Reason: The existing pattern owns this AST-detectable operational-time shape and its injected-clock or runtime-time replacement.
 
 ### Shape: Long positional SQL value lists
 
 - Observable shape: SQL `VALUES` clauses contain up to 17 positional `?` placeholders paired with long `.run(...)` argument lists.
 - Existing rules: none
 - Pattern: [bloated-sql-placeholder-list](../patterns/bloated-sql-placeholder-list.md)
-- Emergence: new-prospective
-- Reason: SQL literals and adjacent argument counts are detectable, and named fields or a typed query builder provide an actionable replacement.
+- Emergence: attached
+- Reason: The existing pattern owns this detectable positional-binding shape and its named-field or typed-query replacement.
 
 ### Shape: Unvalidated JSON database writes
 

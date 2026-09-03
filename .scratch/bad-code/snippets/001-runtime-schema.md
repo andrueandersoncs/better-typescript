@@ -46,25 +46,8 @@ export const RuntimeOptionsSchema = Schema.Struct({
 
 ### Shape: Monolithic schema struct
 
-- Observable shape:
-  - Schema.Struct with many unrelated configuration fields
+- Observable shape: One `Schema.Struct` contains 29 configuration fields.
 - Existing rules: none
 - Pattern: [monolithic-runtime-schema](../patterns/monolithic-runtime-schema.md)
-- Emergence: new-prospective
-- Reason: Detectable via AST; replacement: split into focused subschemas
-
-### Shape: Single-value literals schema
-
-- Observable shape:
-  - Schema.Literals with single string value
-- Existing rules: none
-- Pattern: [hardcoded-literal](../patterns/hardcoded-literal.md)
-- Emergence: new-prospective
-- Reason: Detectable via AST; replacement: use Schema.Literal
-
-## Patterns
-
-| Pattern | Status |
-| --- | --- |
-| [monolithic-runtime-schema](../patterns/monolithic-runtime-schema.md) | prospective |
-| [hardcoded-literal](../patterns/hardcoded-literal.md) | prospective |
+- Emergence: no-pattern
+- Reason: Syntax and checker facts cannot determine whether the fields are unrelated concerns, and one example does not establish a non-arbitrary size boundary.

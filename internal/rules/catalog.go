@@ -57,6 +57,7 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_throw"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_trivial_effect_fn"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_try_catch"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/no_type_specific_equivalence_strict"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_undefined"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_unsafe_effect_apis"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_unused"
@@ -196,6 +197,7 @@ var BuiltinRules = []rule.Rule{
 	no_throw.Rule,
 	no_trivial_effect_fn.Rule,
 	no_try_catch.Rule,
+	no_type_specific_equivalence_strict.Rule,
 	no_undefined.Rule,
 	no_unsafe_effect_apis.Rule,
 	no_unused.Rule,

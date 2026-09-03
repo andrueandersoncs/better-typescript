@@ -1,10 +1,10 @@
 # Monolithic runtime schema
 
-- Status: prospective
+- Status: rejected
 - Status-source: agent
 - Rule candidate: none
 - Created: 2026-09-02
-- Updated: 2026-09-02
+- Updated: 2026-09-03
 
 ## Invariant
 
@@ -12,7 +12,7 @@ A single `Schema.Struct` that aggregates many unrelated configuration concerns (
 
 ## Detection
 
-AST: find `Schema.Struct` with more than 10 fields spanning at least 5 distinct concern categories.
+undetectable: syntax and checker facts cannot determine whether fields belong to unrelated concerns, and a field-count threshold would be arbitrary.
 
 ## Evidence
 
@@ -28,3 +28,4 @@ No built-in rule owns this specific shape.
 ## Decision
 
 - Initial status: prospective (one evidence snippet)
+- 2026-09-03: Rejected because one example does not establish a predictable boundary and the proposed concern-based detection is not mechanically reliable.

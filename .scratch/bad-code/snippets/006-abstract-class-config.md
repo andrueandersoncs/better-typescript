@@ -43,5 +43,5 @@ export abstract class AgentPoolOptions extends Object {
 - Observable shape: Abstract class with 5+ abstract readonly properties
 - Existing rules: none
 - Pattern: [abstract-class-with-readonly-properties](../patterns/abstract-class-with-readonly-properties.md)
-- Emergence: new-prospective
-- Reason: Detectable via AST; actionable replacement: use interface or const object with explicit type
+- Emergence: attached
+- Reason: The existing pattern owns this data-only abstract class shape and its interface replacement.

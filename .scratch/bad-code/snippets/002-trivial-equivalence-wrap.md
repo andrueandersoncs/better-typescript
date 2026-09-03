@@ -22,27 +22,24 @@ const booleanEqualsFalse = (value: boolean) => booleanEqual(value, false);
 
 ### Shape: Pass-through string wrapper
 
-- Observable shape:
-  - Single-argument function wrapping a string method call
-- Existing rules: `redundant-alias`
+- Observable shape: A single-argument function wraps the `String.trim` method.
+- Existing rules: `redundant-alias` covers type declarations, and `prefer-eta-reduction` allows checker-identified methods.
 - Pattern: none
-- Emergence: covered
-- Reason: Covered by existing built-in rule for redundant aliases
+- Emergence: no-pattern
+- Reason: No built-in rule owns this shape, and one method wrapper does not establish a reusable default rule.
 
 ### Shape: Type-specific equivalence strict comparators
 
-- Observable shape:
-  - Creating multiple Equivalence.strictEqual instances for primitive types
-- Existing rules: none
-- Pattern: [type-specific-equivalence-strict](../patterns/type-specific-equivalence-strict.md)
-- Emergence: new-prospective
-- Reason: Detectable via AST: calls to Equivalence.strictEqual with type arguments; replacement: use generic EquivalenceStrictEqual directly
+- Observable shape: The module binds `Equivalence.strictEqual` separately for `string` and `boolean`.
+- Existing rules: `no-type-specific-equivalence-strict`
+- Pattern: none
+- Emergence: covered
+- Reason: The built-in rule reports excess top-level primitive-specific `Equivalence.strictEqual` bindings.
 
 ### Shape: Boolean predicate from equivalence
 
-- Observable shape:
-  - Function that compares boolean to false via equivalence wrapper
-- Existing rules: `prefer-direct-boolean-return`
+- Observable shape: A function compares a boolean to `false` through a bound equivalence.
+- Existing rules: `prefer-direct-boolean-return` covers conditional boolean-literal returns, not this direct expression.
 - Pattern: none
-- Emergence: covered
-- Reason: Covered by existing rule preferring direct boolean comparisons
+- Emergence: no-pattern
+- Reason: No built-in rule owns this shape, and one local wrapper does not establish a reusable pattern.

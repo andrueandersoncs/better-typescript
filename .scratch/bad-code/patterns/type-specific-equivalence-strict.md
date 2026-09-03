@@ -1,10 +1,10 @@
 # Type-specific equivalence strict comparators
 
-- Status: confirmed
+- Status: rejected
 - Status-source: agent
-- Rule candidate: `no-type-specific-equivalence-strict`
+- Rule candidate: none
 - Created: 2026-09-02
-- Updated: 2026-09-02
+- Updated: 2026-09-03
 
 ## Invariant
 
@@ -19,19 +19,17 @@ AST: within one module, find multiple variable initializers calling `Equivalence
 ## Evidence
 
 - Snippets:
-  - [002](../snippets/002-trivial-equivalence-wrap.md) — defines `stringEqual` and `booleanEqual`
-  - [005](../snippets/005-explicit-equivalence-types.md) — independently defines string and number instances
+  - none
 - Allowed nearby:
   - One semantically named equivalence instance
   - A direct `Equivalence.strictEqual<T>()` comparison at its use site
 
 ## Overlap
 
-- `redundant-alias` covers pass-through wrappers, not these bound comparator instances.
-- `prefer-equivalence-strict-equal` recommends the API over raw `===` but does not own repeated primitive-specific bindings.
-- No built-in rule owns this family.
+`no-type-specific-equivalence-strict` owns families of top-level primitive-specific bindings. `prefer-equivalence-strict-equal` continues to own raw `===` comparisons.
 
 ## Decision
 
 - Initial status: prospective (one evidence snippet)
 - 2026-09-02: Confirmed from two independent snippets with the same detectable family and replacement.
+- 2026-09-03: Rejected because the built-in `no-type-specific-equivalence-strict` rule now owns the pattern.

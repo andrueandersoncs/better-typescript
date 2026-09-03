@@ -58,6 +58,7 @@ The fixed catalog contains these 135 rules:
 - [`no-throw`](./rules/no-throw.md)
 - [`no-trivial-effect-fn`](./rules/no-trivial-effect-fn.md)
 - [`no-try-catch`](./rules/no-try-catch.md)
+- [`no-type-specific-equivalence-strict`](./rules/no-type-specific-equivalence-strict.md)
 - [`no-undefined`](./rules/no-undefined.md)
 - [`no-unsafe-effect-apis`](./rules/no-unsafe-effect-apis.md)
 - [`no-unused`](./rules/no-unused.md)

@@ -40,8 +40,8 @@ export class DispatchQueue extends Context.Service<DispatchQueue, {
 - Observable shape: Eight operations in a `Context.Service` contract expose `unknown` as the `Effect.Effect` error type.
 - Existing rules: `no-error-type` allows `unknown` at untyped boundaries; `typed-error-recovery` checks recovery calls. Neither owns service contract error types.
 - Pattern: [unknown-effect-service-error](../patterns/unknown-effect-service-error.md)
-- Emergence: new-prospective
-- Reason: A service contract is a typed boundary. The shape is reusable, AST-detectable, and replaceable with specific tagged errors or `never` for infallible operations.
+- Emergence: attached
+- Reason: The existing pattern owns this reusable typed-boundary shape and its specific-error or `never` replacement.
 
 ### Shape: Large inline Context.Service shape
 

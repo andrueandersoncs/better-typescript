@@ -42,5 +42,5 @@ export const runtimeOptionsHasLogRetainedFiles = (options: RuntimeOptions) =>
 - Observable shape: Multiple utility functions repeat property-presence checks.
 - Existing rules: none
 - Pattern: [boilerplate-existence-checks](../patterns/boilerplate-existence-checks.md)
-- Emergence: new-prospective
-- Reason: The repeated shapes are AST-detectable and can be replaced with shared typed helpers.
+- Emergence: attached
+- Reason: The existing pattern owns this repeated, AST-detectable family and its shared-helper replacement.

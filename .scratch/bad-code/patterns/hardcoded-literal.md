@@ -1,10 +1,10 @@
 # Hardcoded literal schemas
 
-- Status: prospective
+- Status: rejected
 - Status-source: agent
 - Rule candidate: none
 - Created: 2026-09-02
-- Updated: 2026-09-02
+- Updated: 2026-09-03
 
 ## Invariant
 
@@ -17,7 +17,7 @@ AST: find `Schema.Literals` call expressions with array literal containing exact
 ## Evidence
 
 - Snippets:
-  - [001](../snippets/001-runtime-schema.md) — defines integrationMode as Literals(["automatic"])
+  - none
 - Allowed nearby:
   - Literals with 2+ distinct values
 
@@ -28,3 +28,4 @@ No built-in rule owns this specific shape.
 ## Decision
 
 - Initial status: prospective (one evidence snippet)
+- 2026-09-03: Rejected because the cited snippet uses `Schema.Literal`, not the disliked `Schema.Literals` single-value shape. No evidence remains.

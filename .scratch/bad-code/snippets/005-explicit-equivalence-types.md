@@ -18,10 +18,10 @@ const equalNumber = Equivalence.strictEqual<number>();
 
 ## Analysis
 
-### Shape: explicit type parameters on Equivalence.strictEqual
+### Shape: Type-specific equivalence strict comparators
 
-- Observable shape: Type arguments on `Equivalence.strictEqual<T>()` calls where `T` could be inferred
-- Existing rules: none
-- Pattern: [type-specific-equivalence-strict](../patterns/type-specific-equivalence-strict.md)
-- Emergence: attached
-- Reason: This independently repeats the existing pattern's family of primitive-specific `Equivalence.strictEqual` bindings.
+- Observable shape: The module binds `Equivalence.strictEqual` separately for `string` and `number`.
+- Existing rules: `no-type-specific-equivalence-strict`
+- Pattern: none
+- Emergence: covered
+- Reason: The built-in rule reports excess top-level primitive-specific `Equivalence.strictEqual` bindings.
