@@ -2,7 +2,7 @@
 
 Disliked TypeScript shapes mined from maintainer-fed snippets. Not the built-in rule catalog.
 
-Status counts: confirmed 0, prospective 5, rejected 3.
+Status counts: confirmed 0, prospective 6, rejected 3.
 
 ## Patterns
 
@@ -11,6 +11,7 @@ Status counts: confirmed 0, prospective 5, rejected 3.
 | [abstract-class-with-readonly-properties](patterns/abstract-class-with-readonly-properties.md) | prospective | 006 | none |
 | [bloated-sql-placeholder-list](patterns/bloated-sql-placeholder-list.md) | prospective | 007 | none |
 | [boilerplate-existence-checks](patterns/boilerplate-existence-checks.md) | prospective | 003 | none |
+| [constructable-runtime-record-object](patterns/constructable-runtime-record-object.md) | prospective | 008 | none |
 | [hardcoded-timestamp-string-literal](patterns/hardcoded-timestamp-string-literal.md) | prospective | 007 | none |
 | [unknown-effect-service-error](patterns/unknown-effect-service-error.md) | prospective | 004 | none |
 | [hardcoded-literal](patterns/hardcoded-literal.md) | rejected | none | none |
@@ -28,4 +29,5 @@ Status counts: confirmed 0, prospective 5, rejected 3.
 | [005](snippets/005-explicit-equivalence-types.md) | Explicit type parameters on Equivalence.strictEqual | none |
 | [006](snippets/006-abstract-class-config.md) | Abstract class with many readonly properties | [abstract-class-with-readonly-properties](patterns/abstract-class-with-readonly-properties.md) |
 | [007](snippets/007-hardcoded-timestamps-in-db-migration.md) | Hardcoded timestamps and raw SQL in database migration | [hardcoded-timestamp-string-literal](patterns/hardcoded-timestamp-string-literal.md), [bloated-sql-placeholder-list](patterns/bloated-sql-placeholder-list.md) |
+| [008](snippets/008-persisted-ref-object-factory.md) | PersistedRef object factory | [constructable-runtime-record-object](patterns/constructable-runtime-record-object.md) |
 
