@@ -115,6 +115,12 @@
       "skillPath": "skills/engineering/implement/SKILL.md",
       "computedHash": "2139cfedf24791adbc839aaab6019cff158af1e28bfead020ec6e0ce01b3e74d"
     },
+    "implement-effect-dsls": {
+      "source": "andrueandersoncs/skills",
+      "sourceType": "github",
+      "skillPath": "skills/implement-effect-dsls/SKILL.md",
+      "computedHash": "4cd09acb35dafdb7118827c0896e08d0de9c9bc5e603b80c3b55fd3fb8a27c2d"
+    },
     "implement-happy-path": {
       "source": "andrueandersoncs/skills",
       "sourceType": "github",
