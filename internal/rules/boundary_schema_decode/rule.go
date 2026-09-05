@@ -32,6 +32,9 @@ var Rule = rule.Rule{Name: "boundary-schema-decode", Run: func(ctx rule.RuleCont
 		target := call.Expression
 		if name == "parse" && receiver != nil && ast.IsIdentifier(unwrap(receiver)) && unwrap(receiver).Text() == "JSON" {
 			subject = "JSON.parse"
+			if call.Arguments != nil && len(call.Arguments.Nodes) > 0 && ast.IsStringLiteralLike(unwrap(call.Arguments.Nodes[0])) {
+				return
+			}
 		} else if name == "json" && receiver != nil {
 			receiverText := nodeText(ctx.SourceFile, receiver)
 			if !regexp.MustCompile(`(?i)(request|req|body|payload|event)`).MatchString(receiverText) {

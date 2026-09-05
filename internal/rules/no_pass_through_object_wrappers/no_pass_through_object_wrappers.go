@@ -46,6 +46,9 @@ func hasNonemptyObjectArgument(invocation *ast.Node) bool {
 }
 func exactForwarder(function *ast.Node, invocation *ast.Node) bool {
 	parameters := function.Parameters()
+	if len(parameters) < 2 {
+		return false
+	}
 	parameterNames := make([]string, len(parameters))
 	for index, parameterNode := range parameters {
 		parameter := parameterNode.AsParameterDeclaration()

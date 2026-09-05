@@ -2,7 +2,7 @@
 
 ## What it does
 
-Reports `JSON.parse(...)` and boundary-shaped `.json()` calls when the surrounding function has no recognized decode call. Boundary receiver names include `request`, `req`, `body`, `payload`, and `event`. The recognized names are `decodeUnknown`, `decodeUnknownEffect`, `decodeUnknownSync`, `decodeUnknownOption`, `decodeUnknownEither`, `decodeUnknownResult`, `decodeUnknownExit`, `decodeUnknownPromise`, `decode`, `decodeEffect`, `decodeSync`, `decodeOption`, `decodeEither`, `decodeResult`, `decodeExit`, and `decodePromise`.
+Reports `JSON.parse(...)` with non-literal input and boundary-shaped `.json()` calls when the surrounding function has no recognized decode call. A string literal passed to `JSON.parse(...)` is not boundary data and is allowed. Boundary receiver names include `request`, `req`, `body`, `payload`, and `event`. The recognized names are `decodeUnknown`, `decodeUnknownEffect`, `decodeUnknownSync`, `decodeUnknownOption`, `decodeUnknownEither`, `decodeUnknownResult`, `decodeUnknownExit`, `decodeUnknownPromise`, `decode`, `decodeEffect`, `decodeSync`, `decodeOption`, `decodeEither`, `decodeResult`, `decodeExit`, and `decodePromise`.
 
 ## When to use it
 

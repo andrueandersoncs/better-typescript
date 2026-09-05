@@ -2,7 +2,7 @@
 
 Disliked TypeScript shapes mined from maintainer-fed snippets. Not the built-in rule catalog.
 
-Status counts: confirmed 0, prospective 6, rejected 3.
+Status counts: confirmed 0, prospective 7, rejected 3.
 
 ## Patterns
 
@@ -13,6 +13,7 @@ Status counts: confirmed 0, prospective 6, rejected 3.
 | [boilerplate-existence-checks](patterns/boilerplate-existence-checks.md) | prospective | 003 | none |
 | [constructable-runtime-record-object](patterns/constructable-runtime-record-object.md) | prospective | 008 | none |
 | [hardcoded-timestamp-string-literal](patterns/hardcoded-timestamp-string-literal.md) | prospective | 007 | none |
+| [renamable-object-property-aliases](patterns/renamable-object-property-aliases.md) | prospective | 010 | none |
 | [unknown-effect-service-error](patterns/unknown-effect-service-error.md) | prospective | 004 | none |
 | [hardcoded-literal](patterns/hardcoded-literal.md) | rejected | none | none |
 | [monolithic-runtime-schema](patterns/monolithic-runtime-schema.md) | rejected | 001 | none |
@@ -30,4 +31,6 @@ Status counts: confirmed 0, prospective 6, rejected 3.
 | [006](snippets/006-abstract-class-config.md) | Abstract class with many readonly properties | [abstract-class-with-readonly-properties](patterns/abstract-class-with-readonly-properties.md) |
 | [007](snippets/007-hardcoded-timestamps-in-db-migration.md) | Hardcoded timestamps and raw SQL in database migration | [hardcoded-timestamp-string-literal](patterns/hardcoded-timestamp-string-literal.md), [bloated-sql-placeholder-list](patterns/bloated-sql-placeholder-list.md) |
 | [008](snippets/008-persisted-ref-object-factory.md) | PersistedRef object factory | [constructable-runtime-record-object](patterns/constructable-runtime-record-object.md) |
+| [009](snippets/009-dense-generic-function-signature.md) | Dense generic function signature | none |
+| [010](snippets/010-renamable-object-property-aliases.md) | Renamable object property aliases | [renamable-object-property-aliases](patterns/renamable-object-property-aliases.md) |
 

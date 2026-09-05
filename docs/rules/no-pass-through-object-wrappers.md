@@ -2,7 +2,7 @@
 
 ## What it does
 
-Reports arrow functions, function expressions, and function declarations whose expression body, or first block statement, returns a call or constructor with a nonempty object literal and forwards every simple identifier parameter exactly once in declaration order using only identifier arguments or object-property values.
+Reports arrow functions, function expressions, and function declarations with at least two parameters whose expression body, or first block statement, returns a call or constructor with a nonempty object literal and forwards every simple identifier parameter exactly once in declaration order using only identifier arguments or object-property values. Unary constructor adapters are allowed because they can carry domain meaning and serve as named callback values.
 
 ## When to use it
 
