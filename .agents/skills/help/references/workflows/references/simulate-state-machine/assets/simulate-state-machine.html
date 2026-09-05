@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Workflow State Machine Simulation</title>
+<style>
+:root {
+  --canvas: #101312; --grid: #1b211f; --node: #171c1a; --node-2: #1d2321;
+  --line: #3b4541; --line-soft: #29312e; --text: #e9edea; --muted: #8f9b96;
+  --active: #eee6a8; --active-ink: #151714; --enabled: #88c8b9;
+  --blocked: #dc887d; --success: #92c990; --focus: #eeb96f;
+}
+* { box-sizing: border-box; }
+html, body, #app { width: 100%; height: 100%; margin: 0; overflow: hidden; background: var(--canvas); }
+body { color: var(--text); font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+button, select { font: inherit; }
+button:focus-visible, select:focus-visible, [tabindex="0"]:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+#app { position: relative; }
+#graph { width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; background-color: var(--canvas); background-image: radial-gradient(circle, var(--grid) 1px, transparent 1px); background-size: 24px 24px; }
+#graph.dragging { cursor: grabbing; }
+.edge-path { fill: none; stroke: var(--line-soft); stroke-width: 2; marker-end: url(#arrow); vector-effect: non-scaling-stroke; }
+.edge-hit { fill: none; stroke: transparent; stroke-width: 18; cursor: help; vector-effect: non-scaling-stroke; }
+.edge-label-bg { fill: var(--canvas); stroke: var(--line-soft); stroke-width: 1; opacity: .92; }
+.edge-label { fill: #68736f; font: 650 9px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .035em; text-anchor: middle; }
+.edge.enabled .edge-path { stroke: var(--enabled); stroke-width: 3; stroke-dasharray: 8 6; }
+.edge.enabled .edge-label { fill: var(--enabled); }
+.edge.enabled .edge-label-bg { stroke: var(--enabled); }
+.edge.traversed .edge-path { stroke: var(--active); stroke-width: 4; stroke-dasharray: none; }
+.edge.traversed .edge-label { fill: var(--active); }
+.edge.traversed .edge-label-bg { stroke: var(--active); }
+.node { cursor: help; }
+.node-body { fill: var(--node); stroke: var(--line); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.node-kind { fill: var(--muted); font: 650 9px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .13em; text-anchor: middle; }
+.node-label { fill: var(--text); font-size: 14px; font-weight: 680; text-anchor: middle; }
+.node-context { fill: var(--active-ink); font: 650 9px ui-monospace, SFMono-Regular, Menlo, monospace; text-anchor: middle; }
+.node[data-kind="decision"] .node-body { stroke: #b69b62; stroke-dasharray: 5 4; }
+.node[data-kind="blocked"] .node-body { stroke: var(--blocked); stroke-width: 2.5; }
+.node[data-kind="success"] .node-body { stroke: var(--success); stroke-width: 2.5; }
+.node[data-kind="start"] .node-body { stroke: #9d91c4; }
+.node.active .node-body { fill: var(--active); stroke: var(--active); stroke-width: 4; }
+.node.active .node-label, .node.active .node-kind { fill: var(--active-ink); }
+.node.active .node-kind { opacity: .72; }
+.node.active { filter: drop-shadow(0 8px 18px rgba(0,0,0,.35)); }
+.node.rejected .node-body { stroke: var(--blocked); stroke-width: 5; }
+.graph-controls { position: fixed; z-index: 10; top: 16px; right: 16px; display: flex; gap: 6px; padding: 5px; background: rgba(19,23,22,.88); border: 1px solid var(--line); border-radius: 8px; backdrop-filter: blur(10px); }
+.graph-control { width: 44px; height: 44px; border: 0; border-radius: 5px; background: transparent; color: var(--muted); cursor: pointer; font-size: 18px; font-weight: 700; }
+.graph-control:hover { color: var(--text); background: var(--node-2); }
+.event-dock { position: fixed; z-index: 12; left: 50%; bottom: 18px; transform: translateX(-50%); width: min(760px, calc(100vw - 28px)); display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 12px; padding: 10px 12px; background: rgba(19,23,22,.93); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 12px 36px rgba(0,0,0,.35); backdrop-filter: blur(14px); }
+.dock-state { min-width: 0; max-width: 170px; }
+.dock-kicker { color: var(--muted); font: 650 9px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .12em; text-transform: uppercase; }
+.dock-name { margin-top: 3px; overflow: hidden; color: var(--text); font-size: 13px; font-weight: 680; text-overflow: ellipsis; white-space: nowrap; }
+.event-list { min-width: 0; display: flex; gap: 7px; overflow-x: auto; scrollbar-width: thin; padding: 2px; }
+.event-control { display: flex; align-items: center; gap: 6px; }
+.event-control select { min-height: 44px; max-width: 180px; padding: 6px; border: 1px solid var(--line); border-radius: 5px; color: var(--text); background: var(--node-2); }
+.event-button, .reset-button { min-height: 44px; border: 1px solid var(--line); border-radius: 5px; background: var(--node-2); color: var(--text); cursor: pointer; white-space: nowrap; }
+.event-button { padding: 7px 11px; display: grid; gap: 2px; text-align: left; }
+.event-button:hover { border-color: var(--enabled); background: #222a27; }
+.event-prefix { color: var(--muted); font: 600 8px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .1em; }
+.event-type { color: var(--enabled); font: 700 11px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.reset-button { padding: 0 13px; color: var(--muted); background: transparent; }
+.reset-button:hover { color: var(--text); border-color: var(--text); }
+.terminal-message { align-self: center; color: var(--muted); font: 650 11px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.dock-status { grid-column: 1 / -1; min-height: 14px; margin-top: -7px; color: var(--muted); font: 600 10px ui-monospace, SFMono-Regular, Menlo, monospace; text-align: center; }
+.dock-status.accepted { color: var(--enabled); }
+.dock-status.rejected { color: var(--blocked); }
+.tooltip { position: fixed; z-index: 20; width: min(310px, calc(100vw - 24px)); pointer-events: none; padding: 10px 12px; color: var(--text); background: #202624; border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 10px 30px rgba(0,0,0,.45); opacity: 0; transform: translateY(4px); transition: opacity 100ms ease, transform 100ms ease; }
+.tooltip.visible { opacity: 1; transform: translateY(0); }
+.tooltip-type { color: var(--enabled); font: 650 9px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .1em; }
+.tooltip-title { margin-top: 4px; font-size: 13px; font-weight: 700; }
+.tooltip-copy, .tooltip-source { margin-top: 5px; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.tooltip-source { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+@media (max-width: 620px) {
+  .graph-controls { top: 10px; right: 10px; }
+  .event-dock { bottom: 10px; width: calc(100vw - 20px); grid-template-columns: minmax(0,1fr) auto; gap: 8px; }
+  .dock-state { grid-column: 1 / -1; max-width: none; display: flex; align-items: baseline; gap: 8px; }
+  .dock-name { margin-top: 0; }
+  .event-list { grid-column: 1; }
+  .reset-button { grid-column: 2; grid-row: 2; }
+  .dock-status { grid-row: 3; }
+}
+@media (prefers-reduced-motion: reduce) { .tooltip { transition: none; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <svg id="graph" aria-label="Interactive state machine graph" role="application"></svg>
+  <nav class="graph-controls" aria-label="Graph controls">
+    <button class="graph-control" id="zoomOut" type="button" aria-label="Zoom out" title="Zoom out">−</button>
+    <button class="graph-control" id="zoomIn" type="button" aria-label="Zoom in" title="Zoom in">+</button>
+    <button class="graph-control" id="fit" type="button" aria-label="Fit graph to view" title="Fit graph to view">⌗</button>
+    <button class="graph-control" id="focusActive" type="button" aria-label="Focus active state" title="Focus active state">◎</button>
+  </nav>
+  <div class="event-dock" id="eventDock" tabindex="-1" aria-label="State machine event emitter">
+    <div class="dock-state"><div class="dock-kicker">Active state</div><div class="dock-name" id="activeName"></div></div>
+    <div class="event-list" id="eventList"></div>
+    <button class="reset-button" id="reset" type="button">Reset</button>
+    <div class="dock-status" id="dockStatus" aria-hidden="true"></div>
+  </div>
+  <div class="tooltip" id="tooltip" role="tooltip"></div>
+  <div class="sr-only" id="announcer" aria-live="polite"></div>
+</div>
+<script>
+// MACHINE_DATA_START
+const machine = {"metadata":{"title":"Workflow State Machine Simulation · Self Simulation","target":"simulate-state-machine/SKILL.md","entryPoint":"Procedure 1 — Resolve the simulation contract","scopeNotice":"Visualization only — Mermaid is the default output; optional HTML never executes target side effects.","terminalOutcomes":["Success: requested callstack, Mermaid, and optional HTML published","Blocked: invalid target or entry point","Blocked: a selected destination lacks revision authority","Blocked: selected-output validation remains unresolved"]},"initialStateId":"request","initialContext":{"contractStatus":"unresolved","destinations":"Mermaid unresolved; HTML unselected","modelStatus":"not built","symbolicBehavior":"unresolved","eventSemantics":"undefined","mermaidStatus":"not created","htmlStatus":"not requested","templateInvariant":"HTML unselected","parityStatus":"Mermaid/model unchecked; HTML unselected","validationStatus":"not run","publication":"not published","outputMode":"unresolved; defaults to Mermaid only","callstackStatus":"not requested"},"states":[{"id":"request","label":"Simulation requested","kind":"start","description":"The target, scenario, assigned views, available projections, and output controls enter the workflow.","source":["Inputs A–E","Procedure 1"],"x":140,"y":560,"relevantContextKey":"contractStatus"},{"id":"resolve-contract","label":"Resolve simulation contract","kind":"operation","description":"Fix the entry point, authority order, abstraction boundary, and assigned views. Retain usable projections and identify which destinations actually need writing.","source":["Procedure 1"],"x":470,"y":560,"relevantContextKey":"contractStatus"},{"id":"contract-check","label":"Is the contract usable?","kind":"decision","description":"Stop for an unreadable target or an existing destination that needs writing without revision authority. Retaining a usable projection requires no rewrite permission.","source":["Procedure 1"],"x":800,"y":560,"relevantContextKey":"contractStatus"},{"id":"input-blocker","label":"Input blocker","kind":"blocked","description":"Stop before output when the target or entry point is missing, unreadable, or ambiguous.","source":["Procedure 1, input branch"],"x":800,"y":170,"relevantContextKey":"contractStatus"},{"id":"destination-blocker","label":"Destination blocker","kind":"blocked","description":"Stop before output when the Mermaid destination or a selected HTML destination exists without revision authority.","source":["Procedure 1, destination branch"],"x":800,"y":950,"relevantContextKey":"contractStatus"},{"id":"callstack-choice","label":"Was a callstack also requested?","kind":"decision","description":"The views assigned to this task determine whether it needs a callstack companion. A preserved outer request is context, not an expansion of the task.","source":["Procedure 2"],"x":1130,"y":560,"relevantContextKey":"callstackStatus"},{"id":"produce-callstack","label":"Resolve callstack companion","kind":"operation","description":"Reuse a valid same-scope callstack; otherwise apply the callstack-only supporting procedure with the same source, scenario, context, controls, and constraints.","source":["Procedure 2"],"x":1460,"y":300,"relevantContextKey":"callstackStatus"},{"id":"build-model","label":"Build source-grounded machine","kind":"operation","description":"Map states, event-driven transitions, guards, payloads, context updates, effects, terminal outcomes, and optional app coordinates.","source":["Procedure 3"],"x":1790,"y":560,"relevantContextKey":"modelStatus"},{"id":"missing-info","label":"Is controlling information missing?","kind":"decision","description":"Determine whether source-feasible behavior must remain symbolic or scenario values select it.","source":["Procedure 3, symbolic branch"],"x":2120,"y":560,"relevantContextKey":"symbolicBehavior"},{"id":"symbolize","label":"Expose symbolic events","kind":"operation","description":"Represent each source-feasible outcome as an explicit event or finite event payload instead of inventing a value.","source":["Procedure 3, symbolic branch"],"x":2450,"y":300,"relevantContextKey":"symbolicBehavior"},{"id":"model-ready","label":"Finalize shared machine model","kind":"operation","description":"Complete one finite model used by the required Mermaid projection and any requested HTML app.","source":["Procedure 3"],"x":2780,"y":560,"relevantContextKey":"modelStatus"},{"id":"define-events","label":"Define event semantics","kind":"operation","description":"Determine accepted events by state, allowlisted guards, declarative updates, and optional app reset and rejection behavior.","source":["Procedure 4"],"x":3110,"y":560,"relevantContextKey":"eventSemantics"},{"id":"dispatch-check","label":"Is every dispatch deterministic?","kind":"decision","description":"For each state, event, and payload, require at most one matching transition and no undefined destination.","source":["Procedure 4"],"x":3440,"y":560,"relevantContextKey":"eventSemantics"},{"id":"repair-events","label":"Repair ambiguous events","kind":"operation","description":"Split an ambiguous event into explicit events or require a finite payload choice, then check semantics again.","source":["Procedure 4, ambiguity branch"],"x":3440,"y":180,"relevantContextKey":"eventSemantics"},{"id":"create-mermaid","label":"Create Mermaid diagram","kind":"operation","description":"Project the shared model as required raw stateDiagram-v2 source with stable aliases and event-labeled transitions.","source":["Procedure 5"],"x":3770,"y":560,"relevantContextKey":"mermaidStatus"},{"id":"output-choice","label":"Was HTML requested?","kind":"decision","description":"Default to Mermaid only. Create and later validate an HTML app only when the user explicitly selected it.","source":["Inputs D","Outputs B","Procedure 6"],"x":4100,"y":560,"relevantContextKey":"outputMode"},{"id":"copy-template","label":"Copy optional app template","kind":"operation","description":"When HTML is selected, copy assets/app-template.html to the authorized destination without changing template invariants.","source":["Procedure 6"],"x":4430,"y":260,"relevantContextKey":"htmlStatus"},{"id":"replace-data","label":"Replace machine data block","kind":"operation","description":"Replace only the marked machine value in the optional HTML copy and preserve all other template bytes.","source":["Procedure 6"],"x":4760,"y":260,"relevantContextKey":"templateInvariant"},{"id":"validate-model","label":"Begin required Mermaid validation","kind":"operation","description":"Recompare the shared model with the target before validating Mermaid and any selected HTML projection.","source":["Procedure 7"],"x":5090,"y":560,"relevantContextKey":"validationStatus"},{"id":"mermaid-check","label":"Is a Mermaid renderer available?","kind":"decision","description":"Render or parse with an available Mermaid tool; otherwise disclose static syntax and set validation.","source":["Procedure 7, Mermaid validation"],"x":5420,"y":560,"relevantContextKey":"mermaidStatus"},{"id":"validate-mermaid-render","label":"Render and validate Mermaid","kind":"operation","description":"Render the required Mermaid source and compare states, events, initial state, cycles, and terminal outcomes with the shared model.","source":["Procedure 7, Mermaid renderer branch"],"x":5750,"y":360,"relevantContextKey":"mermaidStatus"},{"id":"validate-mermaid-static","label":"Validate Mermaid statically","kind":"operation","description":"Check raw syntax and exact state and transition sets while disclosing that Mermaid rendering was not run.","source":["Procedure 7, static Mermaid branch"],"x":5750,"y":760,"relevantContextKey":"mermaidStatus"},{"id":"mermaid-ready","label":"Mermaid validation complete","kind":"operation","description":"Record required Mermaid validation, then finish for Mermaid-only mode or validate requested HTML.","source":["Procedure 7"],"x":6080,"y":560,"relevantContextKey":"mermaidStatus"},{"id":"browser-check","label":"Is browser automation available?","kind":"decision","description":"For selected HTML, choose live interaction validation when available; otherwise disclose static app validation.","source":["Procedure 7, HTML validation"],"x":6410,"y":380,"relevantContextKey":"htmlStatus"},{"id":"validate-html-live","label":"Validate optional HTML live","kind":"operation","description":"Emit every accepted event and exercise branches, cycles, graph updates, controls, accessibility, layout, and template invariance.","source":["Procedure 7, browser branch"],"x":6740,"y":200,"relevantContextKey":"htmlStatus"},{"id":"validate-html-static","label":"Validate optional HTML statically","kind":"operation","description":"Check script syntax, model consistency, graph-only structure, and template invariance while disclosing that live interaction was not run.","source":["Procedure 7, static HTML branch"],"x":6740,"y":500,"relevantContextKey":"htmlStatus"},{"id":"html-ready","label":"HTML validation complete","kind":"operation","description":"Record selected HTML validation before checking cross-projection parity.","source":["Procedure 7"],"x":7070,"y":380,"relevantContextKey":"htmlStatus"},{"id":"parity-check","label":"Check selected projection parity","kind":"operation","description":"Require optional HTML machine data and required Mermaid topology to equal the shared model with no fabricated transition.","source":["Procedure 7"],"x":7400,"y":560,"relevantContextKey":"parityStatus"},{"id":"validation-check","label":"Did selected outputs pass?","kind":"decision","description":"Publish after required Mermaid checks pass and, only when selected, HTML and cross-projection parity checks pass.","source":["Procedure 7"],"x":7730,"y":560,"relevantContextKey":"validationStatus"},{"id":"correct-outputs","label":"Correct applicable output","kind":"operation","description":"Correct the shared model or applicable selected projection, then repeat validation without changing unrelated template bytes.","source":["Procedure 7, correction branch"],"x":7400,"y":180,"relevantContextKey":"validationStatus"},{"id":"validation-blocker","label":"Validation blocker","kind":"blocked","description":"Report the unresolved validation failure and every selected output status without claiming completion.","source":["Procedure 7, unresolved branch"],"x":7730,"y":940,"relevantContextKey":"validationStatus"},{"id":"publish","label":"Publish selected outputs","kind":"operation","description":"Leave the validated Mermaid diagram and any requested HTML app at their resolved destinations and report selected paths and validation methods.","source":["Procedure 8"],"x":8060,"y":560,"relevantContextKey":"publication"},{"id":"complete","label":"Simulation complete","kind":"success","description":"Mermaid is source-grounded and validated; when HTML was requested, its interactive projection is also consistent and validated.","source":["Outputs A–C","Procedure 8"],"x":8390,"y":560,"relevantContextKey":"publication"}],"events":[{"type":"BEGIN_SIMULATION","label":"Begin simulation","description":"Begin simulation"},{"type":"RESOLVE_INPUTS","label":"Inputs and destinations resolved","description":"Inputs and destinations resolved"},{"type":"REPORT_INPUT_BLOCKER","label":"Target or entry point is unusable","description":"Target or entry point is missing, unreadable, or ambiguous"},{"type":"REPORT_DESTINATION_BLOCKER","label":"A required write lacks authority","description":"An existing destination that needs writing lacks explicit revision authority"},{"type":"FIX_CONTRACT","label":"Shared contract fixed","description":"The Mermaid path and any selected HTML path are usable"},{"type":"SELECT_CALLSTACK_COMPANION","label":"Resolve requested callstack companion","description":"Resolve requested callstack companion"},{"type":"USE_STATE_MACHINE_ONLY","label":"Continue with state-machine projection","description":"No callstack companion was requested"},{"type":"CALLSTACK_READY","label":"Requested callstack validated","description":"The supporting callstack procedure completed"},{"type":"MAP_TARGET","label":"Target mapped into a finite machine","description":"Target mapped into a finite machine"},{"type":"KEEP_SYMBOLIC","label":"Missing values remain symbolic","description":"Controlling information is missing"},{"type":"USE_SUPPLIED_VALUES","label":"Scenario values select behavior","description":"Controlling values are supplied"},{"type":"FINALIZE_SYMBOLIC_MODEL","label":"Symbolic outcomes modeled","description":"Symbolic outcomes modeled"},{"type":"FINALIZE_MODEL","label":"Shared machine model complete","description":"Shared machine model complete"},{"type":"CHECK_DISPATCH_DETERMINISM","label":"Event semantics modeled","description":"Event semantics modeled"},{"type":"REPAIR_AMBIGUITY","label":"Ambiguous dispatch found","description":"A state, event, and payload matches multiple transitions"},{"type":"CONFIRM_DETERMINISM","label":"All dispatches deterministic","description":"Every accepted event resolves to at most one transition"},{"type":"RECHECK_EVENT_SEMANTICS","label":"Ambiguity repaired","description":"Ambiguity repaired"},{"type":"MERMAID_WRITTEN","label":"Required Mermaid projection written","description":"Required static Mermaid projection written"},{"type":"USE_MERMAID_ONLY","label":"Use the Mermaid-only default","description":"HTML was not explicitly requested"},{"type":"SELECT_HTML","label":"Create the requested HTML app","description":"HTML was explicitly requested"},{"type":"COPY_TEMPLATE_COMPLETE","label":"Optional app template copied","description":"Optional canonical template copied"},{"type":"MACHINE_DATA_EMBEDDED","label":"Machine data block replaced","description":"Machine data block replaced"},{"type":"CHECK_MERMAID_PROJECTION","label":"Shared model rechecked","description":"Shared model rechecked before required Mermaid validation"},{"type":"USE_MERMAID_RENDERER","label":"Mermaid renderer available","description":"A Mermaid CLI or library is available"},{"type":"USE_STATIC_MERMAID_VALIDATION","label":"Mermaid renderer unavailable","description":"No Mermaid renderer is available"},{"type":"COMPLETE_MERMAID_VALIDATION","label":"Mermaid validation passed","description":"Mermaid validation passed"},{"type":"COMPLETE_MERMAID_ONLY_VALIDATION","label":"Mermaid-only validation passed","description":"Required Mermaid passed and HTML was not selected"},{"type":"CHECK_HTML_PROJECTION","label":"Validate requested HTML","description":"Mermaid is ready and HTML was requested"},{"type":"USE_BROWSER_VALIDATION","label":"Browser automation available","description":"Browser automation is available"},{"type":"USE_STATIC_HTML_VALIDATION","label":"Browser automation unavailable","description":"Browser automation is unavailable"},{"type":"COMPLETE_HTML_VALIDATION","label":"HTML validation passed","description":"HTML validation passed"},{"type":"CHECK_PROJECTION_PARITY","label":"Required Mermaid and selected HTML ready for comparison","description":"Required Mermaid and selected HTML are ready for parity comparison"},{"type":"REVIEW_VALIDATION","label":"Selected-output parity checked","description":"Selected-output parity checked"},{"type":"CORRECT_FAILURES","label":"A correctable validation failure exists","description":"A selected-output validation check failed and can be corrected"},{"type":"REPORT_VALIDATION_BLOCKER","label":"Validation failure is unresolved","description":"A selected-output validation failure cannot be resolved"},{"type":"CONFIRM_VALIDATION","label":"Selected outputs passed","description":"Mermaid and any requested HTML projection passed"},{"type":"REPEAT_VALIDATION","label":"Applicable output corrected","description":"Applicable output corrected"},{"type":"PUBLISH_OUTPUTS","label":"Selected output paths reported","description":"Selected output paths reported"}],"transitions":[{"id":"t01","from":"request","to":"resolve-contract","eventType":"BEGIN_SIMULATION","eventLabel":"Begin simulation","updates":[{"key":"contractStatus","op":"set","value":"resolving"}],"effects":[],"source":["Procedure 1"],"guardDescription":""},{"id":"t02","from":"resolve-contract","to":"contract-check","eventType":"RESOLVE_INPUTS","eventLabel":"Inputs and destinations resolved","updates":[],"effects":[],"source":["Procedure 1"],"guardDescription":""},{"id":"t03","from":"contract-check","to":"input-blocker","eventType":"REPORT_INPUT_BLOCKER","eventLabel":"Target or entry point is unusable","updates":[{"key":"contractStatus","op":"set","value":"input blocked"}],"effects":[],"source":["Procedure 1"],"guardDescription":"Target or entry point is missing, unreadable, or ambiguous"},{"id":"t04","from":"contract-check","to":"destination-blocker","eventType":"REPORT_DESTINATION_BLOCKER","eventLabel":"A required write lacks authority","updates":[{"key":"contractStatus","op":"set","value":"destination blocked"}],"effects":[],"source":["Procedure 1"],"guardDescription":"An existing destination that needs writing lacks explicit revision authority"},{"id":"t05","from":"contract-check","to":"callstack-choice","eventType":"FIX_CONTRACT","eventLabel":"Shared contract fixed","updates":[{"key":"contractStatus","op":"set","value":"fixed"},{"key":"destinations","op":"set","value":"Reuse usable projections; required writes authorized"},{"key":"callstackStatus","op":"set","value":"pending selection"}],"effects":[],"source":["Procedure 1"],"guardDescription":"Target and entry point are usable; any required writes are authorized"},{"id":"t05a","from":"callstack-choice","to":"produce-callstack","eventType":"SELECT_CALLSTACK_COMPANION","eventLabel":"Resolve requested callstack companion","updates":[{"key":"callstackStatus","op":"set","value":"resolving"}],"effects":[],"source":["Procedure 2"],"guardDescription":"This task requests a callstack companion"},{"id":"t05b","from":"callstack-choice","to":"build-model","eventType":"USE_STATE_MACHINE_ONLY","eventLabel":"Continue with state-machine projection","updates":[{"key":"callstackStatus","op":"set","value":"not requested"}],"effects":[],"source":["Procedure 2"],"guardDescription":"This task does not request a callstack companion"},{"id":"t05c","from":"produce-callstack","to":"build-model","eventType":"CALLSTACK_READY","eventLabel":"Requested callstack validated","updates":[{"key":"callstackStatus","op":"set","value":"validated"}],"effects":["Reuse or produce and validate the requested callstack using the same simulation contract."],"source":["Procedure 2"],"guardDescription":""},{"id":"t06","from":"build-model","to":"missing-info","eventType":"MAP_TARGET","eventLabel":"Target mapped into a finite machine","updates":[{"key":"modelStatus","op":"set","value":"states and transitions mapped"}],"effects":[],"source":["Procedure 3"],"guardDescription":""},{"id":"t07","from":"missing-info","to":"symbolize","eventType":"KEEP_SYMBOLIC","eventLabel":"Missing values remain symbolic","updates":[{"key":"symbolicBehavior","op":"set","value":"explicit symbolic events or payloads"}],"effects":[],"source":["Procedure 3"],"guardDescription":"Controlling information is missing"},{"id":"t08","from":"missing-info","to":"model-ready","eventType":"USE_SUPPLIED_VALUES","eventLabel":"Scenario values select behavior","updates":[{"key":"symbolicBehavior","op":"set","value":"scenario-resolved"}],"effects":[],"source":["Procedure 3"],"guardDescription":"Controlling values are supplied"},{"id":"t09","from":"symbolize","to":"model-ready","eventType":"FINALIZE_SYMBOLIC_MODEL","eventLabel":"Symbolic outcomes modeled","updates":[],"effects":[],"source":["Procedure 3"],"guardDescription":""},{"id":"t10","from":"model-ready","to":"define-events","eventType":"FINALIZE_MODEL","eventLabel":"Shared machine model complete","updates":[{"key":"modelStatus","op":"set","value":"ready for required Mermaid and optional HTML"}],"effects":[],"source":["Procedure 3"],"guardDescription":""},{"id":"t11","from":"define-events","to":"dispatch-check","eventType":"CHECK_DISPATCH_DETERMINISM","eventLabel":"Event semantics modeled","updates":[{"key":"eventSemantics","op":"set","value":"checking determinism"}],"effects":[],"source":["Procedure 4"],"guardDescription":""},{"id":"t12","from":"dispatch-check","to":"repair-events","eventType":"REPAIR_AMBIGUITY","eventLabel":"Ambiguous dispatch found","updates":[{"key":"eventSemantics","op":"set","value":"repair required"}],"effects":[],"source":["Procedure 4"],"guardDescription":"A state, event, and payload matches multiple transitions"},{"id":"t13","from":"dispatch-check","to":"create-mermaid","eventType":"CONFIRM_DETERMINISM","eventLabel":"All dispatches deterministic","updates":[{"key":"eventSemantics","op":"set","value":"deterministic"}],"effects":[],"source":["Procedure 4"],"guardDescription":"Every accepted event resolves to at most one transition"},{"id":"t14","from":"repair-events","to":"define-events","eventType":"RECHECK_EVENT_SEMANTICS","eventLabel":"Ambiguity repaired","updates":[{"key":"eventSemantics","op":"set","value":"recheck pending"}],"effects":[],"source":["Procedure 4"],"guardDescription":""},{"id":"t15","from":"create-mermaid","to":"output-choice","eventType":"MERMAID_WRITTEN","eventLabel":"Required Mermaid projection written","updates":[{"key":"mermaidStatus","op":"set","value":"raw stateDiagram-v2 written"}],"effects":["Write the required raw Mermaid diagram to the authorized .mmd destination."],"source":["Procedure 5"],"guardDescription":""},{"id":"t16","from":"output-choice","to":"validate-model","eventType":"USE_MERMAID_ONLY","eventLabel":"Use the Mermaid-only default","updates":[{"key":"outputMode","op":"set","value":"Mermaid only"},{"key":"htmlStatus","op":"set","value":"not requested"},{"key":"templateInvariant","op":"set","value":"HTML unselected"}],"effects":[],"source":["Procedure 6, default branch"],"guardDescription":"HTML was not explicitly requested"},{"id":"t17","from":"output-choice","to":"copy-template","eventType":"SELECT_HTML","eventLabel":"Create the requested HTML app","updates":[{"key":"outputMode","op":"set","value":"Mermaid and HTML"},{"key":"htmlStatus","op":"set","value":"creation pending"}],"effects":[],"source":["Procedure 6, opt-in branch"],"guardDescription":"HTML was explicitly requested"},{"id":"t18","from":"copy-template","to":"replace-data","eventType":"COPY_TEMPLATE_COMPLETE","eventLabel":"Optional app template copied","updates":[{"key":"htmlStatus","op":"set","value":"canonical template copied"}],"effects":["Copy the canonical HTML template to the authorized optional HTML destination."],"source":["Procedure 6"],"guardDescription":""},{"id":"t19","from":"replace-data","to":"validate-model","eventType":"MACHINE_DATA_EMBEDDED","eventLabel":"Machine data block replaced","updates":[{"key":"htmlStatus","op":"set","value":"graph app created"},{"key":"templateInvariant","op":"set","value":"preserved outside machine block"}],"effects":["Replace only the marked machine data block in the optional HTML copy."],"source":["Procedure 6"],"guardDescription":""},{"id":"t20","from":"validate-model","to":"mermaid-check","eventType":"CHECK_MERMAID_PROJECTION","eventLabel":"Shared model rechecked","updates":[{"key":"validationStatus","op":"set","value":"running"}],"effects":[],"source":["Procedure 7"],"guardDescription":""},{"id":"t21","from":"mermaid-check","to":"validate-mermaid-render","eventType":"USE_MERMAID_RENDERER","eventLabel":"Mermaid renderer available","updates":[{"key":"mermaidStatus","op":"set","value":"render validation running"}],"effects":[],"source":["Procedure 7"],"guardDescription":"A Mermaid CLI or library is available"},{"id":"t22","from":"mermaid-check","to":"validate-mermaid-static","eventType":"USE_STATIC_MERMAID_VALIDATION","eventLabel":"Mermaid renderer unavailable","updates":[{"key":"mermaidStatus","op":"set","value":"static validation running"}],"effects":[],"source":["Procedure 7"],"guardDescription":"No Mermaid renderer is available"},{"id":"t23","from":"validate-mermaid-render","to":"mermaid-ready","eventType":"COMPLETE_MERMAID_VALIDATION","eventLabel":"Mermaid validation passed","updates":[{"key":"mermaidStatus","op":"set","value":"rendered and validated"}],"effects":[],"source":["Procedure 7"],"guardDescription":""},{"id":"t24","from":"validate-mermaid-static","to":"mermaid-ready","eventType":"COMPLETE_MERMAID_VALIDATION","eventLabel":"Static Mermaid checks passed","updates":[{"key":"mermaidStatus","op":"set","value":"validated statically; render disclosed absent"}],"effects":[],"source":["Procedure 7"],"guardDescription":""},{"id":"t25","from":"mermaid-ready","to":"validation-check","eventType":"COMPLETE_MERMAID_ONLY_VALIDATION","eventLabel":"Mermaid-only validation passed","updates":[{"key":"validationStatus","op":"set","value":"Mermaid passed"},{"key":"parityStatus","op":"set","value":"Mermaid/model exact; HTML unselected"}],"effects":[],"source":["Procedure 7, Mermaid-only branch"],"guardDescription":"HTML was not requested"},{"id":"t26","from":"mermaid-ready","to":"browser-check","eventType":"CHECK_HTML_PROJECTION","eventLabel":"Validate requested HTML","updates":[],"effects":[],"source":["Procedure 7"],"guardDescription":"HTML was requested"},{"id":"t27","from":"browser-check","to":"validate-html-live","eventType":"USE_BROWSER_VALIDATION","eventLabel":"Browser automation available","updates":[{"key":"htmlStatus","op":"set","value":"live validation running"}],"effects":[],"source":["Procedure 7"],"guardDescription":"Browser automation is available"},{"id":"t28","from":"browser-check","to":"validate-html-static","eventType":"USE_STATIC_HTML_VALIDATION","eventLabel":"Browser automation unavailable","updates":[{"key":"htmlStatus","op":"set","value":"static validation running"}],"effects":[],"source":["Procedure 7"],"guardDescription":"Browser automation is unavailable"},{"id":"t29","from":"validate-html-live","to":"html-ready","eventType":"COMPLETE_HTML_VALIDATION","eventLabel":"HTML validation passed","updates":[{"key":"htmlStatus","op":"set","value":"validated live"}],"effects":[],"source":["Procedure 7"],"guardDescription":""},{"id":"t30","from":"validate-html-static","to":"html-ready","eventType":"COMPLETE_HTML_VALIDATION","eventLabel":"Static HTML checks passed","updates":[{"key":"htmlStatus","op":"set","value":"validated statically; live run disclosed absent"}],"effects":[],"source":["Procedure 7"],"guardDescription":""},{"id":"t31","from":"html-ready","to":"parity-check","eventType":"CHECK_PROJECTION_PARITY","eventLabel":"Required Mermaid and selected HTML ready for comparison","updates":[],"effects":[],"source":["Procedure 7"],"guardDescription":""},{"id":"t32","from":"parity-check","to":"validation-check","eventType":"REVIEW_VALIDATION","eventLabel":"Selected-output parity checked","updates":[{"key":"parityStatus","op":"set","value":"compared with shared model"}],"effects":[],"source":["Procedure 7"],"guardDescription":""},{"id":"t33","from":"validation-check","to":"correct-outputs","eventType":"CORRECT_FAILURES","eventLabel":"A correctable validation failure exists","updates":[{"key":"validationStatus","op":"set","value":"correction required"}],"effects":[],"source":["Procedure 7"],"guardDescription":"A selected Mermaid, HTML, template, or parity check failed and can be corrected"},{"id":"t34","from":"validation-check","to":"validation-blocker","eventType":"REPORT_VALIDATION_BLOCKER","eventLabel":"Validation failure is unresolved","updates":[{"key":"validationStatus","op":"set","value":"unresolved"}],"effects":[],"source":["Procedure 7"],"guardDescription":"A selected-output validation failure cannot be resolved"},{"id":"t35","from":"validation-check","to":"publish","eventType":"CONFIRM_VALIDATION","eventLabel":"Selected outputs passed","updates":[{"key":"validationStatus","op":"set","value":"selected outputs passed"},{"key":"parityStatus","op":"set","value":"Mermaid/model exact; optional HTML exact when selected"}],"effects":[],"source":["Procedure 7"],"guardDescription":"Required Mermaid passes and any requested HTML projection passes"},{"id":"t36","from":"correct-outputs","to":"validate-model","eventType":"REPEAT_VALIDATION","eventLabel":"Applicable output corrected","updates":[{"key":"validationStatus","op":"set","value":"recheck pending"},{"key":"parityStatus","op":"set","value":"unchecked"}],"effects":[],"source":["Procedure 7"],"guardDescription":""},{"id":"t37","from":"publish","to":"complete","eventType":"PUBLISH_OUTPUTS","eventLabel":"Selected output paths reported","updates":[{"key":"publication","op":"set","value":"Mermaid diagram and any requested HTML app published"}],"effects":["Leave the validated Mermaid and any requested HTML output at their authorized destinations and report selected paths."],"source":["Procedure 8"],"guardDescription":""}],"disclosures":{"assumptions":["No concrete target scenario was supplied; the contract, optional HTML selection, and validation branches remain emit-able events. Mermaid is the default output."],"conflicts":["None"],"symbolic":["Target readability, selected-destination authority, controlling values, optional HTML selection, Mermaid renderer availability, browser availability when HTML is selected, and validation results are event-driven choices."],"truncation":["Detailed Mermaid parser checks and optional per-route browser exercises are collapsed into validation states."],"omitted":["Concrete generated target content and external tool responses are intentionally symbolic; no HTML is produced unless selected."]}};
+// MACHINE_DATA_END
+
+const NS = "http://www.w3.org/2000/svg";
+const NODE_W = 246, NODE_H = 96;
+function deriveBounds(states) {
+  const xs = states.map(state => state.x), ys = states.map(state => state.y);
+  const minX = Math.min(...xs) - NODE_W / 2, maxX = Math.max(...xs) + NODE_W / 2;
+  const minY = Math.min(...ys) - NODE_H / 2, maxY = Math.max(...ys) + NODE_H / 2;
+  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+}
+const BOUNDS = deriveBounds(machine.states);
+const stateById = new Map(machine.states.map(state => [state.id, state]));
+const eventByType = new Map(machine.events.map(event => [event.type, event]));
+const outgoing = new Map(machine.states.map(state => [state.id, []]));
+machine.transitions.forEach(transition => outgoing.get(transition.from).push(transition));
+const clone = value => JSON.parse(JSON.stringify(value));
+let runtime = { stateId: machine.initialStateId, context: clone(machine.initialContext), lastTransitionId: null };
+
+const graph = document.getElementById("graph");
+document.title = machine.metadata.title || "Workflow State Machine Simulation";
+graph.setAttribute("aria-label", `${machine.metadata.title || "State machine"} interactive state graph`);
+const eventDock = document.getElementById("eventDock");
+const eventList = document.getElementById("eventList");
+const activeName = document.getElementById("activeName");
+const dockStatus = document.getElementById("dockStatus");
+const resetButton = document.getElementById("reset");
+const tooltip = document.getElementById("tooltip");
+const announcer = document.getElementById("announcer");
+
+function htmlElement(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+function svgElement(tag, attributes = {}) {
+  const node = document.createElementNS(NS, tag);
+  for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, String(value));
+  return node;
+}
+function announce(message) {
+  announcer.textContent = "";
+  requestAnimationFrame(() => { announcer.textContent = message; });
+}
+function terminalKind(kind) { return ["success", "error", "blocked", "truncated"].includes(kind); }
+const hasOwn = (value, key) => value !== null && typeof value === "object" && Object.prototype.hasOwnProperty.call(value, key);
+function formatGuard(guard, description) {
+  if (!guard) return description ? `${description} (symbolic event condition)` : "No guard";
+  return `${guard.source}.${guard.key} ${guard.op} ${JSON.stringify(guard.value)}`;
+}
+function formatPayload(transition, event) {
+  if (!event.payload) return "No payload";
+  return hasOwn(transition, "payload") ? `Payload: ${event.payload.key} = ${JSON.stringify(transition.payload)}` : `Payload: any ${event.payload.key} choice`;
+}
+function wrapLabel(text, max = 24) {
+  const words = text.split(/\s+/); const lines = []; let line = "";
+  for (const word of words) {
+    const candidate = line ? `${line} ${word}` : word;
+    if (candidate.length > max && line) { lines.push(line); line = word; } else line = candidate;
+  }
+  if (line) lines.push(line);
+  if (lines.length > 2) return [lines[0], `${lines.slice(1).join(" ").slice(0, max - 1)}…`];
+  return lines;
+}
+function edgeGeometry(transition) {
+  const a = stateById.get(transition.from), b = stateById.get(transition.to);
+  let path, lx, ly;
+  if (b.x > a.x + 50) {
+    const sx = a.x + NODE_W / 2, sy = a.y;
+    const tx = b.x - NODE_W / 2, ty = b.y;
+    const mx = (sx + tx) / 2;
+    path = `M ${sx} ${sy} C ${mx} ${sy}, ${mx} ${ty}, ${tx} ${ty}`;
+    lx = mx; ly = (sy + ty) / 2 - 10;
+  } else if (Math.abs(b.x - a.x) <= 50) {
+    const direction = b.y < a.y ? -1 : 1;
+    const sx = a.x, sy = a.y + direction * NODE_H / 2;
+    const tx = b.x, ty = b.y - direction * NODE_H / 2;
+    const routeX = a.x + 175;
+    path = `M ${sx} ${sy} C ${routeX} ${sy}, ${routeX} ${ty}, ${tx} ${ty}`;
+    lx = routeX; ly = (sy + ty) / 2 - 9;
+  } else {
+    const sx = a.x - NODE_W / 2, sy = a.y;
+    const tx = b.x + NODE_W / 2, ty = b.y;
+    const routeY = Math.min(a.y, b.y) - 120;
+    path = `M ${sx} ${sy} C ${sx - 100} ${routeY}, ${tx + 100} ${routeY}, ${tx} ${ty}`;
+    lx = (sx + tx) / 2; ly = routeY - 10;
+  }
+  return { path, lx, ly };
+}
+function tooltipContent(type, item) {
+  tooltip.replaceChildren();
+  if (type === "state") {
+    tooltip.append(htmlElement("div", "tooltip-type", `${item.kind.toUpperCase()} · ${item.id}`));
+    tooltip.append(htmlElement("div", "tooltip-title", item.label));
+    tooltip.append(htmlElement("div", "tooltip-copy", item.description));
+    tooltip.append(htmlElement("div", "tooltip-source", item.source.length ? item.source.join(" · ") : "No source reference"));
+  } else {
+    const event = eventByType.get(item.eventType);
+    tooltip.append(htmlElement("div", "tooltip-type", `EVENT · ${item.eventType}`));
+    tooltip.append(htmlElement("div", "tooltip-title", event.label));
+    const detail = [formatGuard(item.guard, item.guardDescription), formatPayload(item, event), item.effects.length ? `Effect label: ${item.effects.join("; ")}` : "No target side effect"].join(" · ");
+    tooltip.append(htmlElement("div", "tooltip-copy", detail));
+    tooltip.append(htmlElement("div", "tooltip-source", item.source.length ? item.source.join(" · ") : "No source reference"));
+  }
+}
+function positionTooltip(clientX, clientY) {
+  const pad = 12, width = Math.min(310, window.innerWidth - 24), height = tooltip.offsetHeight || 110;
+  let left = clientX + 14, top = clientY + 14;
+  if (left + width > window.innerWidth - pad) left = clientX - width - 14;
+  if (top + height > window.innerHeight - pad) top = clientY - height - 14;
+  tooltip.style.left = `${Math.max(pad, left)}px`; tooltip.style.top = `${Math.max(pad, top)}px`;
+}
+function showTooltip(type, item, event) {
+  tooltipContent(type, item);
+  const point = event && "clientX" in event ? { x: event.clientX, y: event.clientY } : { x: window.innerWidth / 2, y: 80 };
+  positionTooltip(point.x, point.y); tooltip.classList.add("visible");
+}
+function hideTooltip() { tooltip.classList.remove("visible"); }
+function attachTooltip(target, type, item) {
+  target.addEventListener("pointerenter", event => showTooltip(type, item, event));
+  target.addEventListener("pointermove", event => positionTooltip(event.clientX, event.clientY));
+  target.addEventListener("pointerleave", hideTooltip);
+  target.addEventListener("focus", () => {
+    const rect = target.getBoundingClientRect(); showTooltip(type, item, { clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2 });
+  });
+  target.addEventListener("blur", hideTooltip);
+  target.addEventListener("keydown", event => { if (event.key === "Escape") hideTooltip(); });
+}
+function renderGraph() {
+  graph.replaceChildren();
+  const defs = svgElement("defs");
+  const marker = svgElement("marker", { id: "arrow", viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: "auto-start-reverse" });
+  marker.append(svgElement("path", { d: "M 0 0 L 10 5 L 0 10 z", fill: "#59645f" })); defs.append(marker); graph.append(defs);
+  const edgeLayer = svgElement("g", { "aria-label": "Event transitions" });
+  for (const transition of machine.transitions) {
+    const geo = edgeGeometry(transition); const event = eventByType.get(transition.eventType);
+    const group = svgElement("g", { class: "edge", "data-id": transition.id });
+    const line = svgElement("path", { class: "edge-path", d: geo.path });
+    const hit = svgElement("path", { class: "edge-hit", d: geo.path, tabindex: 0, role: "button", "aria-label": `${transition.eventType}: ${event.label}. From ${stateById.get(transition.from).label} to ${stateById.get(transition.to).label}. ${formatGuard(transition.guard, transition.guardDescription)}. ${formatPayload(transition, event)}. Source ${transition.source.join(", ")}` });
+    const shown = transition.eventType.length > 26 ? `${transition.eventType.slice(0, 25)}…` : transition.eventType;
+    const width = Math.max(54, shown.length * 5.8 + 16);
+    const bg = svgElement("rect", { class: "edge-label-bg", x: geo.lx - width / 2, y: geo.ly - 11, width, height: 19, rx: 3 });
+    const label = svgElement("text", { class: "edge-label", x: geo.lx, y: geo.ly + 2 }); label.textContent = shown;
+    attachTooltip(hit, "transition", transition); group.append(line, hit, bg, label); edgeLayer.append(group);
+  }
+  graph.append(edgeLayer);
+  const nodeLayer = svgElement("g", { "aria-label": "States" });
+  for (const state of machine.states) {
+    const group = svgElement("g", { class: "node", "data-id": state.id, "data-kind": state.kind, transform: `translate(${state.x - NODE_W / 2} ${state.y - NODE_H / 2})`, tabindex: 0, role: "button", "aria-label": `${state.kind} state: ${state.label}. ${state.description}. Source ${state.source.join(", ")}` });
+    const body = svgElement("rect", { class: "node-body", x: 0, y: 0, width: NODE_W, height: NODE_H, rx: terminalKind(state.kind) || state.kind === "start" ? 48 : 7 });
+    const kind = svgElement("text", { class: "node-kind", x: NODE_W / 2, y: 21 }); kind.textContent = state.kind.toUpperCase();
+    const label = svgElement("text", { class: "node-label", x: NODE_W / 2, y: 48 });
+    wrapLabel(state.label).forEach((line, index) => { const span = svgElement("tspan", { x: NODE_W / 2, dy: index ? 17 : 0 }); span.textContent = line; label.append(span); });
+    const context = svgElement("text", { class: "node-context", "data-context-for": state.id, x: NODE_W / 2, y: 82 });
+    attachTooltip(group, "state", state); group.append(body, kind, label, context); nodeLayer.append(group);
+  }
+  graph.append(nodeLayer);
+}
+function validatePayload(event, payload) {
+  if (!event.payload) return payload === undefined;
+  const schema = event.payload;
+  if (!payload || typeof payload !== "object" || Array.isArray(payload) || Object.keys(payload).length !== 1 || !hasOwn(payload, schema.key)) return false;
+  return schema.options.some(option => option.value === payload[schema.key]);
+}
+function guardMatches(guard, payload) {
+  if (!guard) return true;
+  const source = guard.source === "context" ? runtime.context : guard.source === "payload" ? payload : null;
+  if (!source || !hasOwn(source, guard.key)) return false;
+  if (guard.op === "equals") return source[guard.key] === guard.value;
+  if (guard.op === "not-equals") return source[guard.key] !== guard.value;
+  return false;
+}
+function payloadMatches(transition, event, payload) {
+  if (!event.payload) return payload === undefined && !hasOwn(transition, "payload");
+  if (!validatePayload(event, payload)) return false;
+  return !hasOwn(transition, "payload") || transition.payload === payload[event.payload.key];
+}
+function matchingTransitions(type, payload) {
+  const event = eventByType.get(type);
+  if (!event) return [];
+  return (outgoing.get(runtime.stateId) || []).filter(transition => transition.eventType === type && payloadMatches(transition, event, payload) && guardMatches(transition.guard, payload));
+}
+function payloadForChoice(event, choice) {
+  return event.payload ? { [event.payload.key]: choice.value } : undefined;
+}
+function availableEvents() {
+  const types = [...new Set((outgoing.get(runtime.stateId) || []).map(transition => transition.eventType))];
+  return types.map(type => {
+    const event = eventByType.get(type);
+    if (!event) return null;
+    const choices = event.payload
+      ? event.payload.options.filter(choice => matchingTransitions(type, payloadForChoice(event, choice)).length === 1)
+      : matchingTransitions(type, undefined).length === 1 ? [null] : [];
+    return choices.length ? { event, choices } : null;
+  }).filter(Boolean);
+}
+function enabledTransitions() {
+  const enabled = new Set();
+  for (const { event, choices } of availableEvents()) {
+    for (const choice of choices) {
+      for (const transition of matchingTransitions(event.type, payloadForChoice(event, choice))) enabled.add(transition.id);
+    }
+  }
+  return enabled;
+}
+function applyUpdate(update) {
+  if (update.op === "set") runtime.context[update.key] = clone(update.value);
+  else if (update.op === "increment") { const amount = hasOwn(update, "value") ? update.value : 1; runtime.context[update.key] = Number(runtime.context[update.key] || 0) + amount; }
+  else if (update.op === "decrement") { const amount = hasOwn(update, "value") ? update.value : 1; runtime.context[update.key] = Number(runtime.context[update.key] || 0) - amount; }
+  else if (update.op === "append") { const value = Array.isArray(runtime.context[update.key]) ? runtime.context[update.key] : []; runtime.context[update.key] = [...value, clone(update.value)]; }
+  else if (update.op === "remove-last") { const value = Array.isArray(runtime.context[update.key]) ? runtime.context[update.key] : []; runtime.context[update.key] = value.slice(0, -1); }
+  else throw new Error(`Unsupported declarative update: ${update.op}`);
+}
+function showStatus(message, kind = "") {
+  dockStatus.textContent = message; dockStatus.className = `dock-status ${kind}`.trim();
+}
+function updateGraphState() {
+  const enabled = enabledTransitions();
+  graph.querySelectorAll(".edge").forEach(edge => {
+    edge.classList.toggle("enabled", enabled.has(edge.dataset.id));
+    edge.classList.toggle("traversed", edge.dataset.id === runtime.lastTransitionId);
+  });
+  graph.querySelectorAll(".node").forEach(node => {
+    const active = node.dataset.id === runtime.stateId; node.classList.toggle("active", active);
+    if (active) node.setAttribute("aria-current", "step"); else node.removeAttribute("aria-current");
+    const contextText = node.querySelector(".node-context"); const state = stateById.get(node.dataset.id);
+    if (active && state.relevantContextKey) {
+      const value = String(runtime.context[state.relevantContextKey]);
+      contextText.textContent = `${state.relevantContextKey}: ${value.length > 25 ? `${value.slice(0, 24)}…` : value}`;
+    } else contextText.textContent = "";
+  });
+}
+function renderEmitter() {
+  const state = stateById.get(runtime.stateId); activeName.textContent = state.label; eventList.replaceChildren();
+  const events = availableEvents();
+  if (!events.length) eventList.append(htmlElement("div", "terminal-message", terminalKind(state.kind) ? `${state.kind.toUpperCase()} · no target events accepted` : "No event currently accepted"));
+  for (const { event, choices } of events) {
+    const control = htmlElement("div", "event-control");
+    let payload = undefined;
+    if (event.payload) {
+      const select = htmlElement("select"); select.setAttribute("aria-label", `Choose ${event.payload.label} for ${event.type}`);
+      choices.forEach((choice, index) => {
+        const option = htmlElement("option"); option.value = String(index); option.textContent = choice.label; select.append(option);
+      });
+      payload = () => payloadForChoice(event, choices[Number(select.value)]);
+      control.append(select);
+    }
+    const button = htmlElement("button", "event-button"); button.type = "button";
+    button.setAttribute("aria-label", `Emit ${event.type}: ${event.label}`); button.title = event.description;
+    button.append(htmlElement("span", "event-prefix", "EMIT"), htmlElement("span", "event-type", event.type));
+    button.addEventListener("click", () => emit(event.type, typeof payload === "function" ? payload() : undefined, true));
+    control.append(button); eventList.append(control);
+  }
+}
+function render() { updateGraphState(); renderEmitter(); }
+function rejectEvent(type, reason) {
+  const activeNode = graph.querySelector(`.node[data-id="${runtime.stateId}"]`); activeNode.classList.add("rejected");
+  setTimeout(() => activeNode.classList.remove("rejected"), 550);
+  const message = reason === "ambiguous" ? `${type} is ambiguous in ${stateById.get(runtime.stateId).label}` : `${type} rejected by ${stateById.get(runtime.stateId).label}`;
+  showStatus(message, "rejected"); announce(`Event ${type} ${reason}. State unchanged.`); return false;
+}
+function emit(type, payload, fromControl = false) {
+  const transitions = matchingTransitions(type, payload);
+  if (transitions.length !== 1) return rejectEvent(type, transitions.length ? "ambiguous" : "rejected");
+  const transition = transitions[0];
+  transition.updates.forEach(applyUpdate); runtime.lastTransitionId = transition.id; runtime.stateId = transition.to;
+  const destination = stateById.get(runtime.stateId); render(); showStatus(`${type} → ${destination.label}`, "accepted"); announce(`Event ${type} accepted. Active state: ${destination.label}.`);
+  focusState(destination, false); if (fromControl) eventDock.focus({ preventScroll: true }); return true;
+}
+function reset() {
+  runtime = { stateId: machine.initialStateId, context: clone(machine.initialContext), lastTransitionId: null };
+  render(); showStatus("Machine reset", "accepted"); announce(`Machine reset. Active state: ${stateById.get(runtime.stateId).label}.`); focusState(stateById.get(runtime.stateId), false);
+}
+window.stateMachine = Object.freeze({ emit: (type, payload) => emit(String(type), payload, false), reset, getSnapshot: () => clone(runtime) });
+resetButton.addEventListener("click", reset);
+
+let view = { x: 0, y: 200, w: 1250, h: 700 };
+function viewportAspect() { return Math.max(.4, graph.clientWidth / Math.max(1, graph.clientHeight)); }
+function applyView() { graph.setAttribute("viewBox", `${view.x} ${view.y} ${view.w} ${view.h}`); }
+function focusState(state, preserveScale = true) {
+  const aspect = viewportAspect(); const width = preserveScale ? view.w : Math.min(1320, Math.max(760, window.innerWidth * 1.05)); const height = width / aspect;
+  view = { x: state.x - width / 2, y: state.y - height / 2, w: width, h: height }; applyView();
+}
+function fitGraph() {
+  const aspect = viewportAspect(), paddedW = BOUNDS.w + 180, paddedH = BOUNDS.h + 180;
+  let width = paddedW, height = width / aspect;
+  if (height < paddedH) { height = paddedH; width = height * aspect; }
+  view = { x: BOUNDS.x + BOUNDS.w / 2 - width / 2, y: BOUNDS.y + BOUNDS.h / 2 - height / 2, w: width, h: height }; applyView();
+}
+function zoom(factor) { const cx = view.x + view.w / 2, cy = view.y + view.h / 2; view.w *= factor; view.h *= factor; view.x = cx - view.w / 2; view.y = cy - view.h / 2; applyView(); }
+document.getElementById("zoomIn").addEventListener("click", () => zoom(.82));
+document.getElementById("zoomOut").addEventListener("click", () => zoom(1.22));
+document.getElementById("fit").addEventListener("click", fitGraph);
+document.getElementById("focusActive").addEventListener("click", () => focusState(stateById.get(runtime.stateId), false));
+graph.addEventListener("wheel", event => { event.preventDefault(); zoom(event.deltaY > 0 ? 1.1 : .9); }, { passive: false });
+let drag = null;
+graph.addEventListener("pointerdown", event => {
+  if (event.target.closest(".node") || event.target.closest(".edge-hit")) return;
+  drag = { x: event.clientX, y: event.clientY, view: { ...view } }; graph.setPointerCapture(event.pointerId); graph.classList.add("dragging"); hideTooltip();
+});
+graph.addEventListener("pointermove", event => {
+  if (!drag) return; const rect = graph.getBoundingClientRect();
+  view.x = drag.view.x - (event.clientX - drag.x) * drag.view.w / rect.width; view.y = drag.view.y - (event.clientY - drag.y) * drag.view.h / rect.height; applyView();
+});
+function endDrag(event) { drag = null; graph.classList.remove("dragging"); if (event && graph.hasPointerCapture(event.pointerId)) graph.releasePointerCapture(event.pointerId); }
+graph.addEventListener("pointerup", endDrag); graph.addEventListener("pointercancel", endDrag);
+window.addEventListener("resize", () => focusState(stateById.get(runtime.stateId), false));
+
+renderGraph(); render(); requestAnimationFrame(() => focusState(stateById.get(runtime.stateId), false));
+</script>
+</body>
+</html>

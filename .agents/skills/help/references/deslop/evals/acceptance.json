@@ -1,0 +1,106 @@
+{
+  "cases": [
+    {
+      "id": "edit-prose-with-frontmatter-preserved",
+      "family": "frontmatter-and-data-preservation",
+      "prompt": "Edit the prose body of page.md in place. Preserve the frontmatter byte-for-byte and preserve the recorded duration. Remove only the empty promotional language; do not add facts.",
+      "files": {
+        "page.md": "---\ntitle: \"Queue maintenance\"\nslug: queue-maintenance\nowner: ops\n---\n\nThe queue was paused for 12 minutes. It is important to note that this was a pivotal maintenance event.\n"
+      },
+      "checks": [
+        {
+          "path": "page.md",
+          "contains": [
+            "---\ntitle: \"Queue maintenance\"\nslug: queue-maintenance\nowner: ops\n---",
+            "The queue was paused for 12 minutes."
+          ],
+          "absent": [
+            "It is important to note",
+            "pivotal"
+          ]
+        }
+      ],
+      "allowedChanges": [
+        "page.md"
+      ]
+    },
+    {
+      "id": "retain-intentional-fiction-while-cutting-recap",
+      "family": "fictional-invention-preservation",
+      "prompt": "Edit story.txt in place. This is intentional fiction: retain its invented imagery and events. Remove only the generic recap ending, without explaining or grounding the fiction.",
+      "files": {
+        "story.txt": "The moon signed the permit in purple ink, then hid the stamp beneath a fern.\n\nIn conclusion, the night was a transformative journey for everyone.\n"
+      },
+      "checks": [
+        {
+          "path": "story.txt",
+          "contains": [
+            "The moon signed the permit in purple ink",
+            "hid the stamp beneath a fern"
+          ],
+          "absent": [
+            "In conclusion",
+            "transformative journey"
+          ]
+        }
+      ],
+      "allowedChanges": [
+        "story.txt"
+      ]
+    },
+    {
+      "id": "keep-technical-terms-in-neutral-documentation",
+      "family": "technical-register-and-stable-terminology",
+      "prompt": "Edit api.md in place for concise neutral technical documentation. Keep the technical term, the request type, and the retention period. Remove filler and promotional language without renaming the mechanism or adding behavior.",
+      "files": {
+        "api.md": "Use the idempotency key for retried POST requests. In order to avoid duplicate charges, the payment service stores the key for 24 hours. This robust architecture creates a seamless experience.\n"
+      },
+      "checks": [
+        {
+          "path": "api.md",
+          "contains": [
+            "idempotency key",
+            "POST",
+            "24 hours"
+          ],
+          "absent": [
+            "In order to",
+            "robust architecture",
+            "seamless experience"
+          ]
+        }
+      ],
+      "allowedChanges": [
+        "api.md"
+      ]
+    },
+    {
+      "id": "use-writing-sample-as-style-authority",
+      "family": "supplied-writing-sample-and-source-register",
+      "prompt": "Use style.txt as the writing-style authority. Edit letter.txt in place to remove the fake-candor setup while preserving the speaker's facts and direct, clipped register. Do not modify style.txt and do not add facts.",
+      "files": {
+        "style.txt": "I want the answer in plain sentences. No ceremonial throat-clearing.\n",
+        "letter.txt": "Let me be clear: I missed the train. I got there late, wet, and annoyed.\n"
+      },
+      "checks": [
+        {
+          "path": "style.txt",
+          "equals": "I want the answer in plain sentences. No ceremonial throat-clearing.\n"
+        },
+        {
+          "path": "letter.txt",
+          "contains": [
+            "I missed the train.",
+            "I got there late, wet, and annoyed."
+          ],
+          "absent": [
+            "Let me be clear"
+          ]
+        }
+      ],
+      "allowedChanges": [
+        "letter.txt"
+      ]
+    }
+  ]
+}

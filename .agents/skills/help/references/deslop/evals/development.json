@@ -1,0 +1,129 @@
+{
+  "cases": [
+    {
+      "id": "audit-without-source-mutation",
+      "family": "mode-selection-and-read-only-audit",
+      "prompt": "Audit brief.md for generic or unsupported prose without editing brief.md. Write concise findings to audit.txt that quote the affected wording and explain the problem. Do not rewrite the source text.",
+      "files": {
+        "brief.md": "## Launch note\n\nIt is important to note that the cache was cleared at 09:10 UTC. This pivotal step underscores our commitment to reliability.\n"
+      },
+      "checks": [
+        {
+          "path": "brief.md",
+          "equals": "## Launch note\n\nIt is important to note that the cache was cleared at 09:10 UTC. This pivotal step underscores our commitment to reliability.\n"
+        },
+        {
+          "path": "audit.txt",
+          "contains": [
+            "It is important to note",
+            "pivotal"
+          ]
+        }
+      ],
+      "allowedChanges": [
+        "audit.txt"
+      ]
+    },
+    {
+      "id": "edit-with-protected-code-quote-and-claim",
+      "family": "protected-spans-and-factual-claims",
+      "prompt": "Edit guide.md in place. Remove empty promotional prose with the minimum effective edit. Preserve the operational fact, the block quote, and the code block exactly; do not add facts.",
+      "files": {
+        "guide.md": "# Deployment note\n\nThe operator restarted api-2 at 14:05 UTC after its health check failed.\n\n> \"Do not restart api-2 during the database migration.\"\n\n```sh\nkubectl rollout restart deployment/api-2\n```\n\nIt is important to note that this was a pivotal moment for reliability.\n"
+      },
+      "checks": [
+        {
+          "path": "guide.md",
+          "contains": [
+            "The operator restarted api-2 at 14:05 UTC after its health check failed.",
+            "> \"Do not restart api-2 during the database migration.\"",
+            "```sh\nkubectl rollout restart deployment/api-2\n```"
+          ],
+          "absent": [
+            "It is important to note",
+            "pivotal"
+          ]
+        }
+      ],
+      "allowedChanges": [
+        "guide.md"
+      ]
+    },
+    {
+      "id": "write-ready-copy-to-output-only-artifact",
+      "family": "output-only-copy-contract",
+      "prompt": "Read draft.txt and write the finished ready-to-insert copy to final.txt. Do not modify draft.txt and do not include commentary. Keep the Friday deadline and the CSV attachment instruction while removing filler.",
+      "files": {
+        "draft.txt": "The report is due Friday. In order to send it, attach the CSV.\n"
+      },
+      "checks": [
+        {
+          "path": "draft.txt",
+          "equals": "The report is due Friday. In order to send it, attach the CSV.\n"
+        },
+        {
+          "path": "final.txt",
+          "contains": [
+            "Friday",
+            "CSV"
+          ],
+          "absent": [
+            "In order to"
+          ]
+        }
+      ],
+      "allowedChanges": [
+        "final.txt"
+      ]
+    },
+    {
+      "id": "preserve-link-target-during-throat-clearing-edit",
+      "family": "link-target-integrity",
+      "prompt": "Edit docs.md in place. Remove the throat-clearing phrase while preserving the runbook link, its target, and the rollback-owner fact. Do not add operational details.",
+      "files": {
+        "docs.md": "Read [the migration runbook](https://ops.example.test/runbook#rollback) before the change.\n\nHere's the thing: the rollback owner is Sam.\n"
+      },
+      "checks": [
+        {
+          "path": "docs.md",
+          "contains": [
+            "[the migration runbook](https://ops.example.test/runbook#rollback)"
+          ],
+          "absent": [
+            "Here's the thing",
+            "automated rollback"
+          ]
+        }
+      ],
+      "allowedChanges": [
+        "docs.md"
+      ]
+    },
+    {
+      "id": "retain-distinctive-voice-while-cutting-empty-recap",
+      "family": "voice-and-minimal-intervention",
+      "prompt": "Edit notes.md in place with the minimum effective edit. Keep the blunt observations unchanged, remove the empty promotional recap, and do not add praise, status, or a new conclusion.",
+      "files": {
+        "notes.md": "Lee wrote the parser in a hurry, and it shows. The logs are ugly; keep them for now.\n\nOverall, this is a robust and transformative improvement.\n"
+      },
+      "checks": [
+        {
+          "path": "notes.md",
+          "contains": [
+            "Lee wrote the parser in a hurry, and it shows.",
+            "The logs are ugly; keep them for now."
+          ],
+          "absent": [
+            "Overall",
+            "robust",
+            "transformative",
+            "production-ready"
+          ]
+        }
+      ],
+      "allowedChanges": [
+        "notes.md"
+      ]
+    }
+  ]
+}
