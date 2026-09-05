@@ -16,6 +16,7 @@ export default defineConfig({
       { text: "Getting Started", link: "/getting-started" },
       { text: "Configuration", link: "/configuration" },
       { text: "Rules", link: "/rules" },
+      { text: "Principles", link: "/engineering-principles" },
       { text: "Project", link: "/project" },
     ],
     sidebar: [
@@ -23,6 +24,7 @@ export default defineConfig({
       { text: "Getting Started", link: "/getting-started" },
       { text: "Configuration", link: "/configuration" },
       { text: "Rules", link: "/rules" },
+      { text: "Principles", link: "/engineering-principles" },
       { text: "Project", link: "/project" },
     ],
     socialLinks: [

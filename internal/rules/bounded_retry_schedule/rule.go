@@ -1,175 +1,383 @@
 package bounded_retry_schedule
 
 import (
-	"github.com/andrueandersoncs/better-typescript/internal/rule"
-	"github.com/andrueandersoncs/typescript-go/ast"
+	"math"
+	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
+
+	"github.com/andrueandersoncs/better-typescript/internal/rule"
+	"github.com/andrueandersoncs/better-typescript/internal/utils"
+	"github.com/andrueandersoncs/typescript-go/ast"
+	"github.com/andrueandersoncs/typescript-go/scanner"
 )
 
 var message = rule.RuleMessage{
 	Id:          "bounded-retry-schedule",
-	Description: "Use a bounded retry schedule unless a local waiver documents forever retry.",
-	Help:        "Use recurs or upTo to make retries operationally bounded.",
+	Description: "Use a finite retry recurrence unless a local waiver documents forever retry.",
+	Help:        "Use Schedule.recurs(n), Schedule.upTo({ times: n }), or a Schedule.max branch that terminates.",
 }
 
-var waiverPattern = regexp.MustCompile(`(?i)(unbounded|forever-ok|allow-forever|effect-quality-allow-unbounded-retry)`)
-var boundPattern = regexp.MustCompile(`\b(recurs|upTo|times|count|while|until|intersect)\b`)
+var waiverPattern = regexp.MustCompile(`(?i)^//\s*(effect-quality-allow-unbounded-retry|forever-ok|allow-forever)(:|\s)`)
+
+type recurrence int
+
+const (
+	unknown recurrence = iota
+	finite
+	unbounded
+)
 
 var Rule = rule.Rule{Name: "bounded-retry-schedule", Run: func(ctx rule.RuleContext, _ any) rule.RuleListeners {
 	return rule.RuleListeners{ast.KindCallExpression: func(node *ast.Node) {
-		name, receiver, ok := callName(node)
-		if !ok || name != "retry" {
-			return
-		}
-		if receiver != nil && !(ast.IsIdentifier(unwrap(receiver)) && unwrap(receiver).Text() == "Effect") {
-			return
-		}
-		start := node.Pos() - 300
-		if start < 0 {
-			start = 0
-		}
-		if waiverPattern.MatchString(ctx.SourceFile.Text()[start:node.Pos()]) {
-			return
-		}
-		policy := retryPolicy(node.AsCallExpression())
-		if policy == nil || policyIsBounded(ctx, policy) {
+		policy := retryPolicy(ctx, node)
+		if policy == nil || hasWaiver(ctx, node) || policyRecurrence(ctx, policy) != unbounded {
 			return
 		}
 		ctx.ReportNode(node, message)
 	}}
 }}
 
-func retryPolicy(call *ast.CallExpression) *ast.Node {
+func retryPolicy(ctx rule.RuleContext, node *ast.Node) *ast.Node {
+	call := node.AsCallExpression()
+	name := effectRetryName(ctx, call.Expression)
+	if name == "" {
+		return nil
+	}
 	args := call.Arguments.Nodes
-	if len(args) == 0 {
-		return nil
-	}
-	first := unwrap(args[0])
-	if ast.IsObjectLiteralExpression(first) {
-		return first
-	}
-	if len(args) > 1 {
-		return unwrap(args[1])
-	}
-	if ast.IsArrowFunction(first) || ast.IsFunctionExpression(first) {
-		return nil
-	}
-	return first
-}
-
-func policyIsBounded(ctx rule.RuleContext, policy *ast.Node) bool {
-	policy = unwrap(policy)
-	if !ast.IsObjectLiteralExpression(policy) {
-		return boundPattern.MatchString(nodeText(ctx.SourceFile, policy))
-	}
-	object := policy.AsObjectLiteralExpression()
-	hasTimes, hasWhileUntil, hasSchedule, scheduleBound := false, false, false, false
-	for _, prop := range object.Properties.Nodes {
-		if !ast.IsPropertyAssignment(prop) {
-			continue
+	switch name {
+	case "retry":
+		if len(args) >= 2 {
+			return args[1]
 		}
-		name, ok := ast.TryGetTextOfPropertyName(prop.Name())
-		if !ok {
-			continue
+		if len(args) == 1 && isAppliedRetry(node) {
+			return args[0]
 		}
-		value := unwrap(prop.AsPropertyAssignment().Initializer)
-		switch name {
-		case "times":
-			hasTimes = ast.IsNumericLiteral(value) || ast.IsIdentifier(value)
-		case "while", "until":
-			hasWhileUntil = true
-		case "schedule":
-			hasSchedule = true
-			scheduleBound = boundPattern.MatchString(nodeText(ctx.SourceFile, value))
+	case "retryOrElse":
+		if len(args) >= 3 {
+			return args[1]
 		}
-	}
-	if hasSchedule && !scheduleBound && !hasTimes && !hasWhileUntil {
-		return false
-	}
-	return hasTimes || hasWhileUntil || !hasSchedule || scheduleBound
-}
-
-func unwrap(node *ast.Node) *ast.Node {
-	for node != nil {
-		switch node.Kind {
-		case ast.KindParenthesizedExpression:
-			node = node.AsParenthesizedExpression().Expression
-		case ast.KindAsExpression, ast.KindSatisfiesExpression, ast.KindTypeAssertionExpression:
-			node = node.Expression()
-		case ast.KindNonNullExpression:
-			node = node.Expression()
-		default:
-			return node
+		if len(args) == 2 && isAppliedRetry(node) {
+			return args[0]
 		}
 	}
 	return nil
 }
 
-func propertyName(node *ast.Node) (string, *ast.Node, bool) {
-	node = unwrap(node)
-	if node == nil || !ast.IsPropertyAccessExpression(node) {
-		return "", nil, false
+func effectRetryName(ctx rule.RuleContext, expression *ast.Node) string {
+	target := unwrap(expression)
+	if ast.IsPropertyAccessExpression(target) {
+		target = target.AsPropertyAccessExpression().Name()
 	}
-	return node.Name().Text(), node.AsPropertyAccessExpression().Expression, true
+	if !ast.IsIdentifier(target) {
+		return ""
+	}
+	symbol := utils.ResolvedSymbol(ctx.TypeChecker, target)
+	if symbol == nil || (symbol.Name != "retry" && symbol.Name != "retryOrElse") || !declaredInEffectFile(symbol, "Effect") {
+		return ""
+	}
+	return symbol.Name
 }
 
-func callName(node *ast.Node) (string, *ast.Node, bool) {
+func policyRecurrence(ctx rule.RuleContext, node *ast.Node) recurrence {
+	node = unwrap(node)
+	if !ast.IsObjectLiteralExpression(node) {
+		return scheduleRecurrence(ctx, node)
+	}
+	return optionRecurrence(ctx, node)
+}
+
+func optionRecurrence(ctx rule.RuleContext, node *ast.Node) recurrence {
+	var schedule *ast.Node
+	hasPredicate, unknownTimes := false, false
+	times := unknown
+	for _, property := range node.AsObjectLiteralExpression().Properties.Nodes {
+		if ast.IsSpreadAssignment(property) {
+			return unknown
+		}
+		if !ast.IsPropertyAssignment(property) {
+			continue
+		}
+		name, ok := ast.TryGetTextOfPropertyName(property.Name())
+		if !ok {
+			return unknown
+		}
+		switch name {
+		case "schedule":
+			schedule = property.AsPropertyAssignment().Initializer
+		case "times":
+			if finiteNumberLiteral(property.AsPropertyAssignment().Initializer) {
+				times = finite
+			} else {
+				unknownTimes = true
+			}
+		case "while", "until":
+			hasPredicate = true
+		}
+	}
+	if times == finite {
+		return finite
+	}
+	if unknownTimes {
+		return unknown
+	}
+	if hasPredicate {
+		return unknown
+	}
+	if schedule == nil {
+		return unbounded
+	}
+	return scheduleRecurrence(ctx, schedule)
+}
+
+func scheduleRecurrence(ctx rule.RuleContext, node *ast.Node) recurrence {
+	node = unwrap(node)
 	if node == nil || !ast.IsCallExpression(node) {
-		return "", nil, false
+		if isEffectScheduleMember(ctx, node, "forever") {
+			return unbounded
+		}
+		return unknown
 	}
 	call := node.AsCallExpression()
-	name, receiver, ok := propertyName(call.Expression)
-	if ok {
-		return name, receiver, true
+	if name := effectScheduleCall(ctx, call.Expression); name != "" && name != "pipe" {
+		switch name {
+		case "recurs":
+			if len(call.Arguments.Nodes) == 1 && finiteNumberLiteral(call.Arguments.Nodes[0]) {
+				return finite
+			}
+			if len(call.Arguments.Nodes) == 1 && positiveInfinity(ctx, call.Arguments.Nodes[0]) {
+				return unbounded
+			}
+			return unknown
+		case "duration":
+			return finite
+		case "forever", "exponential", "fibonacci", "fixed", "spaced", "windowed":
+			return unbounded
+		case "jittered", "passthrough":
+			if len(call.Arguments.Nodes) == 1 {
+				return scheduleRecurrence(ctx, call.Arguments.Nodes[0])
+			}
+		case "upTo":
+			if len(call.Arguments.Nodes) == 2 && finiteTimes(call.Arguments.Nodes[1]) {
+				return finite
+			}
+		case "max", "min":
+			if len(call.Arguments.Nodes) == 1 {
+				return combinedRecurrence(ctx, call.Arguments.Nodes[0], name)
+			}
+		}
+		return unknown
 	}
-	callee := unwrap(call.Expression)
-	if callee != nil && ast.IsIdentifier(callee) {
-		return callee.Text(), nil, true
+	if !ast.IsPropertyAccessExpression(unwrap(call.Expression)) {
+		return unknown
 	}
-	return "", nil, false
+	access := unwrap(call.Expression).AsPropertyAccessExpression()
+	if access.Name().Text() != "pipe" || len(call.Arguments.Nodes) != 1 {
+		return unknown
+	}
+	base := scheduleRecurrence(ctx, access.Expression)
+	return applyScheduleStage(ctx, base, call.Arguments.Nodes[0])
 }
 
-func nodeText(file *ast.SourceFile, node *ast.Node) string {
-	if node == nil {
-		return ""
+func combinedRecurrence(ctx rule.RuleContext, argument *ast.Node, operator string) recurrence {
+	values := unwrap(argument)
+	if !ast.IsArrayLiteralExpression(values) {
+		return unknown
 	}
-	start, end := node.Pos(), node.End()
-	text := file.Text()
-	if start < 0 {
-		start = 0
+	states := make([]recurrence, 0, len(values.AsArrayLiteralExpression().Elements.Nodes))
+	for _, element := range values.AsArrayLiteralExpression().Elements.Nodes {
+		if element.Kind == ast.KindSpreadElement {
+			return unknown
+		}
+		states = append(states, scheduleRecurrence(ctx, element))
 	}
-	if end > len(text) {
-		end = len(text)
+	if len(states) == 0 {
+		return unknown
 	}
-	if end < start {
-		return ""
+	if operator == "max" {
+		for _, state := range states {
+			if state == finite {
+				return finite
+			}
+		}
+		for _, state := range states {
+			if state == unknown {
+				return unknown
+			}
+		}
+		return unbounded
 	}
-	return strings.TrimSpace(text[start:end])
+	sawUnknown := false
+	for _, state := range states {
+		if state == unbounded {
+			return unbounded
+		}
+		if state == unknown {
+			sawUnknown = true
+		}
+	}
+	if sawUnknown {
+		return unknown
+	}
+	return finite
 }
 
-func walk(node *ast.Node, visit func(*ast.Node) bool) bool {
-	if node == nil {
+func applyScheduleStage(ctx rule.RuleContext, base recurrence, stage *ast.Node) recurrence {
+	stage = unwrap(stage)
+	if !ast.IsCallExpression(stage) {
+		switch effectScheduleName(ctx, stage) {
+		case "jittered", "passthrough":
+			return base
+		}
+		return unknown
+	}
+	call := stage.AsCallExpression()
+	switch effectScheduleCall(ctx, call.Expression) {
+	case "jittered", "passthrough":
+		if len(call.Arguments.Nodes) == 1 {
+			return base
+		}
+	case "upTo":
+		if len(call.Arguments.Nodes) == 1 && finiteTimes(call.Arguments.Nodes[0]) {
+			return finite
+		}
+	}
+	return unknown
+}
+
+func finiteTimes(node *ast.Node) bool {
+	node = unwrap(node)
+	if !ast.IsObjectLiteralExpression(node) {
 		return false
 	}
-	if visit(node) {
-		return true
+	for _, property := range node.AsObjectLiteralExpression().Properties.Nodes {
+		if !ast.IsPropertyAssignment(property) {
+			continue
+		}
+		name, ok := ast.TryGetTextOfPropertyName(property.Name())
+		if ok && name == "times" {
+			return finiteNumberLiteral(property.AsPropertyAssignment().Initializer)
+		}
 	}
-	found := false
-	node.ForEachChild(func(child *ast.Node) bool {
-		if walk(child, visit) {
-			found = true
+	return false
+}
+
+func finiteNumberLiteral(node *ast.Node) bool {
+	node = unwrap(node)
+	if !ast.IsNumericLiteral(node) {
+		return false
+	}
+	value, err := strconv.ParseFloat(node.Text(), 64)
+	return err == nil && !math.IsInf(value, 0) && !math.IsNaN(value)
+}
+
+func positiveInfinity(ctx rule.RuleContext, node *ast.Node) bool {
+	node = unwrap(node)
+	if ast.IsNumericLiteral(node) {
+		value, _ := strconv.ParseFloat(node.Text(), 64)
+		return math.IsInf(value, 1)
+	}
+	target := node
+	if ast.IsPropertyAccessExpression(node) {
+		target = node.AsPropertyAccessExpression().Name()
+	}
+	if !ast.IsIdentifier(target) || (target.Text() != "Infinity" && target.Text() != "POSITIVE_INFINITY") {
+		return false
+	}
+	symbol := utils.ResolvedSymbol(ctx.TypeChecker, target)
+	if symbol == nil {
+		return false
+	}
+	for _, declaration := range symbol.Declarations {
+		if file := ast.GetSourceFileOfNode(declaration); file != nil {
+			name := filepath.Base(file.FileName())
+			if strings.HasPrefix(name, "lib.") && strings.HasSuffix(name, ".d.ts") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func effectScheduleCall(ctx rule.RuleContext, expression *ast.Node) string {
+	return effectScheduleName(ctx, expression)
+}
+
+func effectScheduleName(ctx rule.RuleContext, node *ast.Node) string {
+	target := unwrap(node)
+	if ast.IsPropertyAccessExpression(target) {
+		target = target.AsPropertyAccessExpression().Name()
+	}
+	if !ast.IsIdentifier(target) {
+		return ""
+	}
+	symbol := utils.ResolvedSymbol(ctx.TypeChecker, target)
+	if symbol == nil || !declaredInEffectFile(symbol, "Schedule") {
+		return ""
+	}
+	return symbol.Name
+}
+
+func isEffectScheduleMember(ctx rule.RuleContext, node *ast.Node, name string) bool {
+	return effectScheduleName(ctx, node) == name
+}
+
+func declaredInEffectFile(symbol *ast.Symbol, module string) bool {
+	for _, declaration := range symbol.Declarations {
+		file := ast.GetSourceFileOfNode(declaration)
+		if file == nil {
+			continue
+		}
+		path := strings.ReplaceAll(file.FileName(), "\\", "/")
+		base := filepath.Base(path)
+		if (base == module+".ts" || base == module+".d.ts") &&
+			(strings.Contains(path, "/node_modules/effect/") || strings.Contains(path, "/packages/effect/src/")) {
 			return true
 		}
-		return false
-	})
-	return found
+	}
+	return false
 }
 
-func enclosingFunction(node *ast.Node) *ast.Node {
-	for current := node.Parent; current != nil; current = current.Parent {
-		if ast.IsFunctionLike(current) {
-			return current
+func hasWaiver(ctx rule.RuleContext, node *ast.Node) bool {
+	start := scanner.GetTokenPosOfNode(node, ctx.SourceFile, false)
+	for _, line := range strings.Split(ctx.SourceFile.Text()[node.Pos():start], "\n") {
+		if waiverPattern.MatchString(strings.TrimSpace(line)) {
+			return true
+		}
+	}
+	return false
+}
+
+func isAppliedRetry(node *ast.Node) bool {
+	if node.Parent == nil || !ast.IsCallExpression(node.Parent) {
+		return false
+	}
+	parent := node.Parent.AsCallExpression()
+	if parent.Expression == node {
+		return true
+	}
+	if ast.IsPropertyAccessExpression(parent.Expression) && parent.Expression.AsPropertyAccessExpression().Name().Text() != "pipe" {
+		return false
+	}
+	if ast.IsIdentifier(parent.Expression) && parent.Expression.Text() != "pipe" {
+		return false
+	}
+	for _, argument := range parent.Arguments.Nodes {
+		if argument == node {
+			return true
+		}
+	}
+	return false
+}
+
+func unwrap(node *ast.Node) *ast.Node {
+	for node != nil {
+		switch node.Kind {
+		case ast.KindParenthesizedExpression, ast.KindAsExpression, ast.KindSatisfiesExpression, ast.KindTypeAssertionExpression, ast.KindNonNullExpression:
+			node = node.Expression()
+		default:
+			return node
 		}
 	}
 	return nil

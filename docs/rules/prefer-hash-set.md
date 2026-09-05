@@ -6,18 +6,24 @@ Reports bare global `new Set(...)`, unqualified global `Set`/`ReadonlySet` type 
 
 ## When to use it
 
-Use it for immutable Effect collections.
+Use it as the application-code default for immutable Effect collections. An owned library kernel may intentionally use a native set behind a controlled interface under explicit project policy; this syntactic rule does not infer ownership or auto-exempt local kernels.
+
+`HashSet` uses structural `Equal` and `Hash` by default. For reference identity, retain one `Equal.byReference` wrapper and use that same wrapper for each insertion and membership check. Every call creates a fresh wrapper, so rewrapping the raw object does not preserve native `Set` identity membership. If a public contract accepts raw object identities, moving to `HashSet` changes that contract; do not use `Equal.byReferenceUnsafe` as a routine replacement.
 
 ## Conformant
 
-```ts
-import { HashSet } from "effect"
+```ts lint=clean
+import { Equal, HashSet } from "effect"
 
-export const values = HashSet.fromIterable([1, 2, 3])
+const object = { id: 1 }
+const member = Equal.byReference(object)
+const values = HashSet.make(member)
+
+HashSet.has(values, member)
 ```
 
 ## Non-conformant
 
-```ts
+```ts lint=error:1:23
 export const values = new Set<string>()
 ```

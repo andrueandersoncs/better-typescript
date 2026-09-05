@@ -1,16 +1,15 @@
 package no_schema_decode_unknown_sync
 
 import (
-	"strings"
-
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
+	"github.com/andrueandersoncs/better-typescript/internal/utils"
 	"github.com/andrueandersoncs/typescript-go/ast"
 )
 
 var message = rule.RuleMessage{
 	Id:          "no-schema-decode-unknown-sync",
 	Description: "Avoid Schema.decodeUnknownSync.",
-	Help:        "Use Schema.decodeUnknown and handle decoding failures in the Effect error channel.",
+	Help:        "Use Schema.decodeUnknownEffect and handle decoding failures in the Effect error channel.",
 }
 
 var Rule = rule.Rule{
@@ -36,25 +35,8 @@ var Rule = rule.Rule{
 }
 
 func isEffectDecodeUnknownSync(ctx rule.RuleContext, node *ast.Node) bool {
-	symbol := ctx.TypeChecker.GetSymbolAtLocation(node)
-	if symbol != nil && symbol.Flags&ast.SymbolFlagsAlias != 0 {
-		symbol = ctx.TypeChecker.GetAliasedSymbol(symbol)
-	}
-	if symbol == nil || symbol.Name != "decodeUnknownSync" {
-		return false
-	}
-	for _, declaration := range symbol.Declarations {
-		file := ast.GetSourceFileOfNode(declaration)
-		if file != nil && isEffectDeclarationFile(file.FileName()) {
-			return true
-		}
-	}
-	return false
-}
-
-func isEffectDeclarationFile(fileName string) bool {
-	path := strings.ReplaceAll(fileName, "\\", "/")
-	return strings.Contains(path, "/node_modules/effect/")
+	symbol := utils.ResolvedSymbol(ctx.TypeChecker, node)
+	return symbol != nil && symbol.Name == "decodeUnknownSync" && utils.IsEffectSchemaSymbol(symbol)
 }
 
 func unwrap(node *ast.Node) *ast.Node {

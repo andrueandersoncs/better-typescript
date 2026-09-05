@@ -9,6 +9,8 @@ import (
 
 func TestRule(t *testing.T) {
 	ruletest.Assert(t, "testdata", ScopedClientCacheRule, []analysis.Violation{
-		{RuleName: "scoped-client-cache", Level: "error", Message: "Acquire clients outside Cache lookup functions and share them through a layer. Build the client once in the owning layer, then make lookup a plain call.", FilePath: "violation.ts", Line: 3, Column: 91},
+		{RuleName: "scoped-client-cache", Level: "error", Message: "Do not acquire a scoped resource inside an ordinary Cache lookup. Acquire the resource in its owning layer and let lookup use the shared client.", FilePath: "violation.ts", Line: 9, Column: 5},
+		{RuleName: "scoped-client-cache", Level: "error", Message: "Do not acquire a scoped resource inside an ordinary Cache lookup. Acquire the resource in its owning layer and let lookup use the shared client.", FilePath: "violation.ts", Line: 13, Column: 20},
+		{RuleName: "scoped-client-cache", Level: "error", Message: "Do not acquire a scoped resource inside an ordinary Cache lookup. Acquire the resource in its owning layer and let lookup use the shared client.", FilePath: "violation.ts", Line: 19, Column: 19},
 	})
 }

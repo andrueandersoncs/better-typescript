@@ -2,28 +2,38 @@
 
 ## What it does
 
-Reports bare `retry(...)` and exact-identifier `Effect.retry(...)` calls when the syntactically selected policy fails a textual bound heuristic. An object first argument is the policy; otherwise argument 2 is used when present, or a sole non-function argument is used. A non-object is allowed when its raw text contains a listed bound word. An object is allowed by a numeric/identifier `times`, any `while` or `until`, a bounded `schedule`, or no `schedule`. Bounds include `recurs`, `upTo`, `times`, `count`, `while`, `until`, and `intersect`. A call is allowed when its preceding 300 source characters contain `unbounded`, `forever-ok`, `allow-forever`, or `effect-quality-allow-unbounded-retry`.
+Reports a resolved `Effect.retry` or `Effect.retryOrElse` policy only when its recurrence is proven unbounded. Direct v4 option policies use `schedule` and `times`: a finite literal `times` bounds the policy, while a `schedule` is classified by its recurrence. `while` and `until` predicates are unknown rather than finite proof.
+
+The rule recognizes `Schedule.recurs` with a finite numeric literal, `Schedule.upTo({ times })`, and `Schedule.max`/`Schedule.min`: `max` stops when any child stops, while `min` stops only when every child stops. `Schedule.jittered` changes delay, not recurrence. `Schedule.recurs(Infinity)`, custom schedules, and option values it cannot resolve are not finite proof. The existing nearby lifetime waiver comments remain available for explicitly supervised forever reconnect loops.
 
 ## When to use it
 
-Use it to keep retry loops operationally bounded unless local code documents why they may run forever.
+Use it for retries that must end independently of a service lifetime.
 
 ## Conformant
 
 ```ts
-declare const Effect: any
-declare const Schedule: any
-declare const task: any
+import { Effect, Schedule } from "effect"
 
-Effect.retry(task, Schedule.recurs(3))
+const task = Effect.fail("unavailable")
+const retry = Effect.retry(task, Schedule.max([
+  Schedule.recurs(3),
+  Schedule.exponential("100 millis"),
+]))
+
+void retry
 ```
 
 ## Non-conformant
 
 ```ts
-declare const Effect: any
-declare const Schedule: any
-declare const task: any
+import { Effect, Schedule } from "effect"
 
-Effect.retry(task, Schedule.forever)
+const task = Effect.fail("unavailable")
+const retry = Effect.retry(task, Schedule.min([
+  Schedule.recurs(3),
+  Schedule.exponential("100 millis"),
+]))
+
+void retry
 ```

@@ -12,6 +12,12 @@ Analysis converts reports into the stable six-field NDJSON contract. It makes pa
 
 Each rule owns one `internal/rules/<rule_name>` package and a minimal `testdata` TypeScript project. Shared runtime code does not encode rule-specific verdicts.
 
+## Executable rule examples
+
+Selected TypeScript fences carry `lint=clean` or `lint=error:line:column[,line:column]`. Coordinates are one-based within the fence. `TestDocumentedExamples` compiles them against the pinned Effect source and checks the rule IDs and locations emitted by the real linter. Unmarked fences are illustrative.
+
+Run `mise exec go@1.26 -- go test ./internal/rules -run TestDocumentedExamples`. The repository check also runs this test.
+
 ## Links
 
 - [npm distribution](./npm-distribution.md)

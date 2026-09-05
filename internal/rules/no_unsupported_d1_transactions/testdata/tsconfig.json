@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "noEmit": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "paths": {
+      "@effect/sql-d1": ["./packages/sql/d1/src/index.ts"],
+      "effect/Effect": ["./packages/effect/src/Effect.ts"],
+      "effect/Function": ["./packages/effect/src/Function.ts"],
+      "effect/Pipeable": ["./packages/effect/src/Pipeable.ts"],
+      "effect/unstable/sql/SqlClient": ["./packages/effect/src/unstable/sql/SqlClient.ts"],
+      "effect/unstable/sql/SqlError": ["./packages/effect/src/unstable/sql/SqlError.ts"],
+      "effect/unstable/sql/Statement": ["./packages/effect/src/unstable/sql/Statement.ts"]
+    }
+  },
+  "include": ["**/*.ts"]
+}

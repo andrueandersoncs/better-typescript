@@ -4,141 +4,220 @@ import (
 	"strings"
 
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
+	"github.com/andrueandersoncs/better-typescript/internal/utils"
 	"github.com/andrueandersoncs/typescript-go/ast"
+	"github.com/andrueandersoncs/typescript-go/checker"
 )
 
-var message = rule.RuleMessage{
+var testMessage = rule.RuleMessage{
 	Id:          "effect-test-style",
 	Description: "Use it.effect for Effect tests.",
 	Help:        "Effect-aware tests provide the correct runtime and deterministic services.",
 }
 
-var plainMethods = map[string]bool{"only": true, "skip": true, "todo": true, "concurrent": true, "sequential": true}
+var propertyMessage = rule.RuleMessage{
+	Id:          "effect-test-style",
+	Description: "Use it.effect.prop for Effect property tests.",
+	Help:        "Effect-aware property tests execute returned Effects with the correct runtime and deterministic services.",
+}
+
+type registration struct {
+	call       *ast.Node
+	isProperty bool
+}
+
 var Rule = rule.Rule{Name: "effect-test-style", Run: func(ctx rule.RuleContext, _ any) rule.RuleListeners {
-	return rule.RuleListeners{ast.KindCallExpression: func(node *ast.Node) {
-		if !strings.Contains(ctx.SourceFile.Text(), "@effect/vitest") || !plainItCall(node) {
-			return
-		}
-		args := node.AsCallExpression().Arguments.Nodes
-		for i := len(args) - 1; i >= 0; i-- {
-			callback := unwrap(args[i])
-			if !(ast.IsArrowFunction(callback) || ast.IsFunctionExpression(callback)) {
-				continue
+	callbacks := map[*ast.Node]registration{}
+	returnedEffects := map[*ast.Node]bool{}
+	return rule.RuleListeners{
+		ast.KindCallExpression: func(node *ast.Node) {
+			registration, ok := plainEffectTestCall(ctx, node)
+			if !ok {
+				return
 			}
-			if callbackReturnsEffect(ctx, callback) {
-				ctx.ReportNode(node, message)
+			if callback := rightmostCallback(node); callback != nil {
+				callbacks[callback] = registration
+			} else if callback := rightmostArgument(node); callback != nil && callbackReturnsEffect(ctx, callback) {
+				reportRegistration(ctx, registration)
 			}
-			return
-		}
-	}}
+		},
+		ast.KindReturnStatement: func(node *ast.Node) {
+			callback := enclosingCallback(node)
+			if _, ok := callbacks[callback]; ok && node.AsReturnStatement().Expression != nil && returnsEffect(ctx, node.AsReturnStatement().Expression) {
+				returnedEffects[callback] = true
+			}
+		},
+		rule.ListenerOnExit(ast.KindArrowFunction): func(node *ast.Node) {
+			reportEffectCallback(ctx, callbacks, returnedEffects, node)
+		},
+		rule.ListenerOnExit(ast.KindFunctionExpression): func(node *ast.Node) {
+			reportEffectCallback(ctx, callbacks, returnedEffects, node)
+		},
+	}
 }}
 
-func plainItCall(node *ast.Node) bool {
-	callee := unwrap(node.AsCallExpression().Expression)
-	if ast.IsIdentifier(callee) {
-		return callee.Text() == "it"
+func reportEffectCallback(ctx rule.RuleContext, callbacks map[*ast.Node]registration, returnedEffects map[*ast.Node]bool, callback *ast.Node) {
+	registration, ok := callbacks[callback]
+	if !ok {
+		return
 	}
-	if ast.IsPropertyAccessExpression(callee) {
-		name, receiver, _ := propertyName(callee)
-		return receiver != nil && ast.IsIdentifier(unwrap(receiver)) && unwrap(receiver).Text() == "it" && plainMethods[name]
+	body := callback.BodyData().Body
+	if body != nil && !ast.IsBlock(body) && returnsEffect(ctx, body) {
+		reportRegistration(ctx, registration)
+		return
 	}
-	if ast.IsCallExpression(callee) {
-		name, receiver, ok := callName(callee)
-		return ok && name == "each" && receiver != nil && ast.IsIdentifier(unwrap(receiver)) && unwrap(receiver).Text() == "it"
+	if returnedEffects[callback] {
+		reportRegistration(ctx, registration)
 	}
-	return false
-}
-func callbackReturnsEffect(ctx rule.RuleContext, callback *ast.Node) bool {
-	signature := ctx.TypeChecker.GetSignatureFromDeclaration(callback)
-	if signature != nil {
-		result := ctx.TypeChecker.GetReturnTypeOfSignature(signature)
-		if result != nil && strings.Contains(ctx.TypeChecker.TypeToString(result), "Effect") {
-			return true
-		}
-	}
-	return strings.Contains(nodeText(ctx.SourceFile, callback), "Effect.")
 }
 
-func unwrap(node *ast.Node) *ast.Node {
-	for node != nil {
-		switch node.Kind {
-		case ast.KindParenthesizedExpression:
-			node = node.AsParenthesizedExpression().Expression
-		case ast.KindAsExpression, ast.KindSatisfiesExpression, ast.KindTypeAssertionExpression:
-			node = node.Expression()
-		case ast.KindNonNullExpression:
-			node = node.Expression()
-		default:
-			return node
+func enclosingCallback(node *ast.Node) *ast.Node {
+	for current := node.Parent; current != nil; current = current.Parent {
+		if ast.IsArrowFunction(current) || ast.IsFunctionExpression(current) {
+			return current
+		}
+		if ast.IsFunctionLike(current) {
+			return nil
 		}
 	}
 	return nil
 }
 
-func propertyName(node *ast.Node) (string, *ast.Node, bool) {
+func reportRegistration(ctx rule.RuleContext, registration registration) {
+	if registration.isProperty {
+		ctx.ReportNode(registration.call, propertyMessage)
+		return
+	}
+	ctx.ReportNode(registration.call, testMessage)
+}
+
+func rightmostCallback(node *ast.Node) *ast.Node {
+	for index := len(node.AsCallExpression().Arguments.Nodes) - 1; index >= 0; index-- {
+		callback := unwrap(node.AsCallExpression().Arguments.Nodes[index])
+		if ast.IsArrowFunction(callback) || ast.IsFunctionExpression(callback) {
+			return callback
+		}
+	}
+	return nil
+}
+
+func rightmostArgument(node *ast.Node) *ast.Node {
+	arguments := node.AsCallExpression().Arguments.Nodes
+	if len(arguments) == 0 {
+		return nil
+	}
+	return unwrap(arguments[len(arguments)-1])
+}
+
+func plainEffectTestCall(ctx rule.RuleContext, node *ast.Node) (registration, bool) {
+	members, root := effectTestMembers(node.AsCallExpression().Expression)
+	if root == nil || !isEffectVitestIt(ctx, root) {
+		return registration{}, false
+	}
+	for _, member := range members {
+		if member == "effect" || member == "live" {
+			return registration{}, false
+		}
+	}
+	return registration{call: node, isProperty: contains(members, "prop")}, true
+}
+
+func effectTestMembers(node *ast.Node) ([]string, *ast.Node) {
 	node = unwrap(node)
-	if node == nil || !ast.IsPropertyAccessExpression(node) {
-		return "", nil, false
-	}
-	return node.Name().Text(), node.AsPropertyAccessExpression().Expression, true
-}
-
-func callName(node *ast.Node) (string, *ast.Node, bool) {
-	if node == nil || !ast.IsCallExpression(node) {
-		return "", nil, false
-	}
-	call := node.AsCallExpression()
-	name, receiver, ok := propertyName(call.Expression)
-	if ok {
-		return name, receiver, true
-	}
-	callee := unwrap(call.Expression)
-	if callee != nil && ast.IsIdentifier(callee) {
-		return callee.Text(), nil, true
-	}
-	return "", nil, false
-}
-
-func nodeText(file *ast.SourceFile, node *ast.Node) string {
 	if node == nil {
-		return ""
+		return nil, nil
 	}
-	start, end := node.Pos(), node.End()
-	text := file.Text()
-	if start < 0 {
-		start = 0
+	if ast.IsIdentifier(node) {
+		return nil, node
 	}
-	if end > len(text) {
-		end = len(text)
+	if ast.IsPropertyAccessExpression(node) {
+		access := node.AsPropertyAccessExpression()
+		members, root := effectTestMembers(access.Expression)
+		if access.Name() == nil {
+			return nil, nil
+		}
+		return append(members, access.Name().Text()), root
 	}
-	if end < start {
-		return ""
+	if ast.IsCallExpression(node) {
+		return effectTestMembers(node.AsCallExpression().Expression)
 	}
-	return strings.TrimSpace(text[start:end])
+	return nil, nil
 }
 
-func walk(node *ast.Node, visit func(*ast.Node) bool) bool {
-	if node == nil {
-		return false
-	}
-	if visit(node) {
-		return true
-	}
-	found := false
-	node.ForEachChild(func(child *ast.Node) bool {
-		if walk(child, visit) {
-			found = true
+func contains(values []string, wanted string) bool {
+	for _, value := range values {
+		if value == wanted {
 			return true
 		}
-		return false
-	})
-	return found
+	}
+	return false
 }
 
-func enclosingFunction(node *ast.Node) *ast.Node {
-	for current := node.Parent; current != nil; current = current.Parent {
-		if ast.IsFunctionLike(current) {
-			return current
+func isEffectVitestIt(ctx rule.RuleContext, node *ast.Node) bool {
+	symbol := utils.ResolvedSymbol(ctx.TypeChecker, node)
+	return symbol != nil && symbol.Name == "it" && declaredInVitest(symbol)
+}
+
+func returnsEffect(ctx rule.RuleContext, expression *ast.Node) bool {
+	return isEffectType(ctx, ctx.TypeChecker.GetTypeAtLocation(expression))
+}
+
+func callbackReturnsEffect(ctx rule.RuleContext, callback *ast.Node) bool {
+	for _, signature := range utils.GetCallSignatures(ctx.TypeChecker, ctx.TypeChecker.GetTypeAtLocation(callback)) {
+		if isEffectType(ctx, ctx.TypeChecker.GetReturnTypeOfSignature(signature)) {
+			return true
+		}
+	}
+	return false
+}
+
+func isEffectType(ctx rule.RuleContext, value *checker.Type) bool {
+	if value == nil || checker.Type_flags(value)&(checker.TypeFlagsAny|checker.TypeFlagsUnknown) != 0 {
+		return false
+	}
+	for _, part := range utils.UnionTypeParts(value) {
+		if checker.Type_flags(part)&(checker.TypeFlagsAny|checker.TypeFlagsUnknown) != 0 {
+			continue
+		}
+		symbol := checker.Type_symbol(part)
+		if symbol != nil && symbol.Name == "Effect" && declaredInEffect(symbol) {
+			return true
+		}
+	}
+	return false
+}
+
+func declaredInVitest(symbol *ast.Symbol) bool {
+	for _, declaration := range symbol.Declarations {
+		if file := ast.GetSourceFileOfNode(declaration); file != nil {
+			name := strings.ReplaceAll(file.FileName(), "\\", "/")
+			if strings.Contains(name, "/node_modules/@effect/vitest/") || strings.Contains(name, "/packages/vitest/src/") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func declaredInEffect(symbol *ast.Symbol) bool {
+	for _, declaration := range symbol.Declarations {
+		if file := ast.GetSourceFileOfNode(declaration); file != nil {
+			name := strings.ReplaceAll(file.FileName(), "\\", "/")
+			if strings.Contains(name, "/node_modules/effect/") || strings.Contains(name, "/packages/effect/src/") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func unwrap(node *ast.Node) *ast.Node {
+	for node != nil {
+		switch node.Kind {
+		case ast.KindParenthesizedExpression, ast.KindAsExpression, ast.KindTypeAssertionExpression, ast.KindNonNullExpression, ast.KindSatisfiesExpression:
+			node = node.Expression()
+		default:
+			return node
 		}
 	}
 	return nil

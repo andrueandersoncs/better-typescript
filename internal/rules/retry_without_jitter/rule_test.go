@@ -9,6 +9,10 @@ import (
 
 func TestRule(t *testing.T) {
 	ruletest.Assert(t, "testdata", Rule, []analysis.Violation{
-		{RuleName: "retry-without-jitter", Level: "error", Message: "Jitter exponential retry. Add Schedule.jittered to the bounded backoff schedule.", FilePath: "index.ts", Line: 3, Column: 1},
+		{RuleName: "retry-without-jitter", Level: "error", Message: "Jitter exponential or Fibonacci retry delays. Wrap each exponential or Fibonacci retry branch with Schedule.jittered when deterministic timing is not deliberate.", FilePath: "index.ts", Line: 5, Column: 1},
+		{RuleName: "retry-without-jitter", Level: "error", Message: "Jitter exponential or Fibonacci retry delays. Wrap each exponential or Fibonacci retry branch with Schedule.jittered when deterministic timing is not deliberate.", FilePath: "index.ts", Line: 8, Column: 1},
+		{RuleName: "retry-without-jitter", Level: "error", Message: "Jitter exponential or Fibonacci retry delays. Wrap each exponential or Fibonacci retry branch with Schedule.jittered when deterministic timing is not deliberate.", FilePath: "index.ts", Line: 10, Column: 1},
+		{RuleName: "retry-without-jitter", Level: "error", Message: "Jitter exponential or Fibonacci retry delays. Wrap each exponential or Fibonacci retry branch with Schedule.jittered when deterministic timing is not deliberate.", FilePath: "index.ts", Line: 13, Column: 1},
+		{RuleName: "retry-without-jitter", Level: "error", Message: "Jitter exponential or Fibonacci retry delays. Wrap each exponential or Fibonacci retry branch with Schedule.jittered when deterministic timing is not deliberate.", FilePath: "index.ts", Line: 14, Column: 1},
 	})
 }

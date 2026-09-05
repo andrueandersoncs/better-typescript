@@ -1,0 +1,5 @@
+!node_modules/
+node_modules/*
+!node_modules/effect/
+!node_modules/effect/*.d.ts
+!node_modules/effect/package.json

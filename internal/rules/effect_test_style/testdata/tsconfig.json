@@ -1,1 +1,14 @@
-{"compilerOptions":{"strict":true,"target":"ESNext","module":"ESNext","noEmit":true},"include":["index.ts"]}
+{
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "strict": true,
+    "target": "ES2022",
+    "paths": {
+      "@effect/vitest": ["./packages/vitest/src/index.d.ts"],
+      "effect": ["./packages/effect/src/index.d.ts"]
+    }
+  },
+  "include": ["*.ts"]
+}

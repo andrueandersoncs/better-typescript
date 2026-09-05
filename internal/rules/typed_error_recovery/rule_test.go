@@ -10,5 +10,6 @@ import (
 func TestRule(t *testing.T) {
 	ruletest.Assert(t, "testdata", TypedErrorRecoveryRule, []analysis.Violation{
 		{RuleName: "typed-error-recovery", Level: "error", Message: "Use typed error recovery instead of broad cause recovery. Use catchIf, catchTag, catchFilter, or retry for expected typed failures.", FilePath: "violation.ts", Line: 4, Column: 1},
+		{RuleName: "typed-error-recovery", Level: "error", Message: "Use typed error recovery instead of broad cause recovery. Use catchIf, catchTag, catchFilter, or retry for expected typed failures.", FilePath: "violation.ts", Line: 7, Column: 1},
 	})
 }

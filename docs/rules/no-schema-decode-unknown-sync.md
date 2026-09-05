@@ -10,16 +10,22 @@ Use this rule when schema failures must stay in the Effect error channel.
 
 ## Conformant
 
-```ts
+```ts lint=clean
 import { Schema } from "effect"
 
-const decodeUser = Schema.decodeUnknown(User)
+const User = Schema.Struct({ name: Schema.String })
+declare const input: unknown
+
+const decoded = Schema.decodeUnknownEffect(User)(input)
 ```
 
 ## Non-conformant
 
-```ts
+```ts lint=error:6:17
 import { Schema } from "effect"
 
-const decodeUser = Schema.decodeUnknownSync(User)
+const User = Schema.Struct({ name: Schema.String })
+declare const input: unknown
+
+const decoded = Schema.decodeUnknownSync(User)(input)
 ```

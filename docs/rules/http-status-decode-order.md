@@ -2,27 +2,35 @@
 
 ## What it does
 
-In the nearest enclosing function, reports calls ending in `json`, `text`, `arrayBuffer`, `blob`, `formData`, or `bytes` when no earlier recursive AST visit sees a property named `status`, `ok`, or `statusText`, or a call named `filterStatusOk`, `filterStatus`, or `matchStatus`. It applies the same check to `decodeUnknown`, `decodeUnknownEffect`, `decode`, `decodeEffect`, `schemaBodyJson`, `schemaJson`, and `schemaNoBody` only when the function also contains a listed body/classifier call or `execute`, `get`, `post`, `put`, `patch`, or `del`. Names and order are syntactic; receivers, symbols, data flow, and control flow are not resolved.
+Reports a resolved response JSON value that is decoded as a successful domain body before the same response has a recognized status classifier. It recognizes a direct `HttpClientResponse.filterStatusOk`, `filterStatus`, or `matchStatus` composition and simple Web `response.ok` guards in the same straight-line sequence. A different response, `statusText` logging, or a nested unrelated classifier does not count. Error-body decoders and joint status/body codecs remain valid.
+
+Raw `unknown` and `Schema.Json` adapters do not claim a successful domain body. Reassigning a tracked value invalidates its local body/classification evidence.
 
 ## When to use it
 
-Use it when an HTTP adapter reads a response body.
+Use it when an adapter interprets a successful HTTP body.
 
 ## Conformant
 
 ```ts
-async function load(response: any) {
-  if (!response.ok) throw new Error()
-  return response.json()
-}
+import { Effect, Schema } from "effect"
+import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
+
+const User = Schema.Struct({ id: Schema.String })
+
+const load = (response: HttpClientResponse.HttpClientResponse) =>
+  Effect.flatMap(HttpClientResponse.filterStatusOk(response), (ok) =>
+    Effect.flatMap(ok.json, Schema.decodeUnknownEffect(User)))
 ```
 
 ## Non-conformant
 
 ```ts
-async function load(response: any) {
-  const body = await response.json()
-  if (!response.ok) throw new Error()
-  return body
+import { Schema } from "effect"
+
+const User = Schema.Struct({ id: Schema.String })
+
+async function load(response: Response) {
+  return Schema.decodeUnknownEffect(User)(await response.json())
 }
 ```

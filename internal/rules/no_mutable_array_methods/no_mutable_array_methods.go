@@ -6,7 +6,7 @@ import (
 	"github.com/andrueandersoncs/typescript-go/ast"
 )
 
-const help = "This is a sign that you're doing something fundamentally procedural when you should be taking a more functional approach. Use Effect's Array module, such as Array.append(), Array.map(), Array.filter(), Array.sort(), or spread syntax instead of manipulating an array in place."
+const help = "Application code should use Effect's Array module, non-mutating array methods, or spread syntax instead of manipulating an array in place. An owned library kernel may use a local mutable builder only under explicit project policy; this rule does not infer that exception."
 
 var mutable = map[string]bool{"copyWithin": true, "fill": true, "pop": true, "push": true, "reverse": true, "shift": true, "sort": true, "splice": true, "unshift": true}
 var Rule = rule.Rule{Name: "no-mutable-array-methods", Run: run}

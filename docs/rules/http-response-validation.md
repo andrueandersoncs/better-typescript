@@ -2,26 +2,39 @@
 
 ## What it does
 
-Reports any call named `json` unless an enclosing expression or any node in its nearest function calls `decodeUnknown`, `decodeUnknownEffect`, `decodeUnknownSync`, `decodeUnknownOption`, `decodeUnknownEither`, `decodeUnknownResult`, `decodeUnknownExit`, `decodeUnknownPromise`, `decode`, `decodeEffect`, `decodeSync`, `decodeOption`, `decodeEither`, `decodeResult`, `decodeExit`, `decodePromise`, `schemaBodyJson`, `schemaJson`, or `schemaNoBody`. Matching uses only the final callee name. It does not require a Schema receiver, data-flow relation, or ordering. The report says: “Decode unknown HTTP response data with Schema at the adapter boundary. Apply Schema.decodeUnknownEffect or an HttpClient response schema decoder.”
+Reports a resolved Web `Response.json()` call or Effect `HttpClientResponse.json` property when its unknown JSON representation is directly promoted to a concrete domain type. Raw adapters may return `unknown`, but a Schema decoder must consume the same value. Lookalike `json` members and unrelated decoders do not affect the result.
+
+Raw `unknown` aliases and `Schema.Json` remain valid, including Promise/Effect wrappers. An `unknown` field inside a domain record does not make that domain record raw. Direct reassignment ends a tracked body-value relationship.
 
 ## When to use it
 
-Use it at HTTP adapter boundaries where response data is unknown.
+Use it where an HTTP response becomes an application domain value.
 
 ## Conformant
 
 ```ts
-declare const Schema: any
-declare const Payload: any
-function load(response: any) {
-  return Schema.decodeUnknownEffect(Payload)(response.json())
+import { Effect, Schema } from "effect"
+import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
+
+const User = Schema.Struct({ id: Schema.String })
+
+async function load(response: Response) {
+  const raw: unknown = await response.json()
+  return Effect.runPromise(Schema.decodeUnknownEffect(User)(raw))
 }
+
+const fromEffectResponse = (response: HttpClientResponse.HttpClientResponse) =>
+  Effect.flatMap(response.json, Schema.decodeUnknownEffect(User))
 ```
 
 ## Non-conformant
 
 ```ts
-function load(response: any) {
-  return response.json()
+interface User {
+  readonly id: string
+}
+
+async function load(response: Response) {
+  return (await response.json()) as User
 }
 ```

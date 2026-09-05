@@ -2,20 +2,37 @@
 
 ## What it does
 
-Reports `new Map()` when its immediate parent is a named variable declaration or object-literal property assignment, or when it is the right operand of a direct binary expression, and the extracted binding text contains `cache` case-insensitively. It also reports `.set()` calls that store an object with a common expiry field, unless the file uses `Cache.make` or `Cache.makeWith`.
+Reports a native `Map` only when one local execution owner uses the same map and key to get a value, return that value on a direct hit guard, compute a replacement from that key, and set it. TTL entry protocols and running-Promise protocols belong to `handrolled-ttl-cache` and `inflight-dedupe-map`; cold `Effect` registries are allowed.
+
+The report says: “Prefer Effect Cache for a hand-rolled value-cache protocol when its lifecycle fits. Use Cache.make or Cache.makeWith after choosing key equality, ownership, failure, and retention semantics.”
 
 ## When to use it
 
-Use this rule when Effect Cache lifecycle semantics fit better than a hand-written `Map`.
+Use this recommendation only when `Cache` can own the intended value lifetime. A native map can still be appropriate for synchronous memoization or protocol-local object-identity caching.
 
 ## Conformant
 
 ```ts
-const values = new Map<string, string>()
+import { Cache, Effect } from "effect"
+
+const cache = Cache.make({
+  capacity: 100,
+  timeToLive: "1 minute",
+  lookup: (key: string) => Effect.succeed(key)
+})
 ```
 
 ## Non-conformant
 
 ```ts
-const userCache = new Map<string, string>()
+const values = new Map<string, string>()
+
+function load(key: string): string { return key.toUpperCase() }
+function lookup(key: string): string {
+  const cached = values.get(key)
+  if (cached !== undefined) return cached
+  const fresh = load(key)
+  values.set(key, fresh)
+  return fresh
+}
 ```

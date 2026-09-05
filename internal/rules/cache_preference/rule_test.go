@@ -9,6 +9,6 @@ import (
 
 func TestRule(t *testing.T) {
 	ruletest.Assert(t, "testdata", Rule, []analysis.Violation{
-		{RuleName: "cache-preference", Level: "error", Message: "Prefer Effect Cache when its lifecycle semantics fit. Use Cache.make or Cache.makeWith instead of a hand-rolled cache.", FilePath: "index.ts", Line: 1, Column: 23},
+		{RuleName: "cache-preference", Level: "error", Message: "Prefer Effect Cache for a hand-rolled value-cache protocol when its lifecycle fits. Use Cache.make or Cache.makeWith after choosing key equality, ownership, failure, and retention semantics.", FilePath: "index.ts", Line: 1, Column: 16},
 	})
 }

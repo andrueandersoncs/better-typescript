@@ -6,7 +6,7 @@ Reports calls to these methods on array-like values: `copyWithin`, `fill`, `pop`
 
 ## When to use it
 
-Use it to avoid changing arrays in place. Prefer Effect's `Array` functions, non-mutating array methods, or spread syntax.
+Use it as the application-code default to avoid changing arrays in place. Prefer Effect's `Array` functions, non-mutating array methods, or spread syntax. An owned library kernel may use a local mutable array builder under explicit project policy, but this syntactic rule does not infer ownership or auto-exempt lexical mutation.
 
 ## Conformant
 

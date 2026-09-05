@@ -1,6 +1,6 @@
 # Built-in rules
 
-The fixed catalog contains these 134 rules:
+The fixed catalog contains these 138 rules:
 
 `prefer-effect-schema-constructor` requires Effect Schema classes to use their static `make` method.
 
@@ -10,14 +10,18 @@ The fixed catalog contains these 134 rules:
 
 Unary `make`, `create`, `build`, and `construct` functions may use inline generic construction records.
 
+See [Engineering principles](./engineering-principles.md) for ownership, validation, concurrency, and compatibility boundaries.
+
 - [`boundary-schema-decode`](./rules/boundary-schema-decode.md)
 - [`bounded-retry-schedule`](./rules/bounded-retry-schedule.md)
-- [`cache-per-request`](./rules/cache-per-request.md)
 - [`cache-preference`](./rules/cache-preference.md)
 - [`closed-abstraction`](./rules/closed-abstraction.md)
 - [`config-refined-values`](./rules/config-refined-values.md)
 - [`dependent-layer-merge`](./rules/dependent-layer-merge.md)
+- [`deterministic-durable-key`](./rules/deterministic-durable-key.md)
+- [`discarded-effect-operation`](./rules/discarded-effect-operation.md)
 - [`duplicate-shape`](./rules/duplicate-shape.md)
+- [`effect-callback-signal-arity`](./rules/effect-callback-signal-arity.md)
 - [`effect-fn-name`](./rules/effect-fn-name.md)
 - [`effect-test-style`](./rules/effect-test-style.md)
 - [`function-derived-model`](./rules/function-derived-model.md)
@@ -26,7 +30,6 @@ Unary `make`, `create`, `build`, and `construct` functions may use inline generi
 - [`http-client-preference`](./rules/http-client-preference.md)
 - [`http-response-validation`](./rules/http-response-validation.md)
 - [`http-status-decode-order`](./rules/http-status-decode-order.md)
-- [`idempotent-retry`](./rules/idempotent-retry.md)
 - [`inflight-dedupe-map`](./rules/inflight-dedupe-map.md)
 - [`layer-forever-acquisition`](./rules/layer-forever-acquisition.md)
 - [`no-async-functions`](./rules/no-async-functions.md)
@@ -60,8 +63,11 @@ Unary `make`, `create`, `build`, and `construct` functions may use inline generi
 - [`no-pass-through-object-wrappers`](./rules/no-pass-through-object-wrappers.md)
 - [`no-property-access-after-call`](./rules/no-property-access-after-call.md)
 - [`no-raw-object-types`](./rules/no-raw-object-types.md)
+- [`no-redacted-value-in-logs`](./rules/no-redacted-value-in-logs.md)
+- [`no-reentrant-synchronized-ref-update`](./rules/no-reentrant-synchronized-ref-update.md)
 - [`no-reexports`](./rules/no-reexports.md)
 - [`no-schema-decode-unknown-sync`](./rules/no-schema-decode-unknown-sync.md)
+- [`no-schema-opaque-instance-members`](./rules/no-schema-opaque-instance-members.md)
 - [`no-switch-statements`](./rules/no-switch-statements.md)
 - [`no-throw`](./rules/no-throw.md)
 - [`no-trivial-effect-fn`](./rules/no-trivial-effect-fn.md)
@@ -69,6 +75,7 @@ Unary `make`, `create`, `build`, and `construct` functions may use inline generi
 - [`no-type-specific-equivalence-strict`](./rules/no-type-specific-equivalence-strict.md)
 - [`no-undefined`](./rules/no-undefined.md)
 - [`no-unsafe-effect-apis`](./rules/no-unsafe-effect-apis.md)
+- [`no-unsupported-d1-transactions`](./rules/no-unsupported-d1-transactions.md)
 - [`no-unused`](./rules/no-unused.md)
 - [`no-value-aliases`](./rules/no-value-aliases.md)
 - [`no-void-functions`](./rules/no-void-functions.md)
@@ -92,8 +99,6 @@ Unary `make`, `create`, `build`, and `construct` functions may use inline generi
 - [`prefer-effect-record-filter-map`](./rules/prefer-effect-record-filter-map.md)
 - [`prefer-effect-schema-class`](./rules/prefer-effect-schema-class.md)
 - [`prefer-effect-schema-constructor`](./rules/prefer-effect-schema-constructor.md)
-- [`prefer-effect-schema-guard`](./rules/prefer-effect-schema-guard.md)
-- [`prefer-effect-schema-is`](./rules/prefer-effect-schema-is.md)
 - [`prefer-effectful-function`](./rules/prefer-effectful-function.md)
 - [`prefer-equivalence-strict-equal`](./rules/prefer-equivalence-strict-equal.md)
 - [`prefer-eta-reduction`](./rules/prefer-eta-reduction.md)
@@ -128,15 +133,15 @@ Unary `make`, `create`, `build`, and `construct` functions may use inline generi
 - [`retry-without-jitter`](./rules/retry-without-jitter.md)
 - [`schema-error-class`](./rules/schema-error-class.md)
 - [`schema-name-suffix`](./rules/schema-name-suffix.md)
-- [`schema-optional-key`](./rules/schema-optional-key.md)
 - [`schema-record-interface`](./rules/schema-record-interface.md)
 - [`scoped-background-work`](./rules/scoped-background-work.md)
 - [`scoped-client-cache`](./rules/scoped-client-cache.md)
 - [`service-method-effect-fn`](./rules/service-method-effect-fn.md)
 - [`speculative-export`](./rules/speculative-export.md)
 - [`stream-pagination`](./rules/stream-pagination.md)
+- [`streaming-textdecoder`](./rules/streaming-textdecoder.md)
 - [`test-clock-for-time`](./rules/test-clock-for-time.md)
-- [`test-sleeps`](./rules/test-sleeps.md)
+- [`tx-queue-batch-capacity`](./rules/tx-queue-batch-capacity.md)
 - [`typed-boundary-error`](./rules/typed-boundary-error.md)
 - [`typed-error-recovery`](./rules/typed-error-recovery.md)
 - [`typescript-namespaces`](./rules/typescript-namespaces.md)
@@ -144,3 +149,4 @@ Unary `make`, `create`, `build`, and `construct` functions may use inline generi
 - [`unbounded-stream-collect`](./rules/unbounded-stream-collect.md)
 - [`unsafe-casts`](./rules/unsafe-casts.md)
 - [`unused-field`](./rules/unused-field.md)
+- [`valid-effect-dual-arity`](./rules/valid-effect-dual-arity.md)

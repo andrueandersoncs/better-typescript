@@ -2,24 +2,24 @@
 
 ## What it does
 
-For imported `Layer.effect`, `Layer.effectDiscard`, and `Layer.effectContext`, reports an acquisition argument containing `Effect.forever`, or both `Stream.forever` and a recognized Stream run method: `runCollect`, `runDrain`, `runForEach`, `runFold`, or `runFoldWhile`. It does not report when that argument contains `Effect.forkScoped`. The report says: “Fork long-lived work into the layer scope so acquisition completes. Run the worker with Effect.forkScoped, FiberSet, or FiberMap.”
+Reports an imported `Effect.forever` or `Effect.never`, and a `Stream.forever` consumed by `Stream.runDrain` or `runCollect`, that executes in a `Layer.effect`, `Layer.effectDiscard`, or `Layer.effectContext` acquisition. It follows the immediate acquisition expression and immediate `Effect.gen` body. An unrelated `forkScoped` does not exempt foreground work, while `Effect.forkScoped` or `forkChild` (including direct `pipe` use) and an explicit timeout do. `Effect.succeed(Effect.never)` is a cold value, not executed acquisition work.
 
-## When to use it
-
-Use it when a Layer starts long-lived work during acquisition.
+The report says: “Fork long-lived work into the layer scope so acquisition completes. Run the worker with Effect.forkScoped, FiberSet, or FiberMap.” Uncalled service methods are not acquisition work.
 
 ## Conformant
 
 ```ts
 import { Effect, Layer } from "effect"
-export const worker = Layer.effectDiscard(
-  Effect.forkScoped(Effect.forever(Effect.void)),
-)
+
+Layer.effectDiscard(Effect.forkChild(Effect.never))
+Layer.effectDiscard(Effect.forever(Effect.void).pipe(Effect.forkScoped))
+Layer.effectDiscard(Effect.succeed(Effect.never))
 ```
 
 ## Non-conformant
 
 ```ts
 import { Effect, Layer } from "effect"
-export const worker = Layer.effectDiscard(Effect.forever(Effect.void))
+
+Layer.effectDiscard(Effect.forever(Effect.void))
 ```

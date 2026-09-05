@@ -1,28 +1,38 @@
 package typed_error_recovery
 
 import (
-	"github.com/andrueandersoncs/better-typescript/internal/rule"
-	"github.com/andrueandersoncs/typescript-go/ast"
-	"path"
-	"regexp"
+	"path/filepath"
 	"strings"
+
+	"github.com/andrueandersoncs/better-typescript/internal/rule"
+	"github.com/andrueandersoncs/better-typescript/internal/utils"
+	"github.com/andrueandersoncs/typescript-go/ast"
+	"github.com/andrueandersoncs/typescript-go/checker"
 )
 
-var message = rule.RuleMessage{Id: "typedErrorRecovery", Description: "Use typed error recovery instead of broad cause recovery.", Help: "Use catchIf, catchTag, catchFilter, or retry for expected typed failures."}
-var errorChannelPattern = regexp.MustCompile(`(?:Effect|Stream)<\s*[^,>]+,\s*([^,>]+)`)
+var message = rule.RuleMessage{
+	Id:          "typedErrorRecovery",
+	Description: "Use typed error recovery instead of broad cause recovery.",
+	Help:        "Use catchIf, catchTag, catchFilter, or retry for expected typed failures.",
+}
 
-func hasTypedError(ctx rule.RuleContext, expression *ast.Node) bool {
-	if expression == nil {
-		return false
-	}
-	rendered := ctx.TypeChecker.TypeToString(ctx.TypeChecker.GetTypeAtLocation(expression))
-	match := errorChannelPattern.FindStringSubmatch(rendered)
-	return len(match) > 1 && strings.TrimSpace(match[1]) != "never"
+var TypedErrorRecoveryRule = rule.Rule{Name: "typed-error-recovery", Run: func(ctx rule.RuleContext, _ any) rule.RuleListeners {
+	return rule.RuleListeners{ast.KindCallExpression: func(node *ast.Node) {
+		if !isCauseRecovery(ctx, node) {
+			return
+		}
+		self := recoverySelf(node)
+		if !hasTypedEffectError(ctx, self) || losslesslyReemitsCause(ctx, recoveryHandler(node)) {
+			return
+		}
+		ctx.ReportNode(node, message)
+	}}
+}}
+
+func isCauseRecovery(ctx rule.RuleContext, node *ast.Node) bool {
+	return isEffectModuleCall(ctx, node, "Effect", "catchCause", "catchAllCause") || isEffectModuleCall(ctx, node, "Stream", "catchCause", "catchAllCause")
 }
-func functionLikeExpression(node *ast.Node) bool {
-	node = skipTransparent(node)
-	return node != nil && (node.Kind == ast.KindArrowFunction || node.Kind == ast.KindFunctionExpression)
-}
+
 func recoverySelf(callNode *ast.Node) *ast.Node {
 	call := callNode.AsCallExpression()
 	if call.Arguments != nil && len(call.Arguments.Nodes) > 0 && !functionLikeExpression(call.Arguments.Nodes[0]) {
@@ -33,7 +43,7 @@ func recoverySelf(callNode *ast.Node) *ast.Node {
 		return nil
 	}
 	outer := parent.AsCallExpression()
-	callee := skipTransparent(outer.Expression)
+	callee := unwrap(outer.Expression)
 	if ast.IsPropertyAccessExpression(callee) && callee.Name() != nil && callee.Name().Text() == "pipe" {
 		return callee.AsPropertyAccessExpression().Expression
 	}
@@ -43,113 +53,152 @@ func recoverySelf(callNode *ast.Node) *ast.Node {
 	return nil
 }
 
-var TypedErrorRecoveryRule = rule.Rule{Name: "typed-error-recovery", Run: func(ctx rule.RuleContext, _ any) rule.RuleListeners {
-	imports := collectAPIImports(ctx.SourceFile.Text())
-	return rule.RuleListeners{ast.KindCallExpression: func(node *ast.Node) {
-		call := node.AsCallExpression()
-		if (isAPICall(imports, call, "Effect", "catchCause", "catchAllCause") || isAPICall(imports, call, "Stream", "catchCause", "catchAllCause")) && hasTypedError(ctx, recoverySelf(node)) {
-			ctx.ReportNode(node, message)
-		}
-	}}
-}}
-
-type apiImports struct {
-	namespaces map[string]string
-	members    map[string][2]string
+func recoveryHandler(callNode *ast.Node) *ast.Node {
+	arguments := callNode.AsCallExpression().Arguments.Nodes
+	if len(arguments) == 0 {
+		return nil
+	}
+	if functionLikeExpression(arguments[0]) {
+		return arguments[0]
+	}
+	if len(arguments) > 1 && functionLikeExpression(arguments[1]) {
+		return arguments[1]
+	}
+	return nil
 }
 
-func collectAPIImports(text string) apiImports {
-	result := apiImports{namespaces: map[string]string{}, members: map[string][2]string{}}
-	re := regexp.MustCompile(`(?ms)^\s*import\s+(\{[^}]*\}|\*\s+as\s+[A-Za-z_$][\w$]*)\s+from\s+["']([^"']+)["']`)
-	for _, match := range re.FindAllStringSubmatch(text, -1) {
-		clause, module := strings.TrimSpace(match[1]), match[2]
-		family := ""
-		if strings.HasPrefix(module, "effect/") {
-			family = path.Base(module)
-		}
-		if strings.HasPrefix(clause, "* as ") && family != "" {
-			result.namespaces[strings.TrimSpace(strings.TrimPrefix(clause, "* as "))] = family
+func hasTypedEffectError(ctx rule.RuleContext, expression *ast.Node) bool {
+	if expression == nil {
+		return false
+	}
+	typ := ctx.TypeChecker.GetTypeAtLocation(expression)
+	if typ == nil || !isEffectValueType(typ) {
+		return false
+	}
+	arguments := checker.Checker_getTypeArguments(ctx.TypeChecker, typ)
+	if len(arguments) < 2 || arguments[1] == nil {
+		return false
+	}
+	flags := checker.Type_flags(arguments[1])
+	return flags&(checker.TypeFlagsAny|checker.TypeFlagsUnknown|checker.TypeFlagsTypeParameter|checker.TypeFlagsNever) == 0
+}
+
+func isEffectValueType(typ *checker.Type) bool {
+	symbol := checker.Type_symbol(typ)
+	if symbol == nil || (symbol.Name != "Effect" && symbol.Name != "Stream") {
+		return false
+	}
+	for _, declaration := range symbol.Declarations {
+		file := ast.GetSourceFileOfNode(declaration)
+		if file == nil {
 			continue
 		}
-		start, end := strings.Index(clause, "{"), strings.LastIndex(clause, "}")
-		if start < 0 || end <= start {
-			continue
-		}
-		for _, item := range strings.Split(clause[start+1:end], ",") {
-			parts := strings.Fields(strings.TrimSpace(item))
-			if len(parts) == 0 || parts[0] == "type" {
-				continue
-			}
-			imported, local := parts[0], parts[0]
-			if len(parts) >= 3 && parts[1] == "as" {
-				local = parts[2]
-			}
-			if module == "effect" {
-				result.namespaces[local] = imported
-			} else if family != "" {
-				result.members[local] = [2]string{family, imported}
-			}
+		path := strings.ReplaceAll(file.FileName(), "\\", "/")
+		base := filepath.Base(path)
+		if (base == symbol.Name+".ts" || base == symbol.Name+".d.ts" || base == "index.d.ts") && (strings.Contains(path, "/node_modules/effect/") || strings.Contains(path, "/packages/effect/src/")) {
+			return true
 		}
 	}
-	return result
+	return false
 }
 
-func skipTransparent(node *ast.Node) *ast.Node {
+func losslesslyReemitsCause(ctx rule.RuleContext, handler *ast.Node) bool {
+	handler = unwrap(handler)
+	if handler == nil || (!ast.IsArrowFunction(handler) && !ast.IsFunctionExpression(handler)) || len(handler.Parameters()) != 1 {
+		return false
+	}
+	parameter := handler.Parameters()[0].AsParameterDeclaration()
+	if !ast.IsIdentifier(parameter.Name()) || parameter.Initializer != nil || parameter.DotDotDotToken != nil {
+		return false
+	}
+	body := handler.BodyData().Body
+	if body == nil {
+		return false
+	}
+	if ast.IsBlock(body) {
+		statements := body.AsBlock().Statements.Nodes
+		if len(statements) != 1 || !ast.IsReturnStatement(statements[0]) || statements[0].AsReturnStatement().Expression == nil {
+			return false
+		}
+		body = statements[0].AsReturnStatement().Expression
+	}
+	return isFailCauseOf(ctx, body, parameter.Name()) || isObservedThenFailCause(ctx, body, parameter.Name())
+}
+
+func isObservedThenFailCause(ctx rule.RuleContext, expression, parameter *ast.Node) bool {
+	expression = unwrap(expression)
+	if expression == nil || !ast.IsCallExpression(expression) || !isEffectModuleCall(ctx, expression, "Effect", "andThen") {
+		return false
+	}
+	arguments := expression.AsCallExpression().Arguments.Nodes
+	return len(arguments) == 2 && ast.IsCallExpression(unwrap(arguments[0])) && isEffectModuleCall(ctx, unwrap(arguments[0]), "Effect", "logError") && isFailCauseOf(ctx, arguments[1], parameter)
+}
+
+func isFailCauseOf(ctx rule.RuleContext, expression, parameter *ast.Node) bool {
+	expression = unwrap(expression)
+	if expression == nil || !ast.IsCallExpression(expression) {
+		return false
+	}
+	if !isEffectModuleCall(ctx, expression, "Effect", "failCause") && !isEffectModuleCall(ctx, expression, "Stream", "failCause") {
+		return false
+	}
+	arguments := expression.AsCallExpression().Arguments.Nodes
+	return len(arguments) == 1 && sameSymbol(ctx, arguments[0], parameter)
+}
+
+func sameSymbol(ctx rule.RuleContext, left, right *ast.Node) bool {
+	return utils.ResolvedSymbol(ctx.TypeChecker, unwrap(left)) != nil && utils.ResolvedSymbol(ctx.TypeChecker, unwrap(left)) == utils.ResolvedSymbol(ctx.TypeChecker, unwrap(right))
+}
+
+func functionLikeExpression(node *ast.Node) bool {
+	node = unwrap(node)
+	return node != nil && (node.Kind == ast.KindArrowFunction || node.Kind == ast.KindFunctionExpression)
+}
+
+func isEffectModuleCall(ctx rule.RuleContext, node *ast.Node, module string, names ...string) bool {
+	callee := unwrap(node.AsCallExpression().Expression)
+	if ast.IsPropertyAccessExpression(callee) {
+		callee = callee.AsPropertyAccessExpression().Name()
+	}
+	return isEffectSymbol(ctx, callee, module, names...)
+}
+
+func isEffectSymbol(ctx rule.RuleContext, node *ast.Node, module string, names ...string) bool {
+	symbol := utils.ResolvedSymbol(ctx.TypeChecker, node)
+	if symbol == nil {
+		return false
+	}
+	matched := false
+	for _, name := range names {
+		matched = matched || symbol.Name == name
+	}
+	if !matched {
+		return false
+	}
+	for _, declaration := range symbol.Declarations {
+		file := ast.GetSourceFileOfNode(declaration)
+		if file == nil {
+			continue
+		}
+		path := strings.ReplaceAll(file.FileName(), "\\", "/")
+		base := filepath.Base(path)
+		if (base == module+".ts" || base == module+".d.ts" || base == "index.d.ts") && (strings.Contains(path, "/node_modules/effect/") || strings.Contains(path, "/packages/effect/src/")) {
+			return true
+		}
+	}
+	return false
+}
+
+func unwrap(node *ast.Node) *ast.Node {
 	for node != nil {
 		switch node.Kind {
-		case ast.KindParenthesizedExpression, ast.KindAsExpression, ast.KindTypeAssertionExpression,
-			ast.KindNonNullExpression, ast.KindSatisfiesExpression:
+		case ast.KindParenthesizedExpression, ast.KindAsExpression, ast.KindTypeAssertionExpression, ast.KindNonNullExpression, ast.KindSatisfiesExpression:
 			node = node.Expression()
 		default:
 			return node
 		}
 	}
 	return nil
-}
-
-func isAPICall(imports apiImports, call *ast.CallExpression, family string, names ...string) bool {
-	callee := skipTransparent(call.Expression)
-	if callee == nil {
-		return false
-	}
-	contains := func(name string) bool {
-		for _, candidate := range names {
-			if candidate == name {
-				return true
-			}
-		}
-		return false
-	}
-	if ast.IsPropertyAccessExpression(callee) {
-		access := callee.AsPropertyAccessExpression()
-		name := access.Name()
-		receiver := skipTransparent(access.Expression)
-		return name != nil && receiver != nil && receiver.Kind == ast.KindIdentifier &&
-			imports.namespaces[receiver.Text()] == family && contains(name.Text())
-	}
-	if callee.Kind == ast.KindIdentifier {
-		member, ok := imports.members[callee.Text()]
-		return ok && member[0] == family && contains(member[1])
-	}
-	return false
-}
-
-func walk(node *ast.Node, visit func(*ast.Node) bool) bool {
-	if node == nil {
-		return false
-	}
-	if visit(node) {
-		return true
-	}
-	found := false
-	node.ForEachChild(func(child *ast.Node) bool {
-		if walk(child, visit) {
-			found = true
-			return true
-		}
-		return false
-	})
-	return found
 }
 
 var Rule = TypedErrorRecoveryRule

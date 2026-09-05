@@ -2,33 +2,23 @@
 
 ## What it does
 
-Reports `Effect.ignore` and `Effect.ignoreCause` calls when the call is outside any function or the nearest enclosing function subtree contains no recognized logging call. This keeps discarded Effect failures visible.
+Reports imported `Effect.ignore` and `Effect.ignoreCause` calls that silently discard failures. `log: true` and supported literal severity options observe the failure when they remain the effective final option; a later spread can override that proof. `ignore` also accepts directly adjacent `Effect.tapError(Effect.logError)` observation in data-first or `pipe` form. `ignoreCause` can swallow defects and interruptions, so it requires cause-aware `Effect.tapCause(Effect.logError)` observation instead. Later pipeline stages are not treated as observed by an earlier tap.
 
-The rule recognizes the real Effect exports. Calls to unrelated functions with the same names are allowed. A function is also allowed when it calls `log`, `info`, `warn`, `error`, `debug`, or `trace`, or uses those methods on an object. Object method `fatal` is also recognized.
-
-## When to use it
-
-Use this rule in Effect workers that intentionally skip failed items. Log the expected failure in the worker, or express the skip policy at the owning boundary instead of silently ignoring it.
+Unrelated logging in the surrounding function does not observe this failure. Calls to unrelated functions named `ignore` are allowed.
 
 ## Conformant
 
-Logging in the same function makes the ignored failure observable. This allowed case is covered by the rule fixture.
-
 ```ts
-import { Effect } from "effect";
+import { Effect } from "effect"
 
-export const clean = () => {
-  console.error("failure");
-  return Effect.ignore(Effect.fail("bad"));
-};
+Effect.fail("bad").pipe(Effect.tapError(Effect.logError), Effect.ignore)
+Effect.ignoreCause(Effect.fail("bad").pipe(Effect.tapCause(Effect.logError)))
 ```
 
 ## Non-conformant
 
-This call discards the failure without logging it from an enclosing function.
-
 ```ts
-import { Effect } from "effect";
+import { Effect } from "effect"
 
-export const bad = Effect.ignore(Effect.fail("bad"));
+Effect.ignoreCause(Effect.fail("bad").pipe(Effect.tapError(Effect.logError)))
 ```

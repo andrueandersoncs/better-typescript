@@ -8,7 +8,7 @@ Property reads such as `length` are allowed.
 
 ## When to use it
 
-Use it to replace direct array method calls with Effect `Array` helpers.
+Use it as the application-code default for Effect's data-first `Array` helpers. An owned library kernel may use native array operations under explicit project policy, but this syntactic rule does not infer ownership or auto-exempt local operations.
 
 ## Conformant
 

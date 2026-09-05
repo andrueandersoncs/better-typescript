@@ -9,6 +9,8 @@ import (
 
 func TestRule(t *testing.T) {
 	ruletest.Assert(t, "testdata", LayerForeverAcquisitionRule, []analysis.Violation{
-		{RuleName: "layer-forever-acquisition", Level: "error", Message: "Fork long-lived work into the layer scope so acquisition completes. Run the worker with Effect.forkScoped, FiberSet, or FiberMap.", FilePath: "src/violation.ts", Line: 2, Column: 23},
+		{RuleName: "layer-forever-acquisition", Level: "error", Message: "Fork long-lived work into the layer scope so acquisition completes. Run the worker with Effect.forkScoped, FiberSet, or FiberMap.", FilePath: "src/violation.ts", Line: 2, Column: 1},
+		{RuleName: "layer-forever-acquisition", Level: "error", Message: "Fork long-lived work into the layer scope so acquisition completes. Run the worker with Effect.forkScoped, FiberSet, or FiberMap.", FilePath: "src/violation.ts", Line: 6, Column: 1},
+		{RuleName: "layer-forever-acquisition", Level: "error", Message: "Fork long-lived work into the layer scope so acquisition completes. Run the worker with Effect.forkScoped, FiberSet, or FiberMap.", FilePath: "src/violation.ts", Line: 7, Column: 1},
 	})
 }

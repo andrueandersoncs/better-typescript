@@ -2,17 +2,17 @@
 
 ## What it does
 
-Reports non-generator function declarations and function expressions that use the `function` keyword. Generator functions and declarations needed for overload signatures are allowed.
+Reports non-generator function declarations and function expressions that use the `function` keyword. It keeps overload implementations, generators, and functions that lexically own `this`, implicit `arguments`, or `new.target`, including uses inside nested arrows.
 
 ## When to use it
 
-Use it to prefer `const` declarations with arrow functions. Keep `function*` when generator semantics are required.
+Use it to prefer `const` declarations with arrow functions only when the conversion preserves language semantics.
 
 ## Conformant
 
 ```ts
-export function* values(): Generator<number, void, unknown> {
-  yield 1
+const count = function () {
+  return () => arguments.length
 }
 ```
 

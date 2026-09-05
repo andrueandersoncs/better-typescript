@@ -24,7 +24,7 @@ var Rule = rule.Rule{Name: "prefer-effect-array", Run: func(ctx rule.RuleContext
 		if !isArrayLike(ctx.TypeChecker, ctx.TypeChecker.GetTypeAtLocation(receiver), map[*checker.Type]bool{}) {
 			return
 		}
-		ctx.ReportNode(node, rule.RuleMessage{Id: "prefer-effect-array", Description: fmt.Sprintf("Avoid Array.prototype.%s().", method), Help: "Prefer Effect's Array module — define the array as a const and call Array.every(values, Boolean), Array.map(values, f), Array.filter(values, f), or the matching Array.* helper — instead of invoking Array.prototype methods directly on array values."})
+		ctx.ReportNode(node, rule.RuleMessage{Id: "prefer-effect-array", Description: fmt.Sprintf("Avoid Array.prototype.%s().", method), Help: "Application code should prefer Effect's Array module — define the array as a const and call Array.every(values, Boolean), Array.map(values, f), Array.filter(values, f), or the matching Array.* helper. An owned library kernel may use native array operations only under explicit project policy; this rule does not infer that exception."})
 	}}
 }}
 

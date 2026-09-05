@@ -9,6 +9,7 @@ import (
 
 func TestRule(t *testing.T) {
 	ruletest.Assert(t, "testdata", Rule, []analysis.Violation{
-		{RuleName: "production-sleep-loops", Level: "error", Message: "Avoid manual Effect.sleep loops; use Schedule and Effect.repeat. Express repetition, pacing, and backoff as an Effect Schedule.", FilePath: "index.ts", Line: 2, Column: 16},
+		{RuleName: "production-sleep-loops", Level: "error", Message: "Prefer Effect.repeat with Schedule.spaced for fixed-pacing polling. Use Effect.repeat with Schedule.spaced when each iteration has a fixed pacing delay. Keep deadline, latch, and event-driven loops explicit because their timing is not schedule-equivalent.", FilePath: "index.ts", Line: 6, Column: 12},
+		{RuleName: "production-sleep-loops", Level: "error", Message: "Prefer Effect.repeat with Schedule.spaced for fixed-pacing polling. Use Effect.repeat with Schedule.spaced when each iteration has a fixed pacing delay. Keep deadline, latch, and event-driven loops explicit because their timing is not schedule-equivalent.", FilePath: "index.ts", Line: 12, Column: 12},
 	})
 }

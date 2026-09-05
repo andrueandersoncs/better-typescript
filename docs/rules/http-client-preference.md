@@ -2,21 +2,35 @@
 
 ## What it does
 
-Reports an identifier call named `fetch` nested under a `tryPromise` call whose receiver text ends in `Effect`, unless the file text contains the substring `HttpClient` or `FetchHttpClient`. The report says: “Prefer Effect HttpClient for HTTP adapters. Use Effect's typed HTTP client unless a documented raw-fetch exception applies.” Direct `fetch` outside such a call is allowed.
+Reports a resolved built-in `fetch` directly executed by a resolved Effect `tryPromise` callback, including an object `try` property or method. It does not use comments, imports, or other file text as an exemption. A fetch that implements a direct `HttpClient.make` runner is the transport adapter itself and is allowed.
 
 ## When to use it
 
-Use it for Effect-based HTTP adapters.
+Use it in application Effect code to prefer the typed HTTP client. Raw fetch outside an Effect boundary belongs to `raw-fetch-outside-adapter`; a direct raw transport implementation belongs to `HttpClient.make`.
 
 ## Conformant
 
 ```ts
-fetch("https://example.com")
+import * as Effect from "effect/Effect"
+import * as HttpClient from "effect/unstable/http/HttpClient"
+import * as HttpClientError from "effect/unstable/http/HttpClientError"
+import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
+
+declare const response: HttpClientResponse.HttpClientResponse
+declare const transportError: HttpClientError.HttpClientError
+
+HttpClient.make((request, url, signal) =>
+  Effect.tryPromise({
+    try: () => fetch(url, { signal }).then(() => response),
+    catch: () => transportError,
+  }),
+)
 ```
 
 ## Non-conformant
 
 ```ts
-declare const Effect: any
+import * as Effect from "effect/Effect"
+
 Effect.tryPromise(() => fetch("https://example.com"))
 ```

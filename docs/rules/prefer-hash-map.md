@@ -6,18 +6,24 @@ Reports bare global `new Map(...)`, unqualified global `Map`/`ReadonlyMap` type 
 
 ## When to use it
 
-Use it for immutable Effect collections.
+Use it as the application-code default for immutable Effect collections. An owned library kernel may intentionally use a native map behind a controlled interface under explicit project policy; this syntactic rule does not infer ownership or auto-exempt local kernels.
+
+`HashMap` uses structural `Equal` and `Hash` by default. For reference identity, retain one `Equal.byReference` wrapper and use that same wrapper for each insertion and lookup. Every call creates a fresh wrapper, so rewrapping the raw object does not preserve native `Map` identity lookup. If a public contract accepts raw object identities, moving to `HashMap` changes that contract; do not use `Equal.byReferenceUnsafe` as a routine replacement.
 
 ## Conformant
 
-```ts
-import { HashMap } from "effect"
+```ts lint=clean
+import { Equal, HashMap } from "effect"
 
-export const values = HashMap.fromIterable([["a", 1]])
+const object = { id: 1 }
+const key = Equal.byReference(object)
+const values = HashMap.make([key, "value"])
+
+HashMap.get(values, key)
 ```
 
 ## Non-conformant
 
-```ts
+```ts lint=error:1:23
 export const values = new Map<string, number>()
 ```

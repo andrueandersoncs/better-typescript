@@ -1,145 +1,145 @@
 package unbounded_stream_buffer
 
 import (
-	"github.com/andrueandersoncs/better-typescript/internal/rule"
-	"github.com/andrueandersoncs/typescript-go/ast"
-	"path"
-	"regexp"
+	"path/filepath"
 	"strings"
+
+	"github.com/andrueandersoncs/better-typescript/internal/rule"
+	"github.com/andrueandersoncs/better-typescript/internal/utils"
+	"github.com/andrueandersoncs/typescript-go/ast"
 )
 
-var message = rule.RuleMessage{Id: "unboundedStreamBuffer", Description: "Avoid unbounded Stream buffers.", Help: "Use natural backpressure or a bounded buffer strategy."}
+var message = rule.RuleMessage{
+	Id:          "unboundedStreamBuffer",
+	Description: "Avoid unbounded Effect Stream or Channel buffers.",
+	Help:        "Use a finite capacity. Stream.buffer counts elements; bufferArray counts chunks. Use suspend to preserve backpressure—dropping and sliding lose data.",
+}
 
 var UnboundedStreamBufferRule = rule.Rule{
 	Name: "unbounded-stream-buffer",
 	Run: func(ctx rule.RuleContext, _ any) rule.RuleListeners {
-		imports := collectAPIImports(ctx.SourceFile.Text())
 		return rule.RuleListeners{ast.KindCallExpression: func(node *ast.Node) {
 			call := node.AsCallExpression()
-			if !isAPICall(imports, call, "Stream", "buffer") {
+			if !isBufferCall(ctx, call) || !hasUnboundedCapacity(ctx, call) {
 				return
 			}
-			for _, argument := range call.Arguments.Nodes {
-				argument = skipTransparent(argument)
-				if argument == nil || !ast.IsObjectLiteralExpression(argument) {
-					continue
-				}
-				for _, property := range argument.AsObjectLiteralExpression().Properties.Nodes {
-					if !ast.IsPropertyAssignment(property) {
-						continue
-					}
-					propertyName, ok := ast.TryGetTextOfPropertyName(property.Name())
-					if !ok || propertyName != "capacity" {
-						continue
-					}
-					value := skipTransparent(property.AsPropertyAssignment().Initializer)
-					if value != nil && ast.IsStringLiteralLike(value) && value.Text() == "unbounded" {
-						ctx.ReportNode(node, message)
-						return
-					}
-				}
-			}
+			ctx.ReportNode(node, message)
 		}}
 	},
 }
 
-type apiImports struct {
-	namespaces map[string]string
-	members    map[string][2]string
+func isBufferCall(ctx rule.RuleContext, call *ast.CallExpression) bool {
+	callee := unwrap(call.Expression)
+	if ast.IsPropertyAccessExpression(callee) {
+		callee = callee.AsPropertyAccessExpression().Name()
+	}
+	if !ast.IsIdentifier(callee) {
+		return false
+	}
+	symbol := utils.ResolvedSymbol(ctx.TypeChecker, callee)
+	if symbol == nil {
+		return false
+	}
+	return (symbol.Name == "buffer" || symbol.Name == "bufferArray") && declaredInEffectModule(symbol, "Stream.ts", "Channel.ts")
 }
 
-func collectAPIImports(text string) apiImports {
-	result := apiImports{namespaces: map[string]string{}, members: map[string][2]string{}}
-	re := regexp.MustCompile(`(?ms)^\s*import\s+(\{[^}]*\}|\*\s+as\s+[A-Za-z_$][\w$]*)\s+from\s+["']([^"']+)["']`)
-	for _, match := range re.FindAllStringSubmatch(text, -1) {
-		clause, module := strings.TrimSpace(match[1]), match[2]
-		family := ""
-		if strings.HasPrefix(module, "effect/") {
-			family = path.Base(module)
-		}
-		if strings.HasPrefix(clause, "* as ") && family != "" {
-			result.namespaces[strings.TrimSpace(strings.TrimPrefix(clause, "* as "))] = family
+func hasUnboundedCapacity(ctx rule.RuleContext, call *ast.CallExpression) bool {
+	for _, argument := range call.Arguments.Nodes {
+		argument = unwrap(argument)
+		if !ast.IsObjectLiteralExpression(argument) {
 			continue
 		}
-		start, end := strings.Index(clause, "{"), strings.LastIndex(clause, "}")
-		if start < 0 || end <= start {
-			continue
-		}
-		for _, item := range strings.Split(clause[start+1:end], ",") {
-			parts := strings.Fields(strings.TrimSpace(item))
-			if len(parts) == 0 || parts[0] == "type" {
+		known, unbounded := false, false
+		for _, property := range argument.AsObjectLiteralExpression().Properties.Nodes {
+			if ast.IsSpreadAssignment(property) {
+				known = false
 				continue
 			}
-			imported, local := parts[0], parts[0]
-			if len(parts) >= 3 && parts[1] == "as" {
-				local = parts[2]
+			if !ast.IsPropertyAssignment(property) {
+				continue
 			}
-			if module == "effect" {
-				result.namespaces[local] = imported
-			} else if family != "" {
-				result.members[local] = [2]string{family, imported}
+			name, ok := ast.TryGetTextOfPropertyName(property.Name())
+			if !ok || name != "capacity" {
+				continue
+			}
+			known = true
+			unbounded = isUnboundedCapacity(ctx, property.AsPropertyAssignment().Initializer)
+		}
+		if known && unbounded {
+			return true
+		}
+	}
+	return false
+}
+
+func isUnboundedCapacity(ctx rule.RuleContext, node *ast.Node) bool {
+	node = unwrap(node)
+	if node == nil {
+		return false
+	}
+	if ast.IsStringLiteralLike(node) {
+		return node.Text() == "unbounded"
+	}
+	if ast.IsIdentifier(node) {
+		return node.Text() == "Infinity" && declaredInLib(utils.ResolvedSymbol(ctx.TypeChecker, node))
+	}
+	if !ast.IsPropertyAccessExpression(node) {
+		return false
+	}
+	access := node.AsPropertyAccessExpression()
+	if access.Name() == nil || access.Name().Text() != "POSITIVE_INFINITY" {
+		return false
+	}
+	receiver := unwrap(access.Expression)
+	return ast.IsIdentifier(receiver) && receiver.Text() == "Number" && declaredInLib(utils.ResolvedSymbol(ctx.TypeChecker, receiver))
+}
+
+func declaredInEffectModule(symbol *ast.Symbol, modules ...string) bool {
+	for _, declaration := range symbolDeclarations(symbol) {
+		file := ast.GetSourceFileOfNode(declaration)
+		if file == nil {
+			continue
+		}
+		name := strings.ReplaceAll(file.FileName(), "\\", "/")
+		if !strings.Contains(name, "/node_modules/effect/") && !strings.Contains(name, "/packages/effect/src/") {
+			continue
+		}
+		for _, module := range modules {
+			if strings.TrimSuffix(strings.TrimSuffix(filepath.Base(name), ".d.ts"), ".ts") == strings.TrimSuffix(module, ".ts") {
+				return true
 			}
 		}
 	}
-	return result
+	return false
 }
 
-func skipTransparent(node *ast.Node) *ast.Node {
+func declaredInLib(symbol *ast.Symbol) bool {
+	for _, declaration := range symbolDeclarations(symbol) {
+		file := ast.GetSourceFileOfNode(declaration)
+		if file != nil && strings.HasPrefix(filepath.Base(file.FileName()), "lib.") {
+			return true
+		}
+	}
+	return false
+}
+
+func symbolDeclarations(symbol *ast.Symbol) []*ast.Node {
+	if symbol == nil {
+		return nil
+	}
+	return symbol.Declarations
+}
+
+func unwrap(node *ast.Node) *ast.Node {
 	for node != nil {
 		switch node.Kind {
-		case ast.KindParenthesizedExpression, ast.KindAsExpression, ast.KindTypeAssertionExpression,
-			ast.KindNonNullExpression, ast.KindSatisfiesExpression:
+		case ast.KindParenthesizedExpression, ast.KindAsExpression, ast.KindTypeAssertionExpression, ast.KindNonNullExpression, ast.KindSatisfiesExpression:
 			node = node.Expression()
 		default:
 			return node
 		}
 	}
 	return nil
-}
-
-func isAPICall(imports apiImports, call *ast.CallExpression, family string, names ...string) bool {
-	callee := skipTransparent(call.Expression)
-	if callee == nil {
-		return false
-	}
-	contains := func(name string) bool {
-		for _, candidate := range names {
-			if candidate == name {
-				return true
-			}
-		}
-		return false
-	}
-	if ast.IsPropertyAccessExpression(callee) {
-		access := callee.AsPropertyAccessExpression()
-		name := access.Name()
-		receiver := skipTransparent(access.Expression)
-		return name != nil && receiver != nil && receiver.Kind == ast.KindIdentifier &&
-			imports.namespaces[receiver.Text()] == family && contains(name.Text())
-	}
-	if callee.Kind == ast.KindIdentifier {
-		member, ok := imports.members[callee.Text()]
-		return ok && member[0] == family && contains(member[1])
-	}
-	return false
-}
-
-func walk(node *ast.Node, visit func(*ast.Node) bool) bool {
-	if node == nil {
-		return false
-	}
-	if visit(node) {
-		return true
-	}
-	found := false
-	node.ForEachChild(func(child *ast.Node) bool {
-		if walk(child, visit) {
-			found = true
-			return true
-		}
-		return false
-	})
-	return found
 }
 
 var Rule = UnboundedStreamBufferRule

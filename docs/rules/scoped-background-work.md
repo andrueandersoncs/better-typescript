@@ -2,26 +2,30 @@
 
 ## What it does
 
-Reports imported Effect background-work calls that have no recognized scope owner. It checks `Effect.forever`, `forkChild`, `forkDetach`, and `forkDaemon`. It also checks `Stream.runForEach`, `runDrain`, and `runFold` under `Effect.forever`.
+Reports a resolved `Effect.forkDetach` whose fiber is locally discarded: directly by `Layer.effectDiscard`, by an unused `yield*` in an `Effect.gen` body, or when a generator returns its detached handle to `Layer.effectDiscard`. A cold detached Effect recipe is not a start. A lexical Layer does not own a detached fiber. The report says: “Scope detached background work. Fork detached work into a scope or retain it at an explicit owner.”
 
-The exact report is: `Scope background work. Own worker lifetime in a Layer and fork it into that scope.` Work under a Layer effect or scoped acquisition is allowed. So is work owned by `Effect.forkScoped` or `forkIn`, `FiberSet`, or `FiberMap`. The tested boundary reports `Effect.forkDaemon` and allows `Effect.forkScoped`.
-
-## When to use it
-
-Use it to ensure long-lived fibers have an explicit lifetime owner.
+`Effect.forkChild` is structured ownership. `Effect.forkScoped`, `forkIn`, `Fiber.interrupt`, and scoped `FiberHandle` operations are explicit owners. A detached fiber returned by a generator for its caller to own is allowed.
 
 ## Conformant
 
 ```ts
-import { Effect } from "effect"
+import { Effect, Fiber, Layer } from "effect"
 
-const worker = Effect.forkScoped(Effect.never)
+export const start = Effect.gen(function* () {
+  const fiber = yield* Effect.forkDetach(Effect.never)
+  return fiber
+})
+Effect.gen(function* () {
+  const fiber = yield* Effect.forkDetach(Effect.never)
+  yield* Fiber.interrupt(fiber)
+})
+Layer.effectDiscard(Effect.forkScoped(Effect.never))
 ```
 
 ## Non-conformant
 
 ```ts
-import { Effect } from "effect"
+import { Effect, Layer } from "effect"
 
-const worker = Effect.forkDaemon(Effect.never)
+Layer.effectDiscard(Effect.forkDetach(Effect.never))
 ```

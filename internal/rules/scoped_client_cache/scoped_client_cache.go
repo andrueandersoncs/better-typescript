@@ -1,84 +1,24 @@
 package scoped_client_cache
 
 import (
-	"github.com/andrueandersoncs/better-typescript/internal/rule"
-	"github.com/andrueandersoncs/typescript-go/ast"
-	"path"
-	"regexp"
+	"path/filepath"
 	"strings"
+
+	"github.com/andrueandersoncs/better-typescript/internal/rule"
+	"github.com/andrueandersoncs/better-typescript/internal/utils"
+	"github.com/andrueandersoncs/typescript-go/ast"
 )
 
-var message = rule.RuleMessage{Id: "scopedClientCache", Description: "Acquire clients outside Cache lookup functions and share them through a layer.", Help: "Build the client once in the owning layer, then make lookup a plain call."}
-
-func insideCacheLookup(imports apiImports, node *ast.Node) bool {
-	for current := node.Parent; current != nil; current = current.Parent {
-		if ast.IsCallExpression(current) && isAPICall(imports, current.AsCallExpression(), "Cache", "make", "makeWith") {
-			return true
-		}
-	}
-	return false
+var message = rule.RuleMessage{
+	Id:          "scopedClientCache",
+	Description: "Do not acquire a scoped resource inside an ordinary Cache lookup.",
+	Help:        "Acquire the resource in its owning layer and let lookup use the shared client.",
 }
 
-var ScopedClientCacheRule = rule.Rule{Name: "scoped-client-cache", Run: func(ctx rule.RuleContext, _ any) rule.RuleListeners {
-	imports := collectAPIImports(ctx.SourceFile.Text())
-	return rule.RuleListeners{ast.KindCallExpression: func(node *ast.Node) {
-		if !insideCacheLookup(imports, node) {
-			return
-		}
-		call := node.AsCallExpression()
-		if isAPICall(imports, call, "Effect", "provide", "provideService", "provideServiceEffect", "provideContext") ||
-			isAPICall(imports, call, "Layer", "build", "effect", "effectDiscard", "effectContext") {
-			ctx.ReportNode(node, message)
-		}
-	}}
-}}
-
-type apiImports struct {
-	namespaces map[string]string
-	members    map[string][2]string
-}
-
-func collectAPIImports(text string) apiImports {
-	result := apiImports{namespaces: map[string]string{}, members: map[string][2]string{}}
-	re := regexp.MustCompile(`(?ms)^\s*import\s+(\{[^}]*\}|\*\s+as\s+[A-Za-z_$][\w$]*)\s+from\s+["']([^"']+)["']`)
-	for _, match := range re.FindAllStringSubmatch(text, -1) {
-		clause, module := strings.TrimSpace(match[1]), match[2]
-		family := ""
-		if strings.HasPrefix(module, "effect/") {
-			family = path.Base(module)
-		}
-		if strings.HasPrefix(clause, "* as ") && family != "" {
-			result.namespaces[strings.TrimSpace(strings.TrimPrefix(clause, "* as "))] = family
-			continue
-		}
-		start, end := strings.Index(clause, "{"), strings.LastIndex(clause, "}")
-		if start < 0 || end <= start {
-			continue
-		}
-		for _, item := range strings.Split(clause[start+1:end], ",") {
-			parts := strings.Fields(strings.TrimSpace(item))
-			if len(parts) == 0 || parts[0] == "type" {
-				continue
-			}
-			imported, local := parts[0], parts[0]
-			if len(parts) >= 3 && parts[1] == "as" {
-				local = parts[2]
-			}
-			if module == "effect" {
-				result.namespaces[local] = imported
-			} else if family != "" {
-				result.members[local] = [2]string{family, imported}
-			}
-		}
-	}
-	return result
-}
-
-func skipTransparent(node *ast.Node) *ast.Node {
+func unwrap(node *ast.Node) *ast.Node {
 	for node != nil {
 		switch node.Kind {
-		case ast.KindParenthesizedExpression, ast.KindAsExpression, ast.KindTypeAssertionExpression,
-			ast.KindNonNullExpression, ast.KindSatisfiesExpression:
+		case ast.KindParenthesizedExpression, ast.KindAsExpression, ast.KindTypeAssertionExpression, ast.KindNonNullExpression, ast.KindSatisfiesExpression:
 			node = node.Expression()
 		default:
 			return node
@@ -87,49 +27,135 @@ func skipTransparent(node *ast.Node) *ast.Node {
 	return nil
 }
 
-func isAPICall(imports apiImports, call *ast.CallExpression, family string, names ...string) bool {
-	callee := skipTransparent(call.Expression)
-	if callee == nil {
+func effectMember(ctx rule.RuleContext, node *ast.Node, file, name string) bool {
+	node = unwrap(node)
+	var target *ast.Node
+	switch {
+	case ast.IsPropertyAccessExpression(node):
+		target = node.AsPropertyAccessExpression().Name()
+	case ast.IsIdentifier(node):
+		target = node
+	default:
 		return false
 	}
-	contains := func(name string) bool {
-		for _, candidate := range names {
-			if candidate == name {
-				return true
-			}
+	symbol := utils.ResolvedSymbol(ctx.TypeChecker, target)
+	if symbol == nil || symbol.Name != name {
+		return false
+	}
+	for _, declaration := range symbol.Declarations {
+		source := ast.GetSourceFileOfNode(declaration)
+		if source == nil {
+			continue
 		}
-		return false
-	}
-	if ast.IsPropertyAccessExpression(callee) {
-		access := callee.AsPropertyAccessExpression()
-		name := access.Name()
-		receiver := skipTransparent(access.Expression)
-		return name != nil && receiver != nil && receiver.Kind == ast.KindIdentifier &&
-			imports.namespaces[receiver.Text()] == family && contains(name.Text())
-	}
-	if callee.Kind == ast.KindIdentifier {
-		member, ok := imports.members[callee.Text()]
-		return ok && member[0] == family && contains(member[1])
+		path := strings.ReplaceAll(source.FileName(), "\\", "/")
+		base := filepath.Base(path)
+		if (base == file+".ts" || base == file+".d.ts") &&
+			(strings.Contains(path, "/node_modules/effect/") || strings.Contains(path, "/packages/effect/src/")) {
+			return true
+		}
 	}
 	return false
 }
 
-func walk(node *ast.Node, visit func(*ast.Node) bool) bool {
-	if node == nil {
+func lookupValue(ctx rule.RuleContext, node *ast.Node) bool {
+	parent := node.Parent
+	if parent == nil {
 		return false
 	}
-	if visit(node) {
-		return true
+	if ast.IsPropertyAssignment(parent) && parent.AsPropertyAssignment().Initializer == node {
+		name, ok := ast.TryGetTextOfPropertyName(parent.Name())
+		if !ok || name != "lookup" || parent.Parent == nil || !ast.IsObjectLiteralExpression(parent.Parent) || parent.Parent.Parent == nil || !ast.IsCallExpression(parent.Parent.Parent) {
+			return false
+		}
+		return effectMember(ctx, parent.Parent.Parent.AsCallExpression().Expression, "Cache", "make")
 	}
-	found := false
-	node.ForEachChild(func(child *ast.Node) bool {
-		if walk(child, visit) {
-			found = true
+	if !ast.IsCallExpression(parent) {
+		return false
+	}
+	call := parent.AsCallExpression()
+	return len(call.Arguments.Nodes) > 0 && call.Arguments.Nodes[0] == node &&
+		effectMember(ctx, call.Expression, "Cache", "makeWith")
+}
+
+func lookupCallback(ctx rule.RuleContext, node *ast.Node) *ast.Node {
+	for current := node.Parent; current != nil; current = current.Parent {
+		if !ast.IsArrowFunction(current) && !ast.IsFunctionExpression(current) {
+			continue
+		}
+		if lookupValue(ctx, current) {
+			return current
+		}
+		parent := current.Parent
+		if parent != nil && ast.IsCallExpression(parent) {
+			call := parent.AsCallExpression()
+			if len(call.Arguments.Nodes) > 0 && call.Arguments.Nodes[0] == current && effectMember(ctx, call.Expression, "Effect", "gen") {
+				if lookupValue(ctx, parent) {
+					return current
+				}
+				owner := parent.Parent
+				if owner != nil && ast.IsArrowFunction(owner) && owner.Body() == parent && lookupValue(ctx, owner) {
+					return owner
+				}
+				if owner != nil && ast.IsReturnStatement(owner) {
+					for owner = owner.Parent; owner != nil; owner = owner.Parent {
+						if ast.IsFunctionLike(owner) {
+							if lookupValue(ctx, owner) {
+								return owner
+							}
+							break
+						}
+					}
+				}
+			}
+		}
+		return nil
+	}
+	return nil
+}
+
+func executedResource(ctx rule.RuleContext, node, lookup *ast.Node) bool {
+	for current := node; current != nil && current != lookup; current = current.Parent {
+		parent := current.Parent
+		if parent == nil {
+			return false
+		}
+		if ast.IsCallExpression(parent) && effectMember(ctx, parent.AsCallExpression().Expression, "Effect", "succeed") {
+			return false
+		}
+		if ast.IsYieldExpression(parent) {
 			return true
 		}
-		return false
-	})
-	return found
+		if ast.IsReturnStatement(parent) {
+			for owner := parent.Parent; owner != nil; owner = owner.Parent {
+				if ast.IsFunctionLike(owner) {
+					return owner == lookup
+				}
+			}
+			return false
+		}
+		if ast.IsVariableDeclaration(parent) || (ast.IsFunctionLike(parent) && parent != lookup) {
+			return false
+		}
+	}
+	return lookup != nil && lookup.Body() == node
+}
+
+func resourceAcquisition(ctx rule.RuleContext, node *ast.Node) bool {
+	return effectMember(ctx, node.AsCallExpression().Expression, "Effect", "acquireRelease")
+}
+
+var ScopedClientCacheRule = rule.Rule{
+	Name: "scoped-client-cache",
+	Run: func(ctx rule.RuleContext, _ any) rule.RuleListeners {
+		reported := map[*ast.Node]bool{}
+		return rule.RuleListeners{ast.KindCallExpression: func(node *ast.Node) {
+			lookup := lookupCallback(ctx, node)
+			if resourceAcquisition(ctx, node) && lookup != nil && executedResource(ctx, node, lookup) && !reported[lookup] {
+				reported[lookup] = true
+				ctx.ReportNode(node, message)
+			}
+		}}
+	},
 }
 
 var Rule = ScopedClientCacheRule

@@ -9,6 +9,10 @@ import (
 
 func TestRule(t *testing.T) {
 	ruletest.Assert(t, "testdata", ScopedBackgroundWorkRule, []analysis.Violation{
-		{RuleName: "scoped-background-work", Level: "error", Message: "Scope background work. Own worker lifetime in a Layer and fork it into that scope.", FilePath: "violation.ts", Line: 2, Column: 16},
+		{RuleName: "scoped-background-work", Level: "error", Message: "Scope detached background work. Fork detached work into a scope or retain it at an explicit owner.", FilePath: "violation.ts", Line: 2, Column: 17},
+		{RuleName: "scoped-background-work", Level: "error", Message: "Scope detached background work. Fork detached work into a scope or retain it at an explicit owner.", FilePath: "violation.ts", Line: 4, Column: 10},
+		{RuleName: "scoped-background-work", Level: "error", Message: "Scope detached background work. Fork detached work into a scope or retain it at an explicit owner.", FilePath: "violation.ts", Line: 7, Column: 10},
+		{RuleName: "scoped-background-work", Level: "error", Message: "Scope detached background work. Fork detached work into a scope or retain it at an explicit owner.", FilePath: "violation.ts", Line: 10, Column: 24},
+		{RuleName: "scoped-background-work", Level: "error", Message: "Scope detached background work. Fork detached work into a scope or retain it at an explicit owner.", FilePath: "violation.ts", Line: 14, Column: 24},
 	})
 }

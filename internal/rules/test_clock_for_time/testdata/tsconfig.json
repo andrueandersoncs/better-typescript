@@ -1,1 +1,15 @@
-{"compilerOptions":{"strict":true,"noEmit":true,"target":"ES2022","module":"NodeNext","moduleResolution":"NodeNext"},"include":["*.ts"]}
+{
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "strict": true,
+    "target": "ES2022",
+    "paths": {
+      "@effect/vitest": ["./packages/vitest/src/index.d.ts"],
+      "effect": ["./packages/effect/src/index.d.ts"],
+      "effect/testing": ["./packages/effect/src/testing/index.d.ts"]
+    }
+  },
+  "include": ["*.ts"]
+}

@@ -6,7 +6,9 @@ Reports assignment, increment, decrement, and `delete` operations that mutate fi
 
 ## When to use it
 
-Use it to derive new local values instead of changing existing ones. Move shared, long-lived state into the Effect runtime.
+Use it as the application-code default: derive new local values instead of changing existing ones. An owned library kernel may use a local mutable builder under explicit project policy, but this syntactic rule does not infer ownership or auto-exempt lexical mutation.
+
+For shared state, use `Ref.update` or `Ref.modify` for pure atomic transitions. Use `SynchronizedRef.updateEffect` or `SynchronizedRef.modifyEffect` when the transition is effectful, and `Effect.tx` with `TxRef` for an atomic multi-cell transition. Contention alone does not require `SynchronizedRef`. A local cell does not automatically require a `Layer`; introduce one only for a real resource or lifetime boundary.
 
 ## Conformant
 

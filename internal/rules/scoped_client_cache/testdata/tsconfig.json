@@ -1,1 +1,17 @@
-{"compilerOptions":{"strict":true,"noEmit":true,"target":"ES2022","module":"NodeNext","moduleResolution":"NodeNext"},"include":["*.ts"]}
+{
+  "compilerOptions": {
+    "strict": true,
+    "noEmit": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "paths": {
+      "effect/Cache": ["./packages/effect/src/Cache.d.ts"],
+      "effect/Context": ["./packages/effect/src/Context.d.ts"],
+      "effect/Effect": ["./packages/effect/src/Effect.d.ts"],
+      "effect/RcMap": ["./packages/effect/src/RcMap.d.ts"],
+      "effect/ScopedCache": ["./packages/effect/src/ScopedCache.d.ts"]
+    }
+  },
+  "include": ["*.ts"]
+}

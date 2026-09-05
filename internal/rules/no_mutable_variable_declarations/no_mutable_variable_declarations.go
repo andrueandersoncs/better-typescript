@@ -6,7 +6,7 @@ import (
 	"github.com/andrueandersoncs/typescript-go/ast"
 )
 
-const help = "Declare multiple const values to represent each state instead of mutating a single variable, and use immutable values that are not reassigned. When the value must genuinely evolve over time (a module-level counter, a cell shared across closures), hold it in a Ref inside the Effect runtime instead of a let binding."
+const help = "Application code should declare multiple const values to represent each state instead of mutating one variable. When shared state genuinely evolves over time, use a Ref inside the Effect runtime instead of a let binding. An owned library kernel may use local mutation only under explicit project policy; this rule does not infer that exception."
 
 var Rule = rule.Rule{Name: "no-mutable-variable-declarations", Run: run}
 

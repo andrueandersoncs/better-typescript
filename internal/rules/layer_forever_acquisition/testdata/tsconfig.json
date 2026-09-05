@@ -1,4 +1,1 @@
-{
-  "compilerOptions": { "target": "ES2022", "module": "NodeNext", "moduleResolution": "NodeNext", "lib": ["ES2022"], "strict": true, "skipLibCheck": true, "noEmit": true },
-  "include": ["src/**/*.ts"]
-}
+{"compilerOptions":{"strict":true,"noEmit":true,"target":"ES2022","module":"NodeNext","moduleResolution":"NodeNext","paths":{"effect":["./node_modules/effect/index.d.ts"]}},"include":["src/**/*.ts"]}

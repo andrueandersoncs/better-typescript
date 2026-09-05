@@ -1,9 +1,11 @@
 package layer_forever_acquisition
 
 import (
+	"path/filepath"
 	"strings"
 
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
+	"github.com/andrueandersoncs/better-typescript/internal/utils"
 	"github.com/andrueandersoncs/typescript-go/ast"
 )
 
@@ -13,130 +15,237 @@ var message = rule.RuleMessage{
 	Help:        "Run the worker with Effect.forkScoped, FiberSet, or FiberMap.",
 }
 
-type effectImports struct {
-	named     map[string]string
-	namespace map[string]bool
+var LayerForeverAcquisitionRule = rule.Rule{
+	Name: "layer-forever-acquisition",
+	Run: func(ctx rule.RuleContext, _ any) rule.RuleListeners {
+		reported := map[*ast.Node]bool{}
+		report := func(candidate *ast.Node) {
+			layer := foregroundAcquisition(ctx, candidate)
+			if layer == nil || reported[layer] {
+				return
+			}
+			reported[layer] = true
+			ctx.ReportNode(layer, message)
+		}
+		return rule.RuleListeners{
+			ast.KindCallExpression: func(node *ast.Node) {
+				if isEffectCall(ctx, node, "forever") {
+					report(node)
+					return
+				}
+				if isStreamCall(ctx, node, "forever") && streamIsRun(ctx, node) {
+					report(node)
+				}
+			},
+			ast.KindPropertyAccessExpression: func(node *ast.Node) {
+				if isEffectValue(ctx, node, "never") {
+					report(node)
+				}
+			},
+		}
+	},
 }
 
-func importsFor(sourceFile *ast.SourceFile) effectImports {
-	imports := effectImports{named: map[string]string{}, namespace: map[string]bool{}}
-	for _, statement := range sourceFile.AsNode().Statements() {
-		if !ast.IsImportDeclaration(statement) {
-			continue
-		}
-		declaration := statement.AsImportDeclaration()
-		if declaration.ImportClause == nil || !ast.IsStringLiteral(declaration.ModuleSpecifier) {
-			continue
-		}
-		module := declaration.ModuleSpecifier.Text()
-		bindings := declaration.ImportClause.AsImportClause().NamedBindings
-		if bindings == nil {
-			continue
-		}
-		if module == "effect" && ast.IsNamedImports(bindings) {
-			for _, specifier := range bindings.AsNamedImports().Elements.Nodes {
-				imported := specifier.Name().Text()
-				if specifier.AsImportSpecifier().PropertyName != nil {
-					imported = specifier.AsImportSpecifier().PropertyName.Text()
-				}
-				imports.named[specifier.Name().Text()] = imported
+func foregroundAcquisition(ctx rule.RuleContext, candidate *ast.Node) *ast.Node {
+	for current := candidate; current != nil; current = current.Parent {
+		if ast.IsCallExpression(current) {
+			if isScopedFork(ctx, current) || isColdEffectConstructor(ctx, current) || isTerminatingEffectCall(ctx, current) {
+				return nil
 			}
-		} else if module == "effect" && ast.IsNamespaceImport(bindings) {
-			imports.namespace[bindings.Name().Text()] = true
-		} else if strings.HasPrefix(module, "effect/") && ast.IsNamedImports(bindings) {
-			prefix := strings.TrimPrefix(module, "effect/")
-			for _, specifier := range bindings.AsNamedImports().Elements.Nodes {
-				imported := specifier.Name().Text()
-				if specifier.AsImportSpecifier().PropertyName != nil {
-					imported = specifier.AsImportSpecifier().PropertyName.Text()
-				}
-				imports.named[specifier.Name().Text()] = prefix + "." + imported
+			if isLayerAcquisition(ctx, current) && isAcquisitionArgument(ctx, current, candidate) {
+				return current
 			}
 		}
-	}
-	return imports
-}
-
-func expressionPath(node *ast.Node) []string {
-	if ast.IsIdentifier(node) {
-		return []string{node.Text()}
-	}
-	if ast.IsPropertyAccessExpression(node) {
-		access := node.AsPropertyAccessExpression()
-		return append(expressionPath(access.Expression), node.Name().Text())
+		if isFunctionLike(current) {
+			if !isImmediateGenerator(ctx, current) || !isYieldedInGenerator(candidate, current) {
+				return nil
+			}
+		}
 	}
 	return nil
 }
 
-func isAPI(imports effectImports, expression *ast.Node, namespace string, names map[string]bool) bool {
-	path := expressionPath(expression)
-	if len(path) == 2 && imports.named[path[0]] == namespace && names[path[1]] {
+func isAcquisitionArgument(ctx rule.RuleContext, call, descendant *ast.Node) bool {
+	arguments := call.AsCallExpression().Arguments.Nodes
+	if len(arguments) == 0 {
+		return false
+	}
+	argumentIndex := 0
+	if isLayerEffect(ctx, call) {
+		if len(arguments) < 2 {
+			return false
+		}
+		argumentIndex = 1
+	}
+	for current := descendant; current != nil && current != call; current = current.Parent {
+		if current == arguments[argumentIndex] {
+			return true
+		}
+	}
+	return false
+}
+
+func isImmediateGenerator(ctx rule.RuleContext, node *ast.Node) bool {
+	if !ast.IsFunctionExpression(node) && !ast.IsArrowFunction(node) {
+		return false
+	}
+	call := node.Parent
+	return call != nil && ast.IsCallExpression(call) && isEffectCall(ctx, call, "gen") && call.Parent != nil && ast.IsCallExpression(call.Parent) && isLayerAcquisition(ctx, call.Parent)
+}
+
+func isYieldedInGenerator(candidate, generator *ast.Node) bool {
+	for current := candidate.Parent; current != nil && current != generator; current = current.Parent {
+		if ast.IsYieldExpression(current) {
+			return current.AsYieldExpression().AsteriskToken != nil
+		}
+		if ast.IsVariableDeclaration(current) || ast.IsReturnStatement(current) {
+			return false
+		}
+	}
+	return false
+}
+
+func isLayerAcquisition(ctx rule.RuleContext, node *ast.Node) bool {
+	return isLayerEffect(ctx, node) || isEffectModuleCall(ctx, node, "Layer", "effectDiscard") || isEffectModuleCall(ctx, node, "Layer", "effectContext")
+}
+
+func isLayerEffect(ctx rule.RuleContext, node *ast.Node) bool {
+	return isEffectModuleCall(ctx, node, "Layer", "effect") && len(node.AsCallExpression().Arguments.Nodes) >= 2
+}
+
+func isScopedFork(ctx rule.RuleContext, node *ast.Node) bool {
+	if isEffectCall(ctx, node, "forkScoped") || isEffectCall(ctx, node, "forkIn") || isEffectCall(ctx, node, "forkChild") {
 		return true
 	}
-	if len(path) == 3 && imports.namespace[path[0]] && path[1] == namespace && names[path[2]] {
+	callee := unwrap(node.AsCallExpression().Expression)
+	if !ast.IsPropertyAccessExpression(callee) || callee.AsPropertyAccessExpression().Name().Text() != "pipe" {
+		return false
+	}
+	for _, argument := range node.AsCallExpression().Arguments.Nodes {
+		if isEffectValue(ctx, argument, "forkScoped") || isEffectValue(ctx, argument, "forkChild") {
+			return true
+		}
+	}
+	return false
+}
+
+func streamIsRun(ctx rule.RuleContext, stream *ast.Node) bool {
+	for current := stream.Parent; current != nil; current = current.Parent {
+		if ast.IsCallExpression(current) && (isStreamCall(ctx, current, "runDrain") || isStreamCall(ctx, current, "runCollect")) {
+			return true
+		}
+		if ast.IsCallExpression(current) && isStreamRunPipe(ctx, current) {
+			return true
+		}
+		if isFunctionLike(current) {
+			return false
+		}
+	}
+	return false
+}
+
+func isStreamRunPipe(ctx rule.RuleContext, node *ast.Node) bool {
+	callee := unwrap(node.AsCallExpression().Expression)
+	if !ast.IsPropertyAccessExpression(callee) || callee.AsPropertyAccessExpression().Name().Text() != "pipe" {
+		return false
+	}
+	for _, argument := range node.AsCallExpression().Arguments.Nodes {
+		if isStreamValue(ctx, argument, "runDrain") || isStreamValue(ctx, argument, "runCollect") {
+			return true
+		}
+	}
+	return false
+}
+
+func isColdEffectConstructor(ctx rule.RuleContext, node *ast.Node) bool {
+	return isEffectCall(ctx, node, "succeed")
+}
+
+func isTerminatingEffectCall(ctx rule.RuleContext, node *ast.Node) bool {
+	if isEffectCall(ctx, node, "timeout") || isEffectCall(ctx, node, "timeoutOption") || isEffectCall(ctx, node, "timeoutFail") {
 		return true
 	}
-	return len(path) == 1 && names[strings.TrimPrefix(imports.named[path[0]], namespace+".")]
-}
-
-func containsAPI(imports effectImports, expression *ast.Node, namespace string, names map[string]bool) bool {
-	found := false
-	var visit func(*ast.Node)
-	visit = func(node *ast.Node) {
-		if found {
-			return
-		}
-		candidate := node
-		if ast.IsCallExpression(node) {
-			candidate = node.AsCallExpression().Expression
-		}
-		if isAPI(imports, candidate, namespace, names) {
-			found = true
-			return
-		}
-		for child := range node.IterChildren() {
-			visit(child)
+	callee := unwrap(node.AsCallExpression().Expression)
+	if !ast.IsPropertyAccessExpression(callee) || callee.AsPropertyAccessExpression().Name().Text() != "pipe" {
+		return false
+	}
+	for _, argument := range node.AsCallExpression().Arguments.Nodes {
+		argument = unwrap(argument)
+		if ast.IsCallExpression(argument) && (isEffectCall(ctx, argument, "timeout") || isEffectCall(ctx, argument, "timeoutOption") || isEffectCall(ctx, argument, "timeoutFail")) {
+			return true
 		}
 	}
-	visit(expression)
-	return found
+	return false
 }
 
-func acquisitionArgument(imports effectImports, call *ast.Node) *ast.Node {
-	callee := call.AsCallExpression().Expression
-	acquisitionNames := map[string]bool{"effect": true, "effectDiscard": true, "effectContext": true}
-	if !isAPI(imports, callee, "Layer", acquisitionNames) {
-		return nil
-	}
-	arguments := call.AsCallExpression().Arguments
-	if arguments == nil || len(arguments.Nodes) == 0 {
-		return nil
-	}
-	path := expressionPath(callee)
-	name := path[len(path)-1]
-	if name == "effect" && len(arguments.Nodes) >= 2 {
-		return arguments.Nodes[1]
-	}
-	return arguments.Nodes[0]
+func isStreamCall(ctx rule.RuleContext, node *ast.Node, name string) bool {
+	return isEffectModuleCall(ctx, node, "Stream", name)
 }
 
-func isUnforkedForever(imports effectImports, expression *ast.Node) bool {
-	hasFork := containsAPI(imports, expression, "Effect", map[string]bool{"forkScoped": true})
-	hasForever := containsAPI(imports, expression, "Effect", map[string]bool{"forever": true})
-	hasStreamForever := containsAPI(imports, expression, "Stream", map[string]bool{"forever": true})
-	hasStreamRun := containsAPI(imports, expression, "Stream", map[string]bool{"runCollect": true, "runDrain": true, "runForEach": true, "runFold": true, "runFoldWhile": true})
-	return !hasFork && (hasForever || hasStreamForever && hasStreamRun)
+func isEffectCall(ctx rule.RuleContext, node *ast.Node, name string) bool {
+	return isEffectModuleCall(ctx, node, "Effect", name)
 }
 
-var LayerForeverAcquisitionRule = rule.Rule{
-	Name: "layer-forever-acquisition",
-	Run: func(ctx rule.RuleContext, options any) rule.RuleListeners {
-		imports := importsFor(ctx.SourceFile)
-		return rule.RuleListeners{ast.KindCallExpression: func(node *ast.Node) {
-			argument := acquisitionArgument(imports, node)
-			if argument != nil && isUnforkedForever(imports, argument) {
-				ctx.ReportNode(node, message)
-			}
-		}}
-	},
+func isEffectValue(ctx rule.RuleContext, node *ast.Node, name string) bool {
+	if node == nil || !ast.IsPropertyAccessExpression(node) || node.AsPropertyAccessExpression().Name().Text() != name {
+		return false
+	}
+	return isEffectSymbol(ctx, node.AsPropertyAccessExpression().Name(), "Effect", name)
 }
+
+func isStreamValue(ctx rule.RuleContext, node *ast.Node, name string) bool {
+	node = unwrap(node)
+	if node == nil || !ast.IsPropertyAccessExpression(node) || node.AsPropertyAccessExpression().Name().Text() != name {
+		return false
+	}
+	return isEffectSymbol(ctx, node.AsPropertyAccessExpression().Name(), "Stream", name)
+}
+
+func isEffectModuleCall(ctx rule.RuleContext, node *ast.Node, module, name string) bool {
+	callee := unwrap(node.AsCallExpression().Expression)
+	if ast.IsPropertyAccessExpression(callee) {
+		callee = callee.AsPropertyAccessExpression().Name()
+	}
+	return isEffectSymbol(ctx, callee, module, name)
+}
+
+func isEffectSymbol(ctx rule.RuleContext, node *ast.Node, module, name string) bool {
+	symbol := utils.ResolvedSymbol(ctx.TypeChecker, node)
+	if symbol == nil || symbol.Name != name {
+		return false
+	}
+	for _, declaration := range symbol.Declarations {
+		file := ast.GetSourceFileOfNode(declaration)
+		if file == nil {
+			continue
+		}
+		path := strings.ReplaceAll(file.FileName(), "\\", "/")
+		base := filepath.Base(path)
+		if (base == module+".ts" || base == module+".d.ts" || base == "index.d.ts") && (strings.Contains(path, "/node_modules/effect/") || strings.Contains(path, "/packages/effect/src/")) {
+			return true
+		}
+	}
+	return false
+}
+
+func isFunctionLike(node *ast.Node) bool {
+	switch node.Kind {
+	case ast.KindArrowFunction, ast.KindFunctionExpression, ast.KindFunctionDeclaration, ast.KindMethodDeclaration:
+		return true
+	}
+	return false
+}
+
+func unwrap(node *ast.Node) *ast.Node {
+	for node != nil {
+		switch node.Kind {
+		case ast.KindParenthesizedExpression, ast.KindAsExpression, ast.KindTypeAssertionExpression, ast.KindNonNullExpression, ast.KindSatisfiesExpression:
+			node = node.Expression()
+		default:
+			return node
+		}
+	}
+	return nil
+}
+
+var Rule = LayerForeverAcquisitionRule

@@ -2,22 +2,26 @@
 
 ## What it does
 
-Reports Effect sleep, timeout, retry, and Schedule backoff calls inside tests imported from `@effect/vitest`. The report says: “Use TestClock for time-sensitive tests. Fork time-dependent work, then advance TestClock instead of real time.” The rule allows the file when it imports `TestClock`.
+Reports a narrow virtual-clock deadlock pattern: a resolved `it.effect` callback directly returns an `Effect.gen` generator that yields a positive numeric or supported Duration-string literal to `Effect.sleep`, then directly yields resolved `TestClock.adjust` or `TestClock.setTime` later in the same straight-line block. Literal local declarations and yielded effects may appear between the two yields.
+
+It does not infer arbitrary clock wrappers or control flow. `it.live`, zero sleeps, inert schedules, clock overrides, and fork/adjust/join or cancellation patterns are allowed.
 
 ## When to use it
 
-Use it when Effect tests must control time instead of waiting for real time.
+Use it to keep virtual-clock tests deterministic without waiting on a sleep before the same fiber can advance the clock.
 
 ## Conformant
 
 ```ts
-import { Effect } from "effect"
+import { Effect, Fiber } from "effect"
 import { it } from "@effect/vitest"
 import { TestClock } from "effect/testing"
 
-it.effect("waits", () =>
-  Effect.zipRight(Effect.sleep("1 second"), TestClock.adjust("1 second"))
-)
+it.effect("waits", () => Effect.gen(function*() {
+  const fiber = yield* Effect.forkChild(Effect.sleep(1_000))
+  yield* TestClock.adjust(1_000)
+  yield* Fiber.join(fiber)
+}))
 ```
 
 ## Non-conformant
@@ -25,6 +29,10 @@ it.effect("waits", () =>
 ```ts
 import { Effect } from "effect"
 import { it } from "@effect/vitest"
+import { TestClock } from "effect/testing"
 
-it.effect("waits", () => Effect.sleep("1 second"))
+it.effect("waits", () => Effect.gen(function*() {
+  yield* Effect.sleep(1_000)
+  yield* TestClock.adjust(1_000)
+}))
 ```

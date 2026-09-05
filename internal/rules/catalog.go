@@ -3,12 +3,14 @@ package rules
 import (
 	"github.com/andrueandersoncs/better-typescript/internal/rules/boundary_schema_decode"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/bounded_retry_schedule"
-	"github.com/andrueandersoncs/better-typescript/internal/rules/cache_per_request"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/cache_preference"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/closed_abstraction"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/config_refined_values"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/dependent_layer_merge"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/deterministic_durable_key"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/discarded_effect_operation"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/duplicate_shape"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/effect_callback_signal_arity"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/effect_fn_name"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/effect_test_style"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/function_derived_model"
@@ -17,7 +19,6 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/rules/http_client_preference"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/http_response_validation"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/http_status_decode_order"
-	"github.com/andrueandersoncs/better-typescript/internal/rules/idempotent_retry"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/inflight_dedupe_map"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/layer_forever_acquisition"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_async_functions"
@@ -51,8 +52,11 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_pass_through_object_wrappers"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_property_access_after_call"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_raw_object_types"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/no_redacted_value_in_logs"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/no_reentrant_synchronized_ref_update"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_reexports"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_schema_decode_unknown_sync"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/no_schema_opaque_instance_members"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_switch_statements"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_throw"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_trivial_effect_fn"
@@ -60,6 +64,7 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_type_specific_equivalence_strict"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_undefined"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_unsafe_effect_apis"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/no_unsupported_d1_transactions"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_unused"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_value_aliases"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_void_functions"
@@ -83,8 +88,6 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_effect_record_filter_map"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_effect_schema_class"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_effect_schema_constructor"
-	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_effect_schema_guard"
-	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_effect_schema_is"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_effectful_function"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_equivalence_strict_equal"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_eta_reduction"
@@ -119,15 +122,15 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/rules/retry_without_jitter"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/schema_error_class"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/schema_name_suffix"
-	"github.com/andrueandersoncs/better-typescript/internal/rules/schema_optional_key"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/schema_record_interface"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/scoped_background_work"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/scoped_client_cache"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/service_method_effect_fn"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/speculative_export"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/stream_pagination"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/streaming_textdecoder"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/test_clock_for_time"
-	"github.com/andrueandersoncs/better-typescript/internal/rules/test_sleeps"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/tx_queue_batch_capacity"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/typed_boundary_error"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/typed_error_recovery"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/typescript_namespaces"
@@ -135,6 +138,7 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/rules/unbounded_stream_collect"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/unsafe_casts"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/unused_field"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/valid_effect_dual_arity"
 
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
 )
@@ -142,12 +146,14 @@ import (
 var BuiltinRules = []rule.Rule{
 	boundary_schema_decode.Rule,
 	bounded_retry_schedule.Rule,
-	cache_per_request.Rule,
 	cache_preference.Rule,
 	closed_abstraction.Rule,
 	config_refined_values.Rule,
 	dependent_layer_merge.Rule,
+	deterministic_durable_key.Rule,
+	discarded_effect_operation.Rule,
 	duplicate_shape.Rule,
+	effect_callback_signal_arity.Rule,
 	effect_fn_name.Rule,
 	effect_test_style.Rule,
 	function_derived_model.Rule,
@@ -156,7 +162,6 @@ var BuiltinRules = []rule.Rule{
 	http_client_preference.Rule,
 	http_response_validation.Rule,
 	http_status_decode_order.Rule,
-	idempotent_retry.IdempotentRetryRule,
 	inflight_dedupe_map.InflightDedupeMapRule,
 	layer_forever_acquisition.LayerForeverAcquisitionRule,
 	no_async_functions.NoAsyncFunctionsRule,
@@ -190,8 +195,11 @@ var BuiltinRules = []rule.Rule{
 	no_pass_through_object_wrappers.Rule,
 	no_property_access_after_call.Rule,
 	no_raw_object_types.Rule,
+	no_redacted_value_in_logs.Rule,
+	no_reentrant_synchronized_ref_update.Rule,
 	no_reexports.Rule,
 	no_schema_decode_unknown_sync.Rule,
+	no_schema_opaque_instance_members.Rule,
 	no_switch_statements.Rule,
 	no_throw.Rule,
 	no_trivial_effect_fn.Rule,
@@ -199,6 +207,7 @@ var BuiltinRules = []rule.Rule{
 	no_type_specific_equivalence_strict.Rule,
 	no_undefined.Rule,
 	no_unsafe_effect_apis.Rule,
+	no_unsupported_d1_transactions.Rule,
 	no_unused.Rule,
 	no_value_aliases.Rule,
 	no_void_functions.Rule,
@@ -222,8 +231,6 @@ var BuiltinRules = []rule.Rule{
 	prefer_effect_record_filter_map.Rule,
 	prefer_effect_schema_class.Rule,
 	prefer_effect_schema_constructor.Rule,
-	prefer_effect_schema_guard.Rule,
-	prefer_effect_schema_is.Rule,
 	prefer_effectful_function.PreferEffectfulFunctionRule,
 	prefer_equivalence_strict_equal.PreferEquivalenceStrictEqualRule,
 	prefer_eta_reduction.PreferEtaReductionRule,
@@ -258,15 +265,15 @@ var BuiltinRules = []rule.Rule{
 	retry_without_jitter.Rule,
 	schema_error_class.SchemaErrorClassRule,
 	schema_name_suffix.Rule,
-	schema_optional_key.SchemaOptionalKeyRule,
 	schema_record_interface.SchemaRecordInterfaceRule,
 	scoped_background_work.ScopedBackgroundWorkRule,
 	scoped_client_cache.ScopedClientCacheRule,
 	service_method_effect_fn.ServiceMethodEffectFnRule,
 	speculative_export.SpeculativeExportRule,
 	stream_pagination.StreamPaginationRule,
+	streaming_textdecoder.Rule,
 	test_clock_for_time.TestClockForTimeRule,
-	test_sleeps.TestSleepsRule,
+	tx_queue_batch_capacity.Rule,
 	typed_boundary_error.TypedBoundaryErrorRule,
 	typed_error_recovery.TypedErrorRecoveryRule,
 	typescript_namespaces.TypescriptNamespacesRule,
@@ -274,4 +281,5 @@ var BuiltinRules = []rule.Rule{
 	unbounded_stream_collect.UnboundedStreamCollectRule,
 	unsafe_casts.UnsafeCastsRule,
 	unused_field.UnusedFieldRule,
+	valid_effect_dual_arity.Rule,
 }

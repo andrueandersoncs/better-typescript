@@ -2,28 +2,35 @@
 
 ## What it does
 
-Reports `JSON.parse(...)` with non-literal input and boundary-shaped `.json()` calls when the surrounding function has no recognized decode call. A string literal passed to `JSON.parse(...)` is not boundary data and is allowed. Boundary receiver names include `request`, `req`, `body`, `payload`, and `event`. The recognized names are `decodeUnknown`, `decodeUnknownEffect`, `decodeUnknownSync`, `decodeUnknownOption`, `decodeUnknownEither`, `decodeUnknownResult`, `decodeUnknownExit`, `decodeUnknownPromise`, `decode`, `decodeEffect`, `decodeSync`, `decodeOption`, `decodeEither`, `decodeResult`, `decodeExit`, and `decodePromise`.
+Reports promotion of data from resolved `JSON.parse` or Web `Request.json()` into a concrete domain type without decoding it. A local value may remain `unknown` at a raw adapter boundary. A decoder must consume that same parsed value; an unrelated decoder does not make another value safe. Web `Response.json()` belongs to `http-response-validation`, so it is not reported here.
+
+Raw `unknown` aliases and `Schema.Json` remain valid. An `unknown` field inside a domain record does not make the whole record raw. Direct reassignment ends a tracked parsed-value relationship.
 
 ## When to use it
 
-Use it to decode unknown JSON at the boundary before application code consumes it.
+Use it at request and JSON boundaries before representing input as a domain value.
 
 ## Conformant
 
 ```ts
-declare const Schema: any
-declare const Person: any
+import { Effect, Schema } from "effect"
 
-function read(request: any) {
-  const raw = request.json()
-  return Schema.decodeUnknownEffect(Person)(raw)
+const Person = Schema.Struct({ name: Schema.String })
+
+async function read(request: Request) {
+  const raw: unknown = await request.json()
+  return Effect.runPromise(Schema.decodeUnknownEffect(Person)(raw))
 }
 ```
 
 ## Non-conformant
 
 ```ts
-function read(request: any) {
-  return request.json()
+interface Person {
+  readonly name: string
+}
+
+function read(input: string) {
+  return JSON.parse(input) as Person
 }
 ```

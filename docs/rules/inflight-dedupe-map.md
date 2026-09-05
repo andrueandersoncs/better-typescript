@@ -2,20 +2,36 @@
 
 ## What it does
 
-Reports `new Map` expressions, and their initialized variable declarations, when the rendered map or declaration type or new-expression text contains `Promise<` or `Effect<` anywhere. The match is not limited to the value type. The report says: “Avoid a hand-rolled in-flight deduplication Map when Effect Cache fits. Cache.get shares an in-flight lookup for the same missing key.”
+Reports a native `Map` only when the same map and key get a previously started native `Promise`, return it on a direct hit guard, and set a new Promise for the miss. A map of cold `Effect` values, a Promise key, and a Promise map without this get-or-start protocol are allowed.
+
+The report says: “Avoid a hand-rolled in-flight Promise Map when Effect Cache fits. Cache.get shares a missing-key lookup; choose its cancellation and failure-retention semantics deliberately.”
 
 ## When to use it
 
-Use it when Effect Cache can share one in-flight lookup per missing key.
+Effect Cache shares a missing-key lookup, but it also defines failure retention and final-consumer cancellation. Choose it only when those ownership semantics match the protocol.
 
 ## Conformant
 
 ```ts
-void new Map<string, string>()
+import { Cache, Effect } from "effect"
+
+const cache = Cache.make({
+  capacity: 100,
+  timeToLive: "1 minute",
+  lookup: (key: string) => Effect.succeed(key)
+})
 ```
 
 ## Non-conformant
 
 ```ts
-void new Map<string, Promise<string>>()
+const pending = new Map<string, Promise<string>>()
+
+function getOrStart(key: string): Promise<string> {
+  const existing = pending.get(key)
+  if (existing !== undefined) return existing
+  const running = Promise.resolve(key.toUpperCase())
+  pending.set(key, running)
+  return running
+}
 ```

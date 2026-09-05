@@ -2,26 +2,32 @@
 
 ## What it does
 
-Reports direct `Effect.retry(...)` or `retry(...)` calls whose source contains `Schedule.exponential` or `Schedule.fibonacci` but no `Schedule.jittered` or `.jittered`.
+Reports a resolved `Effect.retry` or `Effect.retryOrElse` policy with an exponential or Fibonacci delay branch that is not wrapped by resolved `Schedule.jittered`. It examines the selected direct schedule or a v4 option policy's `schedule`, including direct `min`/`max` composition and `.pipe(Schedule.jittered)`, not task text or unrelated schedules.
 
-It reports exactly: `Jitter exponential retry. Add Schedule.jittered to the bounded backoff schedule.` The check is syntactic. It does not verify that the schedule is bounded, and other retry callee spellings are allowed.
+Jitter changes retry delay only. It does not make an unbounded retry finite. Custom schedules and deliberate deterministic or server-directed pacing are left to an explicit local policy decision.
 
 ## When to use it
 
-Use it when exponential or Fibonacci Effect retry schedules should add jitter instead of retrying in lockstep.
+Use it for distributed retry policies where synchronized backoff would create avoidable contention.
 
 ## Conformant
 
-The fixture allows an exponential schedule wrapped with `Schedule.jittered`:
-
 ```ts
-Effect.retry({}, Schedule.jittered(Schedule.exponential("1 second")))
+import { Effect, Schedule } from "effect"
+
+const task = Effect.fail("unavailable")
+const retry = Effect.retry(task, Schedule.exponential("100 millis").pipe(Schedule.jittered))
+
+void retry
 ```
 
 ## Non-conformant
 
-The fixture reports the same retry without jitter:
-
 ```ts
-Effect.retry({}, Schedule.exponential("1 second"))
+import { Effect, Schedule } from "effect"
+
+const task = Effect.fail("unavailable")
+const retry = Effect.retry(task, Schedule.fibonacci("100 millis"))
+
+void retry
 ```

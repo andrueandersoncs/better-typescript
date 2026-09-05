@@ -1,123 +1,173 @@
 package http_client_preference
 
 import (
+	"path/filepath"
 	"strings"
 
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
+	"github.com/andrueandersoncs/better-typescript/internal/utils"
 	"github.com/andrueandersoncs/typescript-go/ast"
 )
 
 var message = rule.RuleMessage{
 	Id:          "http-client-preference",
 	Description: "Prefer Effect HttpClient for HTTP adapters.",
-	Help:        "Use Effect's typed HTTP client unless a documented raw-fetch exception applies.",
+	Help:        "Use Effect's typed HTTP client unless this fetch implements a direct HttpClient.make adapter.",
 }
 
 var Rule = rule.Rule{Name: "http-client-preference", Run: func(ctx rule.RuleContext, _ any) rule.RuleListeners {
 	return rule.RuleListeners{ast.KindCallExpression: func(node *ast.Node) {
-		callee := unwrap(node.AsCallExpression().Expression)
-		if !ast.IsIdentifier(callee) || callee.Text() != "fetch" || !insideTryPromise(ctx, node) || fileUsesHttpClient(ctx.SourceFile.Text()) {
+		target, ok := rawFetch(ctx, node)
+		if !ok || !isTryPromiseCallback(ctx, enclosingFunction(node)) || isHttpClientAdapter(ctx, node) {
 			return
 		}
-		ctx.ReportNode(callee, message)
+		ctx.ReportNode(target, message)
 	}}
 }}
 
-func insideTryPromise(ctx rule.RuleContext, node *ast.Node) bool {
-	for current := node.Parent; current != nil; current = current.Parent {
-		if ast.IsCallExpression(current) {
-			name, receiver, ok := callName(current)
-			if ok && name == "tryPromise" && receiver != nil && strings.HasSuffix(nodeText(ctx.SourceFile, receiver), "Effect") {
-				return true
-			}
+func rawFetch(ctx rule.RuleContext, node *ast.Node) (*ast.Node, bool) {
+	callee := unwrap(node.AsCallExpression().Expression)
+	var target *ast.Node
+	if ast.IsIdentifier(callee) {
+		target = callee
+	} else if ast.IsPropertyAccessExpression(callee) && callee.AsPropertyAccessExpression().Name() != nil {
+		target = callee.AsPropertyAccessExpression().Name()
+	} else {
+		return nil, false
+	}
+	return target, isBuiltinSymbol(ctx, target, "fetch", "")
+}
+
+func isHttpClientAdapter(ctx rule.RuleContext, node *ast.Node) bool {
+	function := enclosingFunction(node)
+	if !isTryPromiseCallback(ctx, function) {
+		return false
+	}
+	for current := function.Parent; current != nil; current = current.Parent {
+		if ast.IsFunctionLike(current) {
+			return isHttpClientMakeRunner(ctx, current)
 		}
 	}
 	return false
 }
-func fileUsesHttpClient(source string) bool {
-	return strings.Contains(source, "FetchHttpClient") || strings.Contains(source, "HttpClient")
-}
 
-func unwrap(node *ast.Node) *ast.Node {
-	for node != nil {
-		switch node.Kind {
-		case ast.KindParenthesizedExpression:
-			node = node.AsParenthesizedExpression().Expression
-		case ast.KindAsExpression, ast.KindSatisfiesExpression, ast.KindTypeAssertionExpression:
-			node = node.Expression()
-		case ast.KindNonNullExpression:
-			node = node.Expression()
-		default:
-			return node
-		}
-	}
-	return nil
-}
-
-func propertyName(node *ast.Node) (string, *ast.Node, bool) {
-	node = unwrap(node)
-	if node == nil || !ast.IsPropertyAccessExpression(node) {
-		return "", nil, false
-	}
-	return node.Name().Text(), node.AsPropertyAccessExpression().Expression, true
-}
-
-func callName(node *ast.Node) (string, *ast.Node, bool) {
-	if node == nil || !ast.IsCallExpression(node) {
-		return "", nil, false
-	}
-	call := node.AsCallExpression()
-	name, receiver, ok := propertyName(call.Expression)
-	if ok {
-		return name, receiver, true
-	}
-	callee := unwrap(call.Expression)
-	if callee != nil && ast.IsIdentifier(callee) {
-		return callee.Text(), nil, true
-	}
-	return "", nil, false
-}
-
-func nodeText(file *ast.SourceFile, node *ast.Node) string {
-	if node == nil {
-		return ""
-	}
-	start, end := node.Pos(), node.End()
-	text := file.Text()
-	if start < 0 {
-		start = 0
-	}
-	if end > len(text) {
-		end = len(text)
-	}
-	if end < start {
-		return ""
-	}
-	return strings.TrimSpace(text[start:end])
-}
-
-func walk(node *ast.Node, visit func(*ast.Node) bool) bool {
-	if node == nil {
+func isTryPromiseCallback(ctx rule.RuleContext, function *ast.Node) bool {
+	if function == nil {
 		return false
 	}
-	if visit(node) {
-		return true
+	callback, parent := transparentFunctionParent(function)
+	if parent != nil && ast.IsCallExpression(parent) {
+		for _, argument := range parent.AsCallExpression().Arguments.Nodes {
+			if argument == callback {
+				return isEffectExport(ctx, parent.AsCallExpression().Expression, "tryPromise", "Effect")
+			}
+		}
 	}
-	found := false
-	node.ForEachChild(func(child *ast.Node) bool {
-		if walk(child, visit) {
-			found = true
+	if parent != nil && ast.IsPropertyAssignment(parent) && parent.AsPropertyAssignment().Initializer == callback {
+		name, ok := ast.TryGetTextOfPropertyName(parent.Name())
+		return ok && name == "try" && isTryPromiseObject(ctx, parent.Parent)
+	}
+	if parent != nil && ast.IsObjectLiteralExpression(parent) && callback == function && ast.IsMethodDeclaration(function) {
+		name, ok := ast.TryGetTextOfPropertyName(function.Name())
+		return ok && name == "try" && isTryPromiseObject(ctx, parent)
+	}
+	return false
+}
+
+func isTryPromiseObject(ctx rule.RuleContext, object *ast.Node) bool {
+	if object == nil || !ast.IsObjectLiteralExpression(object) || object.Parent == nil || !ast.IsCallExpression(object.Parent) {
+		return false
+	}
+	for _, argument := range object.Parent.AsCallExpression().Arguments.Nodes {
+		if argument == object {
+			return isEffectExport(ctx, object.Parent.AsCallExpression().Expression, "tryPromise", "Effect")
+		}
+	}
+	return false
+}
+
+func isHttpClientMakeRunner(ctx rule.RuleContext, function *ast.Node) bool {
+	if function == nil {
+		return false
+	}
+	runner, parent := transparentFunctionParent(function)
+	if parent == nil || !ast.IsCallExpression(parent) {
+		return false
+	}
+	for _, argument := range parent.AsCallExpression().Arguments.Nodes {
+		if argument == runner {
+			return isEffectExport(ctx, parent.AsCallExpression().Expression, "make", "HttpClient")
+		}
+	}
+	return false
+}
+
+func transparentFunctionParent(function *ast.Node) (*ast.Node, *ast.Node) {
+	current := function
+	parent := current.Parent
+	for parent != nil && isTransparentWrapper(parent) && parent.Expression() == current {
+		current = parent
+		parent = current.Parent
+	}
+	return current, parent
+}
+
+func isTransparentWrapper(node *ast.Node) bool {
+	switch node.Kind {
+	case ast.KindParenthesizedExpression, ast.KindAsExpression, ast.KindSatisfiesExpression, ast.KindTypeAssertionExpression, ast.KindNonNullExpression:
+		return true
+	default:
+		return false
+	}
+}
+
+func isEffectExport(ctx rule.RuleContext, expression *ast.Node, name, fileBase string) bool {
+	target := unwrap(expression)
+	if ast.IsPropertyAccessExpression(target) {
+		target = target.AsPropertyAccessExpression().Name()
+	}
+	return target != nil && ast.IsIdentifier(target) && isBuiltinSymbol(ctx, target, name, fileBase)
+}
+
+func isBuiltinSymbol(ctx rule.RuleContext, node *ast.Node, name, effectFile string) bool {
+	symbol := utils.ResolvedSymbol(ctx.TypeChecker, node)
+	if symbol == nil || symbol.Name != name {
+		return false
+	}
+	for _, declaration := range symbol.Declarations {
+		file := ast.GetSourceFileOfNode(declaration)
+		if file == nil {
+			continue
+		}
+		path := strings.ReplaceAll(file.FileName(), "\\", "/")
+		base := filepath.Base(path)
+		if effectFile == "" && (strings.HasPrefix(base, "lib.") && strings.HasSuffix(base, ".d.ts") || strings.Contains(path, "/node_modules/@types/node/web-globals/fetch.d.ts")) {
 			return true
 		}
-		return false
-	})
-	return found
+		if effectFile != "" && (strings.Contains(path, "/node_modules/effect/") || strings.Contains(path, "/packages/effect/src/")) &&
+			(base == effectFile+".ts" || base == effectFile+".d.ts") {
+			return true
+		}
+	}
+	return false
 }
 
 func enclosingFunction(node *ast.Node) *ast.Node {
 	for current := node.Parent; current != nil; current = current.Parent {
 		if ast.IsFunctionLike(current) {
 			return current
+		}
+	}
+	return nil
+}
+
+func unwrap(node *ast.Node) *ast.Node {
+	for node != nil {
+		switch node.Kind {
+		case ast.KindParenthesizedExpression, ast.KindAsExpression, ast.KindSatisfiesExpression, ast.KindTypeAssertionExpression, ast.KindNonNullExpression:
+			node = node.Expression()
+		default:
+			return node
 		}
 	}
 	return nil

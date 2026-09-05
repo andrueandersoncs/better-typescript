@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "noEmit": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "paths": {
+      "effect": ["./packages/effect/src/index.ts"],
+      "effect/Schema": ["./packages/effect/src/Schema.ts"],
+      "effect/unstable/workflow": ["./packages/effect/src/unstable/workflow.ts"],
+      "effect/unstable/rpc": ["./packages/effect/src/unstable/rpc.ts"]
+    }
+  },
+  "include": ["**/*.ts"]
+}

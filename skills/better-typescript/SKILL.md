@@ -47,6 +47,7 @@ Status and operational errors go to stderr. Each stdout line is one NDJSON viola
 1. Parse every stdout line.
 2. For a check request, report violations without editing.
 3. For a fix request, apply the smallest behavior-preserving fixes.
+   For Effect lifecycle, validation, identity, or timing changes, read `docs/engineering-principles.md` in the Better TypeScript checkout. Preserve those contracts when applying a diagnostic's guidance.
 4. Run the project's formatter, type check, and tests.
 5. Rerun `better-typescript` from the same directory.
 6. Finish when stdout is empty or report the exact blocker.

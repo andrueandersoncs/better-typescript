@@ -2,19 +2,17 @@
 
 ## What it does
 
-Reports Effect `Stream.buffer` calls with an object-literal `capacity` set to the exact string `"unbounded"`. The report says: “Avoid unbounded Stream buffers. Use natural backpressure or a bounded buffer strategy.” Numeric capacities are allowed.
+Reports calls to Effect `Stream.buffer`, `Stream.bufferArray`, `Channel.buffer`, and `Channel.bufferArray` whose inline `capacity` is `"unbounded"`, `Infinity`, or `Number.POSITIVE_INFINITY`.
 
-## When to use it
-
-Use it to require bounded Stream buffers and preserve backpressure.
+`Stream.buffer` counts individual elements. `bufferArray` counts chunks, so a finite chunk count is not a byte bound. A capacity of `0` is legal rendezvous backpressure. A finite `sliding` or `dropping` buffer is also legal, but loses messages; use `suspend` when delivery and backpressure must be preserved.
 
 ## Conformant
 
 ```ts
 import { Stream } from "effect"
 
-declare const source: unknown
-Stream.buffer(source, { capacity: 16 })
+const source = Stream.make(1)
+const buffered = Stream.buffer(source, { capacity: 16, strategy: "suspend" })
 ```
 
 ## Non-conformant
@@ -22,6 +20,6 @@ Stream.buffer(source, { capacity: 16 })
 ```ts
 import { Stream } from "effect"
 
-declare const source: unknown
-Stream.buffer(source, { capacity: "unbounded" })
+const source = Stream.make(1)
+const buffered = Stream.bufferArray(source, { capacity: Infinity })
 ```

@@ -7,13 +7,13 @@ Reports two construction patterns:
 - non-empty raw object literals declared inside functions or returned by functions;
 - `new` expressions whose constructor is an Effect Schema class.
 
-Raw object reports recommend reusing a matching Effect Schema. Schema classes must use their static `make` method. A string `_tag` makes a raw object report name that tagged variant.
+Raw object reports recommend reusing a matching Effect Schema. Schema classes must use their static `make` method for a consistent construction style. A string `_tag` makes a raw object report name that tagged variant.
 
 Empty object literals are allowed. Returns with a foreign return contract are allowed. Identifier-shorthand bags of already-bound values and runtime records with callable properties are allowed. Ordinary classes may still use `new`.
 
 ## When to use it
 
-Use it when modeled data must be constructed consistently through Effect Schema constructors.
+Use it when modeled data must be constructed consistently through Effect Schema constructors. For `Schema.Class`, both `new` and `make` validate constructor input through construction; this rule prefers `make` for consistency, not because `new` bypasses validation. Neither constructor form decodes encoded or unknown boundary input: use an appropriate schema decoder at that boundary.
 
 ## Conformant
 

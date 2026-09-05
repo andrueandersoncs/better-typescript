@@ -19,6 +19,8 @@ Collect the resulting code, user concern, original code or diff, and the NDJSON 
 
 Check behavior, types, readability, names, indirection, casts, and rule interactions. A clean run proves only that no built-in rule reports a violation.
 
+For Effect ownership, validation, equality, retries, or test timing, use `docs/engineering-principles.md` to distinguish application policy from runtime guarantees. A function name, nearby decoder, or imported clock is not evidence that the operation has the required semantics.
+
 Classify each cause as agent remediation, rule guidance, rule interaction, detection context, configuration mismatch, or unresolved.
 
 ## Correct

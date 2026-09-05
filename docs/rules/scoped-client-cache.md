@@ -2,26 +2,25 @@
 
 ## What it does
 
-Reports selected `Effect` provisioning and `Layer` construction calls nested under imported `Cache.make(...)` or `Cache.makeWith(...)`. The test fixture covers `Effect.provide(...)` inside the `lookup` passed to `Cache.make(...)`.
+Reports a known `Effect.acquireRelease` resource acquisition when it is executed by a resolved ordinary `Cache.make` `lookup`, `Cache.makeWith` first callback, or immediate `Effect.gen` lookup body. Context provision and an `Effect.succeed` payload are not acquisition. `ScopedCache` entry scopes and `RcMap` borrower scopes are different ownership models and are allowed.
 
-The report is: `Acquire clients outside Cache lookup functions and share them through a layer. Build the client once in the owning layer, then make lookup a plain call.`
-
-The checked `Effect` methods are `provide`, `provideService`, `provideServiceEffect`, and `provideContext`. The checked `Layer` methods are `build`, `effect`, `effectDiscard`, and `effectContext`. These calls are allowed outside the cache call.
+The report says: “Do not acquire a scoped resource inside an ordinary Cache lookup. Acquire the resource in its owning layer and let lookup use the shared client.”
 
 ## When to use it
 
-Use it to build a client once in its owning layer instead of acquiring or providing it during cache lookup.
+Use it when an ordinary Cache lookup repeatedly creates a scoped client or resource. Acquire that resource at the layer or application owner, then have lookup use the shared client.
 
 ## Conformant
 
 ```ts
 import { Cache, Effect } from "effect"
-declare const clientLayer: unknown
-const client = Effect.provide(Effect.succeed("client"), clientLayer)
+
+declare const client: { readonly lookup: (key: string) => string }
+
 const cache = Cache.make({
-  capacity: 10,
+  capacity: 100,
   timeToLive: "1 minute",
-  lookup: (key: string) => Effect.succeed(key)
+  lookup: (key: string) => Effect.sync(() => client.lookup(key))
 })
 ```
 
@@ -29,10 +28,14 @@ const cache = Cache.make({
 
 ```ts
 import { Cache, Effect } from "effect"
-declare const clientLayer: unknown
+
+interface Client { readonly id: string }
+declare const acquireClient: (key: string) => Effect.Effect<Client>
+
 const cache = Cache.make({
-  capacity: 10,
+  capacity: 100,
   timeToLive: "1 minute",
-  lookup: (key: string) => Effect.provide(Effect.succeed(key), clientLayer)
+  lookup: (key: string) =>
+    Effect.acquireRelease(acquireClient(key), () => Effect.void)
 })
 ```

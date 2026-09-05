@@ -2,26 +2,35 @@
 
 ## What it does
 
-For an exact textual `Effect.tryPromise` or `tryPromise` call, scans the entire call text with `(?:\bfetch|(?:globalThis|window|self)\.fetch)\s*\(`. This is not AST fetch recognition: it can match custom/qualified calls such as `client.fetch` or `$fetch` and text in comments or strings. Parameter extraction is also a whole-call regex and need not identify the callback parameter. It reports unless a regex extracts a parameter name and the whole call text contains `signal: <name>`, `signal:<name>`, or, for a parameter named signal, matches `\{[^}]*\bsignal\b`. This brace-delimited regex is applied to the entire call text. It can match a callback block and is not an AST object-literal check. The accepted occurrence is not required to be fetch's init.signal.
+Reports a resolved built-in `fetch` directly executed by an Effect `tryPromise` callback when its effective object-literal `init.signal` is not that callback's signal or the enclosing direct `HttpClient.make` runner signal. It recognizes expression and block callbacks, including an object callback's `try` property or method. A missing init or `signal: undefined` reports. An unknown init or a spread that can overwrite `signal` is left unclassified.
 
 ## When to use it
 
-Use this broad whole-call text check as a cancellation prompt around fetch-like text in `tryPromise`. It does not prove that the call is raw `fetch`, that the extracted name is the callback signal, or that an accepted `signal` occurrence is `fetch`’s `init.signal`.
+Use it when adapting a Promise-based fetch operation to Effect so interruption reaches the network request. A direct `HttpClient.make` adapter owns its runner signal and may forward it through a zero-argument `tryPromise` callback.
 
 ## Conformant
 
 ```ts
-declare const Effect: {
-  tryPromise<A>(f: (signal: AbortSignal) => Promise<A>): unknown
-}
-Effect.tryPromise((signal) => fetch("/ok", { signal }))
+import * as Effect from "effect/Effect"
+import * as HttpClient from "effect/unstable/http/HttpClient"
+import * as HttpClientError from "effect/unstable/http/HttpClientError"
+import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
+
+declare const response: HttpClientResponse.HttpClientResponse
+declare const transportError: HttpClientError.HttpClientError
+
+HttpClient.make((request, url, signal) =>
+  Effect.tryPromise({
+    try: () => fetch(url, { signal }).then(() => response),
+    catch: () => transportError,
+  }),
+)
 ```
 
 ## Non-conformant
 
 ```ts
-declare const Effect: {
-  tryPromise<A>(f: (signal: AbortSignal) => Promise<A>): unknown
-}
-Effect.tryPromise((signal) => fetch("/bad"))
+import * as Effect from "effect/Effect"
+
+Effect.tryPromise((signal) => fetch("/bad", { signal: undefined }))
 ```

@@ -1,10 +1,13 @@
 package boundary_schema_decode
 
 import (
-	"github.com/andrueandersoncs/better-typescript/internal/rule"
-	"github.com/andrueandersoncs/typescript-go/ast"
-	"regexp"
+	"path/filepath"
 	"strings"
+
+	"github.com/andrueandersoncs/better-typescript/internal/rule"
+	"github.com/andrueandersoncs/better-typescript/internal/utils"
+	"github.com/andrueandersoncs/typescript-go/ast"
+	"github.com/andrueandersoncs/typescript-go/checker"
 )
 
 var message = rule.RuleMessage{
@@ -13,137 +16,178 @@ var message = rule.RuleMessage{
 	Help:        "Use Schema.decodeUnknownEffect or a boundary-specific decoder before consuming the value.",
 }
 
-var decodeNames = map[string]bool{
-	"decodeUnknown": true, "decodeUnknownEffect": true, "decodeUnknownSync": true,
-	"decodeUnknownOption": true, "decodeUnknownEither": true, "decodeUnknownResult": true,
-	"decodeUnknownExit": true, "decodeUnknownPromise": true, "decode": true,
-	"decodeEffect": true, "decodeSync": true, "decodeOption": true, "decodeEither": true,
-	"decodeResult": true, "decodeExit": true, "decodePromise": true,
-}
-
 var Rule = rule.Rule{Name: "boundary-schema-decode", Run: func(ctx rule.RuleContext, _ any) rule.RuleListeners {
-	return rule.RuleListeners{ast.KindCallExpression: func(node *ast.Node) {
-		call := node.AsCallExpression()
-		name, receiver, ok := callName(node)
-		if !ok {
-			return
-		}
-		subject := ""
-		target := call.Expression
-		if name == "parse" && receiver != nil && ast.IsIdentifier(unwrap(receiver)) && unwrap(receiver).Text() == "JSON" {
-			subject = "JSON.parse"
-			if call.Arguments != nil && len(call.Arguments.Nodes) > 0 && ast.IsStringLiteralLike(unwrap(call.Arguments.Nodes[0])) {
-				return
-			}
-		} else if name == "json" && receiver != nil {
-			receiverText := nodeText(ctx.SourceFile, receiver)
-			if !regexp.MustCompile(`(?i)(request|req|body|payload|event)`).MatchString(receiverText) {
-				return
-			}
-			subject = nodeText(ctx.SourceFile, call.Expression)
-		} else {
-			return
-		}
-		if decodedAround(ctx, node) {
-			return
-		}
-		_ = subject
-		ctx.ReportNode(target, message)
-	}}
-}}
-
-func decodedAround(ctx rule.RuleContext, node *ast.Node) bool {
-	for current := node.Parent; current != nil && !ast.IsFunctionLike(current); current = current.Parent {
-		if ast.IsCallExpression(current) {
-			if name, _, ok := callName(current); ok && decodeNames[name] {
-				return true
-			}
+	values := map[*ast.Symbol]*ast.Node{}
+	reported := map[*ast.Node]bool{}
+	source := func(node *ast.Node) *ast.Node { return boundarySource(ctx, values, node) }
+	report := func(node *ast.Node) {
+		if node != nil && !reported[node] {
+			reported[node] = true
+			ctx.ReportNode(node, message)
 		}
 	}
-	fn := enclosingFunction(node)
-	return fn != nil && walk(fn, func(current *ast.Node) bool {
-		if !ast.IsCallExpression(current) {
-			return false
-		}
-		name, _, ok := callName(current)
-		return ok && decodeNames[name]
-	})
-}
+	return rule.RuleListeners{
+		ast.KindBinaryExpression: func(node *ast.Node) {
+			if ast.IsAssignmentExpression(node, false) && ast.IsIdentifier(unwrap(node.AsBinaryExpression().Left)) {
+				delete(values, utils.ResolvedSymbol(ctx.TypeChecker, unwrap(node.AsBinaryExpression().Left)))
+			}
+		},
+		ast.KindVariableDeclaration: func(node *ast.Node) {
+			declaration := node.AsVariableDeclaration()
+			if declaration.Initializer == nil || !ast.IsIdentifier(declaration.Name()) {
+				return
+			}
+			parsed := source(declaration.Initializer)
+			if parsed == nil {
+				return
+			}
+			if symbol := utils.ResolvedSymbol(ctx.TypeChecker, declaration.Name()); symbol != nil {
+				values[symbol] = parsed
+			}
+			if isDomainType(ctx, declaration.Type) {
+				report(parsed)
+			}
+		},
+		ast.KindAsExpression: func(node *ast.Node) {
+			if isDomainType(ctx, node.Type()) {
+				report(source(node.AsAsExpression().Expression))
+			}
+		},
+		ast.KindTypeAssertionExpression: func(node *ast.Node) {
+			if isDomainType(ctx, node.Type()) {
+				report(source(node.AsTypeAssertion().Expression))
+			}
+		},
+		ast.KindReturnStatement: func(node *ast.Node) {
+			expression := node.AsReturnStatement().Expression
+			function := enclosingFunction(node)
+			if expression != nil && function != nil && isDomainType(ctx, function.Type()) {
+				report(source(expression))
+			}
+		},
+	}
+}}
 
-func unwrap(node *ast.Node) *ast.Node {
-	for node != nil {
-		switch node.Kind {
-		case ast.KindParenthesizedExpression:
-			node = node.AsParenthesizedExpression().Expression
-		case ast.KindAsExpression, ast.KindSatisfiesExpression, ast.KindTypeAssertionExpression:
-			node = node.Expression()
-		case ast.KindNonNullExpression:
-			node = node.Expression()
-		default:
+func boundarySource(ctx rule.RuleContext, values map[*ast.Symbol]*ast.Node, node *ast.Node) *ast.Node {
+	node = unwrap(node)
+	if node == nil {
+		return nil
+	}
+	switch node.Kind {
+	case ast.KindAwaitExpression:
+		return boundarySource(ctx, values, node.AsAwaitExpression().Expression)
+	case ast.KindYieldExpression:
+		return boundarySource(ctx, values, node.AsYieldExpression().Expression)
+	case ast.KindIdentifier:
+		return values[utils.ResolvedSymbol(ctx.TypeChecker, node)]
+	case ast.KindCallExpression:
+		call := node.AsCallExpression()
+		if isJSONParse(ctx, call) || isWebRequestJSON(ctx, call) {
 			return node
 		}
 	}
 	return nil
 }
 
-func propertyName(node *ast.Node) (string, *ast.Node, bool) {
-	node = unwrap(node)
-	if node == nil || !ast.IsPropertyAccessExpression(node) {
-		return "", nil, false
-	}
-	return node.Name().Text(), node.AsPropertyAccessExpression().Expression, true
-}
-
-func callName(node *ast.Node) (string, *ast.Node, bool) {
-	if node == nil || !ast.IsCallExpression(node) {
-		return "", nil, false
-	}
-	call := node.AsCallExpression()
-	name, receiver, ok := propertyName(call.Expression)
-	if ok {
-		return name, receiver, true
+func isJSONParse(ctx rule.RuleContext, call *ast.CallExpression) bool {
+	if call == nil || call.Arguments == nil || len(call.Arguments.Nodes) == 0 || ast.IsStringLiteralLike(unwrap(call.Arguments.Nodes[0])) {
+		return false
 	}
 	callee := unwrap(call.Expression)
-	if callee != nil && ast.IsIdentifier(callee) {
-		return callee.Text(), nil, true
-	}
-	return "", nil, false
-}
-
-func nodeText(file *ast.SourceFile, node *ast.Node) string {
-	if node == nil {
-		return ""
-	}
-	start, end := node.Pos(), node.End()
-	text := file.Text()
-	if start < 0 {
-		start = 0
-	}
-	if end > len(text) {
-		end = len(text)
-	}
-	if end < start {
-		return ""
-	}
-	return strings.TrimSpace(text[start:end])
-}
-
-func walk(node *ast.Node, visit func(*ast.Node) bool) bool {
-	if node == nil {
+	if !ast.IsPropertyAccessExpression(callee) {
 		return false
 	}
-	if visit(node) {
-		return true
+	access := callee.AsPropertyAccessExpression()
+	return access.Name().Text() == "parse" && isBuiltinType(ctx, access.Expression, "JSON")
+}
+
+func isWebRequestJSON(ctx rule.RuleContext, call *ast.CallExpression) bool {
+	if call == nil {
+		return false
 	}
-	found := false
-	node.ForEachChild(func(child *ast.Node) bool {
-		if walk(child, visit) {
-			found = true
+	callee := unwrap(call.Expression)
+	if !ast.IsPropertyAccessExpression(callee) {
+		return false
+	}
+	access := callee.AsPropertyAccessExpression()
+	return access.Name().Text() == "json" && isBuiltinType(ctx, access.Expression, "Request")
+}
+
+func isBuiltinType(ctx rule.RuleContext, node *ast.Node, name string) bool {
+	symbol := checker.Type_symbol(ctx.TypeChecker.GetTypeAtLocation(unwrap(node)))
+	if symbol != nil && symbol.Flags&ast.SymbolFlagsAlias != 0 {
+		symbol = ctx.TypeChecker.GetAliasedSymbol(symbol)
+	}
+	if (symbol == nil || symbol.Name != name) && name == "JSON" {
+		symbol = utils.ResolvedSymbol(ctx.TypeChecker, unwrap(node))
+	}
+	if symbol == nil || symbol.Name != name {
+		return false
+	}
+	for _, declaration := range symbol.Declarations {
+		file := ast.GetSourceFileOfNode(declaration)
+		if file == nil {
+			continue
+		}
+		base := filepath.Base(strings.ReplaceAll(file.FileName(), "\\", "/"))
+		if strings.HasPrefix(base, "lib.") && strings.HasSuffix(base, ".d.ts") {
 			return true
 		}
+	}
+	return false
+}
+
+func isDomainType(ctx rule.RuleContext, node *ast.Node) bool {
+	return node != nil && !isRawRepresentationType(ctx, node)
+}
+
+func isRawRepresentationType(ctx rule.RuleContext, node *ast.Node) bool {
+	if node == nil {
+		return true
+	}
+	value := ctx.TypeChecker.GetTypeAtLocation(node)
+	if isRawValue(value) {
+		return true
+	}
+	symbol := checker.Type_symbol(value)
+	if symbol == nil || (symbol.Name != "Promise" && symbol.Name != "Effect") {
 		return false
-	})
-	return found
+	}
+	for _, declaration := range symbol.Declarations {
+		file := ast.GetSourceFileOfNode(declaration)
+		if file == nil {
+			continue
+		}
+		path := filepath.ToSlash(file.FileName())
+		base := filepath.Base(path)
+		builtinPromise := symbol.Name == "Promise" && strings.HasPrefix(base, "lib.") && strings.HasSuffix(base, ".d.ts")
+		effect := symbol.Name == "Effect" && (base == "Effect.ts" || base == "Effect.d.ts") && (strings.Contains(path, "/node_modules/effect/") || strings.Contains(path, "/packages/effect/src/"))
+		if builtinPromise || effect {
+			arguments := checker.Checker_getTypeArguments(ctx.TypeChecker, value)
+			return len(arguments) > 0 && isRawValue(arguments[0])
+		}
+	}
+	return false
+}
+
+func isRawValue(value *checker.Type) bool {
+	if value == nil || utils.IsTypeFlagSet(value, checker.TypeFlagsAny|checker.TypeFlagsUnknown) {
+		return true
+	}
+	alias := checker.Type_alias(value)
+	return alias != nil && alias.Symbol() != nil && alias.Symbol().Name == "Json" && utils.IsEffectSchemaSymbol(alias.Symbol())
+}
+
+func unwrap(node *ast.Node) *ast.Node {
+	for node != nil {
+		switch node.Kind {
+		case ast.KindParenthesizedExpression, ast.KindAsExpression, ast.KindSatisfiesExpression, ast.KindTypeAssertionExpression, ast.KindNonNullExpression:
+			node = node.Expression()
+		default:
+			return node
+		}
+	}
+	return nil
 }
 
 func enclosingFunction(node *ast.Node) *ast.Node {
