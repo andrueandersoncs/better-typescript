@@ -2,6 +2,8 @@
 
 The fixed catalog contains these 134 rules:
 
+`prefer-effect-schema-constructor` requires Effect Schema classes to use their static `make` method.
+
 - [`boundary-schema-decode`](./rules/boundary-schema-decode.md)
 - [`bounded-retry-schedule`](./rules/bounded-retry-schedule.md)
 - [`cache-per-request`](./rules/cache-per-request.md)

@@ -5,7 +5,7 @@ import (
 	"github.com/andrueandersoncs/typescript-go/ast"
 )
 
-var message = rule.RuleMessage{Id: "no-new-error", Description: "Avoid using new Error() directly.", Help: "Declare a custom error with Effect Schema.TaggedErrorClass, then use new CustomError() instead of bare new Error()."}
+var message = rule.RuleMessage{Id: "no-new-error", Description: "Avoid using new Error() directly.", Help: "Declare a custom error with Effect Schema.TaggedErrorClass, then construct it with CustomError.make(...) instead of bare new Error()."}
 var Rule = rule.Rule{Name: "no-new-error", Run: run}
 
 func run(ctx rule.RuleContext, _ any) rule.RuleListeners {

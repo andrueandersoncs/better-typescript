@@ -2,6 +2,7 @@ package prefer_effect_schema_constructor
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
@@ -31,21 +32,55 @@ var Rule = rule.Rule{Name: "prefer-effect-schema-constructor", Run: func(ctx rul
 			check(expression)
 		}
 	}
-	return rule.RuleListeners{ast.KindReturnStatement: func(node *ast.Node) {
-		if node.AsReturnStatement().Expression != nil {
-			checkReturn(enclosingFunction(node), node.AsReturnStatement().Expression)
-		}
-	}, ast.KindArrowFunction: func(node *ast.Node) {
-		body := node.BodyData().Body
-		if body != nil && !ast.IsBlock(body) {
-			checkReturn(node, body)
-		}
-	}, ast.KindVariableDeclaration: func(node *ast.Node) {
-		if node.AsVariableDeclaration().Initializer != nil && insideFunction(node) {
-			check(node.AsVariableDeclaration().Initializer)
-		}
-	}}
+	return rule.RuleListeners{
+		ast.KindReturnStatement: func(node *ast.Node) {
+			if node.AsReturnStatement().Expression != nil {
+				checkReturn(enclosingFunction(node), node.AsReturnStatement().Expression)
+			}
+		},
+		ast.KindArrowFunction: func(node *ast.Node) {
+			body := node.BodyData().Body
+			if body != nil && !ast.IsBlock(body) {
+				checkReturn(node, body)
+			}
+		},
+		ast.KindVariableDeclaration: func(node *ast.Node) {
+			if node.AsVariableDeclaration().Initializer != nil && insideFunction(node) {
+				check(node.AsVariableDeclaration().Initializer)
+			}
+		},
+		ast.KindNewExpression: func(node *ast.Node) {
+			if isEffectSchemaClass(ctx, node.AsNewExpression().Expression) {
+				ctx.ReportNode(node, rule.RuleMessage{
+					Id:          "prefer-effect-schema-constructor",
+					Description: "Avoid constructing an Effect Schema class with new.",
+					Help:        "Call the same class's static make method instead: SomeSchema.make(...).",
+				})
+			}
+		},
+	}
 }}
+
+func isEffectSchemaClass(ctx rule.RuleContext, node *ast.Node) bool {
+	for _, property := range checker.Checker_getPropertiesOfType(ctx.TypeChecker, ctx.TypeChecker.GetTypeAtLocation(node)) {
+		if property.Name != "~effect/Schema/Schema" && !strings.Contains(property.Name, "@TypeId@") {
+			continue
+		}
+		for _, declaration := range property.Declarations {
+			file := ast.GetSourceFileOfNode(declaration)
+			if file == nil {
+				continue
+			}
+			path := strings.ReplaceAll(file.FileName(), "\\", "/")
+			base := filepath.Base(path)
+			if (base == "Schema.ts" || base == "Schema.d.ts") &&
+				(strings.Contains(path, "/node_modules/effect/") || strings.Contains(path, "/packages/effect/src/")) {
+				return true
+			}
+		}
+	}
+	return false
+}
 
 func insideFunction(n *ast.Node) bool {
 	for n = n.Parent; n != nil; n = n.Parent {

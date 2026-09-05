@@ -22,7 +22,7 @@ export const makeTaskService = (fixture: ReadonlyArray<Task>) =>
       complete: ({ id }) => Effect.gen(function* () {
         const current = yield* Ref.get(tasks)
         const task = current.find((item) => item.id === id)
-        if (!task) return yield* new TaskNotFound({ id })
+        if (!task) return yield* TaskNotFound.make({ id })
         const completed = { ...task, completed: true }
         yield* Ref.set(tasks, current.map((item) => item.id === id ? completed : item))
         return completed

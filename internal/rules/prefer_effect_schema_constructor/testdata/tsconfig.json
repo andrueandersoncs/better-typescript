@@ -1,1 +1,12 @@
-{"compilerOptions":{"strict":true,"target":"ES2022","module":"ESNext","moduleResolution":"bundler"},"include":["*.ts"]}
+{
+  "compilerOptions": {
+    "strict": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "paths": {
+      "effect": ["./packages/effect/src/index.d.ts"]
+    }
+  },
+  "include": ["*.ts"]
+}

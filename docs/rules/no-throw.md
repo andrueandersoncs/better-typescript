@@ -11,7 +11,10 @@ Use this rule when failures must be explicit Effect errors. This rule only check
 ## Conformant
 
 ```ts
-const makeError = () => new Error("failure")
+import { Schema } from "effect"
+
+class Failure extends Schema.TaggedErrorClass<Failure>()("Failure", {}) {}
+const failure = Failure.make()
 ```
 
 ## Non-conformant

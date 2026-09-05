@@ -9,6 +9,6 @@ import (
 
 func TestRule(t *testing.T) {
 	ruletest.Assert(t, "testdata/project", Rule, []analysis.Violation{
-		{RuleName: "no-new-error", Level: "error", Message: "Avoid using new Error() directly. Declare a custom error with Effect Schema.TaggedErrorClass, then use new CustomError() instead of bare new Error().", FilePath: "src/cases.ts", Line: 1, Column: 19},
+		{RuleName: "no-new-error", Level: "error", Message: "Avoid using new Error() directly. Declare a custom error with Effect Schema.TaggedErrorClass, then construct it with CustomError.make(...) instead of bare new Error().", FilePath: "src/cases.ts", Line: 1, Column: 19},
 	})
 }
