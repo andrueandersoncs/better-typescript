@@ -72,8 +72,9 @@ func isInsideExportedFunction(node *ast.Node) bool {
 	return false
 }
 
-func collectReads(ctx rule.RuleContext) (map[*ast.Symbol]struct{}, map[string]struct{}, map[*ast.Symbol]struct{}) {
+func collectReads(ctx rule.RuleContext) (map[*ast.Symbol]struct{}, map[*ast.Node]struct{}, map[string]struct{}, map[*ast.Symbol]struct{}) {
 	readSymbols := make(map[*ast.Symbol]struct{})
+	readDeclarations := make(map[*ast.Node]struct{})
 	readFieldNames := make(map[string]struct{})
 	usedByExportedFunction := make(map[*ast.Symbol]struct{})
 
@@ -87,6 +88,9 @@ func collectReads(ctx rule.RuleContext) (map[*ast.Symbol]struct{}, map[string]st
 				symbol := ctx.TypeChecker.GetSymbolAtLocation(node)
 				if symbol != nil && !isDeclarationName(node, symbol) {
 					readSymbols[symbol] = struct{}{}
+					for _, declaration := range symbol.Declarations {
+						readDeclarations[declaration] = struct{}{}
+					}
 					if isInsideExportedFunction(node) {
 						usedByExportedFunction[canonicalSymbol(ctx, symbol)] = struct{}{}
 					}
@@ -113,7 +117,7 @@ func collectReads(ctx rule.RuleContext) (map[*ast.Symbol]struct{}, map[string]st
 		})
 	}
 
-	return readSymbols, readFieldNames, usedByExportedFunction
+	return readSymbols, readDeclarations, readFieldNames, usedByExportedFunction
 }
 
 func isDomainField(symbol *ast.Symbol) bool {
@@ -196,7 +200,19 @@ func effectSchemaDecodedInterface(ctx rule.RuleContext, declaration *ast.Node) b
 	return false
 }
 
-func reportUnusedFields(ctx rule.RuleContext, declaration *ast.Node, readSymbols map[*ast.Symbol]struct{}, readFieldNames map[string]struct{}, usedByExportedFunction map[*ast.Symbol]struct{}) {
+func symbolWasRead(symbol *ast.Symbol, readSymbols map[*ast.Symbol]struct{}, readDeclarations map[*ast.Node]struct{}) bool {
+	if _, ok := readSymbols[symbol]; ok {
+		return true
+	}
+	for _, declaration := range symbol.Declarations {
+		if _, ok := readDeclarations[declaration]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+func reportUnusedFields(ctx rule.RuleContext, declaration *ast.Node, readSymbols map[*ast.Symbol]struct{}, readDeclarations map[*ast.Node]struct{}, readFieldNames map[string]struct{}, usedByExportedFunction map[*ast.Symbol]struct{}) {
 	if effectSchemaDecodedInterface(ctx, declaration) {
 		return
 	}
@@ -217,7 +233,7 @@ func reportUnusedFields(ctx rule.RuleContext, declaration *ast.Node, readSymbols
 		if !isDomainField(field) {
 			continue
 		}
-		if _, ok := readSymbols[field]; ok {
+		if symbolWasRead(field, readSymbols, readDeclarations) {
 			continue
 		}
 		if _, ok := readFieldNames[field.Name]; ok {
@@ -235,9 +251,9 @@ func reportUnusedFields(ctx rule.RuleContext, declaration *ast.Node, readSymbols
 var UnusedFieldRule = rule.Rule{
 	Name: "unused-field",
 	Run: func(ctx rule.RuleContext, options any) rule.RuleListeners {
-		readSymbols, readFieldNames, usedByExportedFunction := collectReads(ctx)
+		readSymbols, readDeclarations, readFieldNames, usedByExportedFunction := collectReads(ctx)
 		report := func(node *ast.Node) {
-			reportUnusedFields(ctx, node, readSymbols, readFieldNames, usedByExportedFunction)
+			reportUnusedFields(ctx, node, readSymbols, readDeclarations, readFieldNames, usedByExportedFunction)
 		}
 
 		return rule.RuleListeners{

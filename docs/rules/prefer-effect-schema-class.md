@@ -2,7 +2,7 @@
 
 ## What it does
 
-Reports a tuple type alias whose target is a tuple after removing `readonly` and parentheses. It also reports an interface or object type alias when a project `.ts` file constructs that type with a contextually typed object literal. Object declarations with no detected construction and runtime records with callable properties are allowed.
+Reports a tuple type alias whose target is a tuple after removing `readonly` and parentheses. It also reports a non-generic interface or object type alias when a project `.ts` file constructs that type with a contextually typed object literal. Generic declarations, declarations with no detected construction, and runtime records with callable properties are allowed.
 
 ## When to use it
 
@@ -21,6 +21,15 @@ export class Coordinate extends Schema.Class<Coordinate>("Coordinate")({
     return Coordinate.make({ x: 0, y: 0 })
   }
 }
+
+interface OperationDefinition<Tag, Payload> {
+  readonly tag: Tag
+  readonly payload: Payload
+}
+
+const make = <Tag, Payload>(
+  definition: OperationDefinition<Tag, Payload>,
+): OperationDefinition<Tag, Payload> => definition
 ```
 
 ## Non-conformant

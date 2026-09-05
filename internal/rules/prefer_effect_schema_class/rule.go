@@ -22,6 +22,9 @@ var Rule = rule.Rule{Name: "prefer-effect-schema-class", Run: func(ctx rule.Rule
 		if name == nil {
 			return
 		}
+		if len(node.TypeParameters()) != 0 {
+			return
+		}
 		symbol := ctx.TypeChecker.GetSymbolAtLocation(name)
 		file, ok := constructed[symbol]
 		if !ok {

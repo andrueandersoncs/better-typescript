@@ -8,6 +8,8 @@ The fixed catalog contains these 134 rules:
 
 `no-pass-through-object-wrappers` permits unary constructor adapters.
 
+Unary `make`, `create`, `build`, and `construct` functions may use inline generic construction records.
+
 - [`boundary-schema-decode`](./rules/boundary-schema-decode.md)
 - [`bounded-retry-schedule`](./rules/bounded-retry-schedule.md)
 - [`cache-per-request`](./rules/cache-per-request.md)

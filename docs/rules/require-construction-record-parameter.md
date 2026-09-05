@@ -2,7 +2,7 @@
 
 ## What it does
 
-Reports identifier-named `make`, `create`, `build`, and `construct` functions, methods, arrows, and function expressions with two or more value parameters. A `this` parameter is not counted. Unary construction and names such as `createBook` are allowed.
+Reports identifier-named `make`, `create`, `build`, and `construct` functions, methods, arrows, and function expressions with two or more value parameters. A `this` parameter is not counted. These exact names also identify the unary construction records allowed by `no-raw-object-types`. Unary construction and names such as `createBook` are allowed.
 
 ## When to use it
 
@@ -17,6 +17,14 @@ interface TableDefinition {
 }
 
 export const make = (fields: TableDefinition): string => fields.name
+```
+
+The record may be inline when its generic fields drive factory inference.
+
+```ts
+export const make = <Tag extends string>(
+  fields: { readonly tag: Tag },
+): Tag => fields.tag
 ```
 
 A one-parameter `make` is also outside this rule's checked limit.

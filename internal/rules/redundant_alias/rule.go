@@ -10,7 +10,6 @@ import (
 	"github.com/andrueandersoncs/typescript-go/scanner"
 )
 
-var reference = regexp.MustCompile(`^(?:Omit|Partial|Pick|Readonly|Required)?\s*<?\s*([A-Za-z_$][\w$]*)`)
 var schemaDecodedType = regexp.MustCompile(`^Schema\.Schema\.Type\s*<\s*typeof\s+[A-Za-z_$][\w$]*\s*>$`)
 var Rule = rule.Rule{Name: "redundant-alias", Run: func(ctx rule.RuleContext, _ any) rule.RuleListeners {
 	return rule.RuleListeners{
@@ -38,13 +37,53 @@ var Rule = rule.Rule{Name: "redundant-alias", Run: func(ctx rule.RuleContext, _ 
 			if schemaDecodedType.MatchString(text) {
 				return
 			}
-			m := reference.FindStringSubmatch(text)
-			if len(m) > 1 {
-				report(ctx, d.Name(), m[1])
+			if target := referencedAliasTarget(d.Type); target != "" {
+				report(ctx, d.Name(), target)
 			}
 		},
 	}
 }}
+
+func referencedAliasTarget(node *ast.Node) string {
+	for ast.IsParenthesizedTypeNode(node) {
+		node = node.AsParenthesizedTypeNode().Type
+	}
+	if !ast.IsTypeReferenceNode(node) {
+		return ""
+	}
+	reference := node.AsTypeReferenceNode()
+	if !ast.IsIdentifier(reference.TypeName) {
+		return ""
+	}
+	name := reference.TypeName.Text()
+	if reference.TypeArguments == nil || len(reference.TypeArguments.Nodes) == 0 {
+		return name
+	}
+	if !isAliasUtilityType(name) {
+		return ""
+	}
+	target := reference.TypeArguments.Nodes[0]
+	for ast.IsParenthesizedTypeNode(target) {
+		target = target.AsParenthesizedTypeNode().Type
+	}
+	if !ast.IsTypeReferenceNode(target) {
+		return ""
+	}
+	targetReference := target.AsTypeReferenceNode()
+	if !ast.IsIdentifier(targetReference.TypeName) || targetReference.TypeArguments != nil && len(targetReference.TypeArguments.Nodes) != 0 {
+		return ""
+	}
+	return targetReference.TypeName.Text()
+}
+
+func isAliasUtilityType(name string) bool {
+	switch name {
+	case "Omit", "Partial", "Pick", "Readonly", "Required":
+		return true
+	default:
+		return false
+	}
+}
 
 func report(ctx rule.RuleContext, name *ast.Node, target string) {
 	n := name.Text()

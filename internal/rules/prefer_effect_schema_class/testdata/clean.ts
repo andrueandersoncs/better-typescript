@@ -15,3 +15,15 @@ export class Model extends Schema.Class<Model>("Model")(ModelFields) {
     return Model.make({})
   }
 }
+
+interface OperationDefinition<Tag, Payload> {
+  readonly tag: Tag
+  readonly payload: Payload
+}
+
+const make = <Tag, Payload>(
+  definition: OperationDefinition<Tag, Payload>,
+): OperationDefinition<Tag, Payload> => definition
+
+const operation = make({ tag: "read", payload: { id: 1 } })
+void operation

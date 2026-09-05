@@ -11,7 +11,7 @@ var Rule = rule.Rule{Name: "no-raw-object-types", Run: run}
 
 func run(ctx rule.RuleContext, _ any) rule.RuleListeners {
 	parameter := func(node *ast.Node) {
-		if containsRaw(node.AsParameterDeclaration().Type) {
+		if containsRaw(node.AsParameterDeclaration().Type) && !rule.IsUnaryConstructionParameter(node) {
 			ctx.ReportNode(node, parameterMessage)
 		}
 	}
