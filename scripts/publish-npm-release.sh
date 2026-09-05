@@ -14,7 +14,6 @@ if [[ -n "$(git status --porcelain)" ]]; then
   exit 1
 fi
 
-npm whoami >/dev/null
 stage="$repo_root/dist/npm"
 archives="$stage/tarballs"
 
