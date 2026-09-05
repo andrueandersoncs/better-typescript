@@ -25,7 +25,7 @@ import type { Scope } from "./Scope.ts"
 import * as Sink from "./Sink.ts"
 import * as Stream from "./Stream.ts"
 
-const TypeId = "~effect/platform/FileSystem"
+const TypeId = "~effect/FileSystem"
 
 /**
  * Core interface for file system operations in Effect.
@@ -660,7 +660,7 @@ export type OpenFlag =
  * @category services
  * @since 4.0.0
  */
-export const FileSystem: Context.Service<FileSystem, FileSystem> = Context.Service("effect/platform/FileSystem")
+export const FileSystem: Context.Service<FileSystem, FileSystem> = Context.Service("effect/FileSystem")
 
 /**
  * Creates a FileSystem implementation from a partial implementation.
@@ -741,7 +741,7 @@ export const make = (
     }, Stream.unwrap),
     sink: (path, options) =>
       pipe(
-        impl.open(path, { flag: "w", ...options }),
+        impl.open(path, { ...options, flag: options?.flag ?? "w" }),
         Effect.map((file) => Sink.forEach((_: Uint8Array) => file.writeAll(_))),
         Sink.unwrap
       ),
@@ -969,7 +969,7 @@ export const layerNoop = (fileSystem: Partial<FileSystem>): Layer.Layer<FileSyst
  * @category type IDs
  * @since 4.0.0
  */
-export const FileTypeId = "~effect/platform/FileSystem/File"
+export const FileTypeId = "~effect/FileSystem/File"
 
 /**
  * Returns `true` if a value is a `File` handle by checking for the
@@ -1296,4 +1296,4 @@ export class WatchBackend extends Context.Service<WatchBackend, {
     stat: File.Info,
     options?: WatchOptions
   ) => Option.Option<Stream.Stream<WatchEvent, PlatformError>>
-}>()("effect/platform/FileSystem/WatchBackend") {}
+}>()("effect/FileSystem/WatchBackend") {}

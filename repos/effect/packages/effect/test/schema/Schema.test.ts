@@ -2,6 +2,7 @@ import { describe, it } from "@effect/vitest"
 import {
   BigDecimal,
   Brand,
+  ByteSize,
   Cause,
   Chunk,
   Context,
@@ -34,7 +35,14 @@ import {
 import { TestSchema } from "effect/testing"
 import { produce } from "immer"
 import { deepStrictEqual, fail, strictEqual } from "node:assert"
-import { assertFalse, assertInclude, assertSchemaIssueError, assertTrue, throws } from "../utils/assert.ts"
+import {
+  assertExitSuccess,
+  assertFalse,
+  assertInclude,
+  assertSchemaIssueError,
+  assertTrue,
+  throws
+} from "../utils/assert.ts"
 
 const verifyGeneration = true
 
@@ -48,6 +56,30 @@ const SnakeToCamel = Schema.String.pipe(
 )
 
 describe("Schema", () => {
+  it("keeps synchronous decode and encode effects eager", () => {
+    // A synchronous parser already produces an `Exit`, so the adapter must hand
+    // it back as-is instead of wrapping it in something a fiber has to run.
+    const eagerExit = <A>(effect: Effect.Effect<A, Schema.SchemaError>): Exit.Exit<A, Schema.SchemaError> => {
+      assertTrue(Exit.isExit(effect), "expected the adapter to return an Exit")
+      return effect as Exit.Exit<A, Schema.SchemaError>
+    }
+    const schemaError = <A>(exit: Exit.Exit<A, Schema.SchemaError>) =>
+      Exit.isFailure(exit) ? Cause.findErrorOption(exit.cause) : Option.none()
+
+    assertExitSuccess(eagerExit(Schema.decodeUnknownEffect(Schema.String)("a")), "a")
+    assertExitSuccess(eagerExit(Schema.encodeUnknownEffect(Schema.String)("a")), "a")
+
+    for (
+      const effect of [
+        Schema.decodeUnknownEffect(Schema.String)(null),
+        Schema.encodeUnknownEffect(Schema.String)(null)
+      ]
+    ) {
+      const error = schemaError(eagerExit(effect))
+      assertTrue(Option.isSome(error) && Schema.isSchemaError(error.value))
+    }
+  })
+
   it("isSchema", () => {
     class A extends Schema.Class<A>("A")(Schema.Struct({
       a: Schema.String
@@ -74,12 +106,24 @@ describe("Schema", () => {
 
       assertTrue(error instanceof Error)
       assertTrue(Schema.isSchemaError(error))
-      assertFalse(Schema.isSchemaError({ "~effect/SchemaError/SchemaError": false }))
+      assertFalse(Schema.isSchemaError({ "~effect/Schema/SchemaError": false }))
       strictEqual(error._tag, "SchemaError")
       strictEqual(error.name, "SchemaError")
       strictEqual(error.issue, result.failure)
       strictEqual(error.message, "Expected string")
       strictEqual(String(error), "SchemaError(Expected string)")
+    })
+
+    it("does not capture stack frames", () => {
+      const result = SchemaParser.decodeUnknownResult(Schema.String)(null)
+      assertTrue(Result.isFailure(result))
+      const ErrorWithLimit = Error as typeof Error & { stackTraceLimit?: number | undefined }
+      const stackTraceLimit = ErrorWithLimit.stackTraceLimit
+
+      const error = new Schema.SchemaError(result.failure)
+
+      strictEqual(error.stack, "SchemaError: Expected string")
+      strictEqual(ErrorWithLimit.stackTraceLimit, stackTraceLimit)
     })
   })
 
@@ -1034,6 +1078,65 @@ Expected no excess property
     })
   })
 
+  describe("mutable", () => {
+    it("supports encodings on array elements", async () => {
+      const schema = Schema.mutable(Schema.Array(Schema.FiniteFromString))
+      const asserts = new TestSchema.Asserts(schema)
+
+      await asserts.decoding().succeed(["1"], [1])
+      await asserts.encoding().succeed([1], ["1"])
+    })
+
+    it("supports withDecodingDefaultType after mutable", async () => {
+      const schema = Schema.Struct({
+        value: Schema.Array(Schema.String).pipe(
+          Schema.mutable,
+          Schema.withDecodingDefaultType(Effect.succeed(["default"]))
+        )
+      })
+      const asserts = new TestSchema.Asserts(schema)
+
+      await asserts.decoding().succeed({}, { value: ["default"] })
+      await asserts.decoding().succeed({ value: undefined }, { value: ["default"] })
+      await asserts.decoding().succeed({ value: ["a"] })
+      await asserts.encoding().succeed({ value: ["a"] })
+    })
+
+    it("does not support withDecodingDefaultType before mutable", () => {
+      throws(
+        () =>
+          Schema.Struct({
+            value: Schema.Array(Schema.String).pipe(
+              Schema.withDecodingDefaultType(Effect.succeed(["default"])),
+              Schema.mutable
+            )
+          }),
+        new Error("mutable does not support encodings")
+      )
+    })
+
+    it("preserves annotations, checks, encoding checks, and context", async () => {
+      const schema = Schema.Array(Schema.String).annotate({ identifier: "A" }).check(
+        Schema.isMinLength(1)
+      ).pipe(
+        Schema.flip,
+        Schema.check(Schema.isMaxLength(1)),
+        Schema.flip,
+        Schema.optionalKey
+      )
+      const mutable = Schema.mutable(schema)
+
+      strictEqual(mutable.ast.annotations, schema.ast.annotations)
+      strictEqual(mutable.ast.checks, schema.ast.checks)
+      strictEqual(mutable.ast.encodingChecks, schema.ast.encodingChecks)
+      strictEqual(mutable.ast.context, schema.ast.context)
+
+      const asserts = new TestSchema.Asserts(mutable)
+      await asserts.decoding().fail([], "Expected a value with a length of at least 1")
+      await asserts.encoding().fail(["a", "b"], "Expected a value with a length of at most 1")
+    })
+  })
+
   it("ArrayEnsure", async () => {
     const schema = Schema.ArrayEnsure(Schema.FiniteFromString)
     const asserts = new TestSchema.Asserts(schema)
@@ -1054,6 +1157,18 @@ Expected no excess property
     await encoding.succeed([], [])
     await encoding.succeed([1], "1")
     await encoding.succeed([1, 2], ["1", "2"])
+  })
+
+  it("ArrayEnsure roundtrips array-valued elements", () => {
+    const schema = Schema.ArrayEnsure(Schema.Tuple([Schema.Number, Schema.Number]))
+    const encoded = Schema.encodeSync(schema)([[1, 2]])
+    deepStrictEqual(encoded, [1, 2])
+    deepStrictEqual(Schema.decodeSync(schema)(encoded), [[1, 2]])
+  })
+
+  it("ArrayEnsure preserves outer-array encoding", () => {
+    const schema = Schema.ArrayEnsure(Schema.fromJsonString(Schema.Unknown))
+    deepStrictEqual(Schema.encodeSync(schema)([1, 2]), ["1", "2"])
   })
 
   describe("NonEmptyArray", () => {
@@ -5452,6 +5567,43 @@ Expected a value between -2147483648 and 2147483647`
     await encoding.succeed(Duration.nanos(5000n), 0.005)
   })
 
+  it("ByteSize", async () => {
+    const asserts = new TestSchema.Asserts(Schema.ByteSize)
+    if (verifyGeneration) asserts.arbitrary().verifyGeneration()
+
+    const json = new TestSchema.Asserts(Schema.toCodecJson(Schema.ByteSize))
+    await json.decoding().succeed("9007199254740993", ByteSize.bytes(9_007_199_254_740_993n))
+    await json.encoding().succeed(ByteSize.bytes(9_007_199_254_740_993n), "9007199254740993")
+  })
+
+  it("ByteSizeFromString", async () => {
+    const asserts = new TestSchema.Asserts(Schema.ByteSizeFromString)
+    await asserts.decoding().succeed("1.5 kB", ByteSize.bytes(1500))
+    await asserts.decoding().fail("1 KB", "Expected a valid ByteSize string")
+    await asserts.encoding().succeed(ByteSize.bytes(1500), "1500 bytes")
+  })
+
+  it("ByteSizeFromBigInt", async () => {
+    const asserts = new TestSchema.Asserts(Schema.ByteSizeFromBigInt)
+    if (verifyGeneration) asserts.arbitrary().verifyGeneration()
+    await asserts.decoding().succeed(9_007_199_254_740_993n, ByteSize.bytes(9_007_199_254_740_993n))
+    await asserts.decoding().fail(-1n, "Expected a non-negative bigint byte count")
+    await asserts.encoding().succeed(ByteSize.bytes(9_007_199_254_740_993n), 9_007_199_254_740_993n)
+  })
+
+  it("ByteSizeFromNumber", async () => {
+    const asserts = new TestSchema.Asserts(Schema.ByteSizeFromNumber)
+    await asserts.decoding().succeed(Number.MAX_SAFE_INTEGER, ByteSize.bytes(Number.MAX_SAFE_INTEGER))
+    await asserts.decoding().fail(-1, "Expected a non-negative safe-integer byte count")
+    await asserts.decoding().fail(0.5, "Expected a non-negative safe-integer byte count")
+    await asserts.decoding().fail(Number.MAX_SAFE_INTEGER + 1, "Expected a non-negative safe-integer byte count")
+    await asserts.encoding().succeed(ByteSize.bytes(1500), 1500)
+    await asserts.encoding().fail(
+      ByteSize.bytes(BigInt(Number.MAX_SAFE_INTEGER) + 1n),
+      "Expected a ByteSize representable as a safe integer"
+    )
+  })
+
   it("BigDecimal", async () => {
     const schema = Schema.BigDecimal
     const asserts = new TestSchema.Asserts(schema)
@@ -9111,6 +9263,25 @@ pointed message
           ),
           "D"
         )
+
+        // matchOrElse
+        deepStrictEqual(
+          schema.matchOrElse({ _tag: "A", a: "a" }, { A: () => "A" }, () => "fallback"),
+          "A"
+        )
+        deepStrictEqual(
+          schema.matchOrElse({ _tag: b, b: 1 }, { A: () => "A" }, (value) => value._tag),
+          b
+        )
+        deepStrictEqual(
+          pipe({ _tag: b, b: 1 }, schema.matchOrElse({ A: () => "A" }, (value) => value._tag)),
+          b
+        )
+        const undefinedCases = { A: undefined } as unknown as { A?: () => string }
+        deepStrictEqual(
+          schema.matchOrElse({ _tag: "A", a: "a" }, undefinedCases, () => "fallback"),
+          "fallback"
+        )
       })
 
       it("should support multiple tags", () => {
@@ -9236,6 +9407,20 @@ pointed message
         deepStrictEqual(
           pipe({ _tag: "C", c: true }, schema.match({ A: () => "A", B: () => "B", C: () => "C" })),
           "C"
+        )
+
+        // matchOrElse
+        deepStrictEqual(
+          schema.matchOrElse({ _tag: "A", a: "a" }, { A: (value) => value.a }, () => "fallback"),
+          "a"
+        )
+        deepStrictEqual(
+          schema.matchOrElse({ _tag: "B", b: 1 }, { A: () => "A" }, (value) => value._tag),
+          "B"
+        )
+        deepStrictEqual(
+          pipe({ _tag: "B", b: 1 }, schema.matchOrElse({ A: () => "A" }, (value) => value._tag)),
+          "B"
         )
       })
     })

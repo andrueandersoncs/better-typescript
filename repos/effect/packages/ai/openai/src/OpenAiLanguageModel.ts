@@ -19,7 +19,6 @@ import * as Predicate from "effect/Predicate"
 import * as Redactable from "effect/Redactable"
 import * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
-import * as SchemaIssue from "effect/SchemaIssue"
 import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
 import type { DeepMutable, Mutable, Simplify } from "effect/Types"
@@ -40,8 +39,6 @@ import type * as OpenAiSchema from "./OpenAiSchema.ts"
 import { addGenAIAnnotations } from "./OpenAiTelemetry.ts"
 import type * as OpenAiTool from "./OpenAiTool.ts"
 
-const formatIssue = SchemaIssue.makeFormatterDefault()
-
 const ResponseModelIds = Generated.ModelIdsResponses.members[1]
 const SharedModelIds = Generated.ModelIdsShared.members[1]
 
@@ -57,6 +54,8 @@ export type Model = typeof ResponseModelIds.Encoded | typeof SharedModelIds.Enco
  * Image detail level for vision requests.
  */
 type ImageDetail = "auto" | "low" | "high"
+
+type PromptCacheBreakpoint = { readonly mode: "explicit" }
 
 // =============================================================================
 // Configuration
@@ -127,6 +126,27 @@ export class Config extends Context.Service<
 // =============================================================================
 
 declare module "effect/unstable/ai/Prompt" {
+  /**
+   * OpenAI-specific options for system messages.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface SystemMessageOptions extends ProviderOptions {
+    /**
+     * Provider-specific system message options for the OpenAI Responses API.
+     */
+    readonly openai?: {
+      /**
+       * Marks the system input text as the end of a reusable prompt prefix.
+       *
+       * Requires GPT-5.6 or later. OpenAI may reject requests that use this
+       * option with earlier models.
+       */
+      readonly promptCacheBreakpoint?: PromptCacheBreakpoint | null
+    } | null
+  }
+
   /**
    * OpenAI-specific options for file prompt parts.
    *
@@ -244,6 +264,13 @@ declare module "effect/unstable/ai/Prompt" {
        * A list of annotations that apply to the output text.
        */
       readonly annotations?: ReadonlyArray<typeof OpenAiSchema.Annotation.Encoded> | null
+      /**
+       * Marks the input text as the end of a reusable prompt prefix.
+       *
+       * Requires GPT-5.6 or later. OpenAI may reject requests that use this
+       * option with earlier models.
+       */
+      readonly promptCacheBreakpoint?: PromptCacheBreakpoint | null
     } | null
   }
 }
@@ -819,7 +846,11 @@ const prepareMessages = Effect.fnUntraced(
         case "system": {
           messages.push({
             role: getSystemMessageMode(config.model as string),
-            content: [{ type: "input_text", text: message.content }]
+            content: [{
+              type: "input_text",
+              text: message.content,
+              ...getPromptCacheBreakpoint(message)
+            }]
           })
           break
         }
@@ -832,7 +863,11 @@ const prepareMessages = Effect.fnUntraced(
 
             switch (part.type) {
               case "text": {
-                content.push({ type: "input_text", text: part.text })
+                content.push({
+                  type: "input_text",
+                  text: part.text,
+                  ...getPromptCacheBreakpoint(part)
+                })
                 break
               }
 
@@ -843,15 +878,14 @@ const prepareMessages = Effect.fnUntraced(
 
                   if (typeof part.data === "string" && isFileId(part.data, config)) {
                     content.push({ type: "input_image", file_id: part.data, detail })
-                  }
-
-                  if (part.data instanceof URL) {
-                    content.push({ type: "input_image", image_url: part.data.toString(), detail })
-                  }
-
-                  if (part.data instanceof Uint8Array) {
-                    const base64 = Encoding.encodeBase64(part.data)
-                    const imageUrl = `data:${mediaType};base64,${base64}`
+                  } else {
+                    const imageUrl = part.data instanceof URL
+                      ? part.data.toString()
+                      : part.data instanceof Uint8Array
+                      ? `data:${mediaType};base64,${Encoding.encodeBase64(part.data)}`
+                      : /^(data:|https?:\/\/)/i.test(part.data)
+                      ? part.data
+                      : `data:${mediaType};base64,${part.data}`
                     content.push({ type: "input_image", image_url: imageUrl, detail })
                   }
                 } else if (part.mediaType === "application/pdf") {
@@ -1007,7 +1041,6 @@ const prepareMessages = Effect.fnUntraced(
                         method: "prepareMessages",
                         reason: new AiError.ToolParameterValidationError({
                           toolName: "local_shell",
-                          toolParams: part.params as Schema.Json,
                           description: error.message
                         })
                       })
@@ -1033,7 +1066,6 @@ const prepareMessages = Effect.fnUntraced(
                         method: "prepareMessages",
                         reason: new AiError.ToolParameterValidationError({
                           toolName: "shell",
-                          toolParams: part.params as Schema.Json,
                           description: error.message
                         })
                       })
@@ -1161,7 +1193,7 @@ const prepareMessages = Effect.fnUntraced(
             messages.push({
               type: "function_call_output",
               call_id: part.id,
-              output: JSON.stringify(part.result),
+              output: typeof part.result === "string" ? part.result : JSON.stringify(part.result),
               ...(Predicate.isNotNull(status) ? { status } : {})
             })
           }
@@ -1360,7 +1392,6 @@ const makeResponse = Effect.fnUntraced(
                 method: "makeResponse",
                 reason: new AiError.ToolParameterValidationError({
                   toolName,
-                  toolParams: {},
                   description: `Faled to securely JSON parse tool parameters: ${cause}`
                 })
               })
@@ -2109,7 +2140,6 @@ const makeStreamResponse = Effect.fnUntraced(
                       method: "makeStreamResponse",
                       reason: new AiError.ToolParameterValidationError({
                         toolName,
-                        toolParams: {},
                         description: `Failed securely JSON parse tool parameters: ${cause}`
                       })
                     })
@@ -2412,7 +2442,6 @@ const makeStreamResponse = Effect.fnUntraced(
                     method: "makeStreamResponse",
                     reason: new AiError.ToolParameterValidationError({
                       toolName: toolCall.name,
-                      toolParams: {},
                       description: `Failed securely JSON parse tool parameters: ${cause}`
                     })
                   })
@@ -2910,6 +2939,13 @@ const getEncryptedContent = (
 
 const getImageDetail = (part: Prompt.FilePart): ImageDetail => part.options.openai?.imageDetail ?? "auto"
 
+const getPromptCacheBreakpoint = (
+  input: Prompt.SystemMessage | Prompt.TextPart
+) => {
+  const promptCacheBreakpoint = input.options.openai?.promptCacheBreakpoint
+  return Predicate.isNotNullish(promptCacheBreakpoint) ? { prompt_cache_breakpoint: promptCacheBreakpoint } : undefined
+}
+
 const makeItemIdMetadata = (itemId: string | undefined) => Predicate.isNotUndefined(itemId) ? { itemId } : {}
 
 const makeEncryptedContentMetadata = (encryptedContent: string | null | undefined) =>
@@ -3059,7 +3095,6 @@ const normalizeMcpToolCall = Effect.fnUntraced(function*<Tools extends ReadonlyA
         method,
         reason: new AiError.ToolParameterValidationError({
           toolName,
-          toolParams,
           description: `Failed to securely JSON parse tool parameters: ${cause}`
         })
       })
@@ -3150,19 +3185,13 @@ const transformToolCallParams = Effect.fnUntraced(function*<Tools extends Readon
 
   const { codec } = yield* tryCodecTransform(tool.parametersSchema, "makeResponse")
 
-  const transform = Schema.decodeEffect(codec)
-
+  // Normalize valid parameters; leave invalid ones for Toolkit.
   return yield* (
-    transform(toolParams) as Effect.Effect<unknown, Schema.SchemaError>
-  ).pipe(Effect.mapError((error) =>
-    AiError.make({
-      module: "OpenAiLanguageModel",
-      method: "makeResponse",
-      reason: new AiError.ToolParameterValidationError({
-        toolName,
-        toolParams,
-        description: formatIssue(error.issue)
-      })
-    })
-  ))
+    Schema.decodeEffect(codec)(toolParams) as Effect.Effect<unknown, Schema.SchemaError>
+  ).pipe(
+    Effect.flatMap((decoded) =>
+      Schema.encodeUnknownEffect(tool.parametersSchema)(decoded) as Effect.Effect<unknown, Schema.SchemaError>
+    ),
+    Effect.orElseSucceed(() => toolParams)
+  )
 })

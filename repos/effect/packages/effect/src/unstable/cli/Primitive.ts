@@ -10,7 +10,6 @@
  *
  * @since 4.0.0
  */
-import * as Config from "../../Config.ts"
 import * as Effect from "../../Effect.ts"
 import * as FileSystem from "../../FileSystem.ts"
 import { format } from "../../Formatter.ts"
@@ -99,10 +98,10 @@ const Proto = {
 }
 
 /** @internal */
-export const isTrueValue = Schema.is(Config.TrueValues)
+export const isTrueLiteral = Schema.is(Schema.TrueLiterals)
 
 /** @internal */
-export const isFalseValue = Schema.is(Config.FalseValues)
+export const isFalseLiteral = Schema.is(Schema.FalseLiterals)
 
 /** @internal */
 export const isBoolean = (p: Primitive<unknown>): p is Primitive<boolean> => p._tag === "Boolean"
@@ -173,7 +172,7 @@ const makeSchemaPrimitive = <T>(
  */
 export const boolean: Primitive<boolean> = makeSchemaPrimitive(
   "Boolean",
-  Config.Boolean
+  Schema.BooleanLiterals
 )
 
 /**

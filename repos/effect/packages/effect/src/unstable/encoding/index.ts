@@ -12,12 +12,12 @@ export * as Ini from "./Ini.ts"
 /**
  * @since 4.0.0
  */
-export * as Msgpack from "./Msgpack.ts"
+export * as Ndjson from "./Ndjson.ts"
 
 /**
  * @since 4.0.0
  */
-export * as Ndjson from "./Ndjson.ts"
+export * as SchemaBinary from "./SchemaBinary.ts"
 
 /**
  * @since 4.0.0

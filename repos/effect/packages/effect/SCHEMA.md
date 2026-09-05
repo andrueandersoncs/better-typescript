@@ -952,7 +952,7 @@ type Encoded = {
 type Encoded = typeof schema.Encoded
 ```
 
-If you want the record part to be mutable, you can wrap it in `Schema.mutable`.
+If you want the record part to be mutable, apply `Schema.mutableKey` to its value schema.
 
 **Example** (Allowing dynamic keys to be mutable)
 
@@ -1629,6 +1629,14 @@ const schema = Schema.Tuple([Schema.String, Schema.Number, Schema.Boolean]).mapE
 ## Arrays
 
 An array schema describes a variable-length list where every element shares the same type.
+
+### Mutability
+
+Array and tuple schemas are readonly by default. Use `Schema.mutable` to make them mutable.
+
+> [!NOTE]
+> `Schema.mutable` does not support an encoding attached directly to the array or tuple schema. Apply it before adding
+> such an encoding. Encodings on element schemas are supported.
 
 ### Unique Arrays
 
@@ -5156,6 +5164,11 @@ Output:
 
 To generate a draft-07 JSON Schema, use `JsonSchema.toDocumentDraft07` to convert the draft-2020-12 JSON Schema.
 
+The dialect converters preserve unknown and custom keywords as opaque values. When a known keyword cannot be
+represented by the target dialect, or an opaque keyword would become active and change meaning in that dialect,
+conversion throws instead of silently changing its meaning. For example, Draft-07 cannot represent dynamic
+references, unevaluated constraints, or non-default `minContains` / `maxContains` cardinality.
+
 **Example** (Tuple to draft-7 JSON Schema)
 
 ```ts
@@ -5555,371 +5568,6 @@ console.log(JSON.stringify(document, null, 2))
 }
 */
 ```
-
-### Generating an Arbitrary from a Schema
-
-Property-based tests need generators. `Schema.toArbitrary` derives a factory
-that accepts the `fast-check` module and returns an `Arbitrary` that generates
-decoded `Type` values accepted by the schema.
-
-Most schemas do not need any extra work:
-
-```ts
-import { Schema } from "effect"
-import { FastCheck } from "effect/testing"
-
-const Person = Schema.Struct({
-  name: Schema.String,
-  age: Schema.Int.check(Schema.isBetween({ minimum: 18, maximum: 80 }))
-})
-
-const PersonArbitrary = Schema.toArbitrary(Person)(FastCheck)
-
-console.log(FastCheck.sample(PersonArbitrary, 3))
-```
-
-`Schema.Never` and declaration schemas without a `toArbitrary` annotation cannot
-be derived automatically.
-
-#### Filters
-
-Generated values are always checked by the schema filters before they are
-returned. The important question is whether a filter can also help choose a good
-generator.
-
-Built-in filters already do this:
-
-```ts
-import { Schema } from "effect"
-
-const Username = Schema.String.check(
-  Schema.isMinLength(3),
-  Schema.isMaxLength(20),
-  Schema.isPattern(/^[a-z0-9_]+$/)
-)
-
-const PositiveInteger = Schema.Int.check(
-  Schema.isGreaterThanOrEqualTo(1)
-)
-
-const Tags = Schema.Array(Schema.String).check(
-  Schema.isMinLength(1),
-  Schema.isUnique()
-)
-```
-
-For these schemas, `toArbitrary` does not generate random unconstrained strings,
-numbers, or arrays and then hope the filters pass. It uses the length, range,
-pattern, and uniqueness metadata to build a better generator first.
-
-A custom filter without metadata is still correct, but may be inefficient:
-
-```ts
-import { Schema } from "effect"
-
-const isPalindrome = (s: string) => s === Array.from(s).reverse().join("")
-
-const Palindrome = Schema.String.check(
-  Schema.makeFilter(isPalindrome, {
-    expected: "a palindrome"
-  })
-)
-```
-
-This works because the final predicate check rejects strings that are not
-palindromes. It may need many attempts, because the base string generator has no
-reason to produce mirrored strings.
-
-#### Custom Filters With Constraints
-
-If part of a custom filter can be described as a normal generation constraint,
-attach `arbitrary.constraint` to the filter. The constraint does not have to
-prove the whole predicate; it just makes the base generator closer to the values
-the predicate accepts.
-
-```ts
-import { Order, Schema } from "effect"
-
-const isPrimeNumber = (n: number) => {
-  if (!Number.isInteger(n) || n < 2) {
-    return false
-  }
-  for (let divisor = 2; divisor * divisor <= n; divisor++) {
-    if (n % divisor === 0) {
-      return false
-    }
-  }
-  return true
-}
-
-const prime = Schema.makeFilter(isPrimeNumber, {
-  expected: "a prime number",
-  arbitrary: {
-    constraint: {
-      integer: true,
-      ordered: {
-        order: Order.Number,
-        minimum: 2
-      }
-    }
-  }
-})
-
-const Prime = Schema.Number.check(prime)
-```
-
-The filter still checks primality. The constraint only tells `toArbitrary` not
-to waste time on non-integers or numbers below `2`.
-
-Think of `constraint` as a small vocabulary that the current schema node can
-understand:
-
-- On strings, `minLength` and `maxLength` mean string length.
-- On arrays, `minLength` and `maxLength` mean array length.
-- On objects, `minLength` and `maxLength` mean final own-property count.
-- On sets, maps, hash collections, and chunks, `minLength` and `maxLength` mean final collection size.
-- `patterns` apply to string generation.
-- `integer`, `noNaN`, `noInfinity`, `valid`, and `unique` are enabled when any contributing filter sets them.
-- `ordered` stores bounds for ordered values such as numbers, bigints, dates, `DateTime`, and `BigDecimal`.
-
-Fields that do not make sense for the current node are ignored. The final filter
-check still validates every generated value.
-
-#### Custom Filters With Candidates
-
-Use a candidate when the filter cannot be expressed with the constraint
-vocabulary.
-
-```ts
-import { Schema } from "effect"
-
-const reverse = (s: string) => Array.from(s).reverse().join("")
-
-const isPalindrome = (s: string) => s === reverse(s)
-
-const palindrome = Schema.makeFilter(
-  isPalindrome,
-  {
-    expected: "a palindrome",
-    arbitrary: {
-      candidate: {
-        weight: 5,
-        make: (fc) => fc.string().map((half) => `${half}${reverse(half)}`)
-      }
-    }
-  }
-)
-
-const Palindrome = Schema.String.check(palindrome)
-```
-
-A candidate is an extra source used together with the schema node's base
-generator. The base generator has weight `1`. A candidate has weight `1` unless
-you set another positive integer weight.
-
-With one candidate at weight `5`, fast-check tries the candidate roughly five
-times as often as the base generator. Candidate values are still checked by all
-filters, so a bad candidate can waste attempts but cannot produce invalid
-values.
-
-`make` receives the arbitrary context and may return `undefined` when the
-candidate should not be used for that context.
-
-#### Schema-Level Overrides
-
-Use a `toArbitrary` annotation when you want to replace the generator for a
-schema node.
-
-The annotation is not limited to declaration schemas. You can attach it to a
-normal schema with `.annotate(...)`:
-
-```ts
-import { Schema } from "effect"
-
-const Name = Schema.String.annotate({
-  toArbitrary: () => (fc) => fc.constantFrom("Alice", "Bob", "Carol")
-})
-```
-
-Put override annotations on base schemas when possible, before adding filters:
-
-```ts
-const Name = Schema.String.annotate({
-  toArbitrary: () => (fc) => fc.constantFrom("Alice", "Bob", "Carol")
-}).check(Schema.isMinLength(1))
-```
-
-This shape is easier to reason about. The override provides the base generator;
-the filter remains a normal filter. Schema still checks generated values at the
-end.
-
-Avoid putting an override on a schema that already has filters unless the
-override intentionally handles those filters too:
-
-```ts
-const Name = Schema.String.check(Schema.isMinLength(1)).annotate({
-  toArbitrary: () => (fc) => fc.constant("")
-})
-```
-
-This is valid TypeScript, but it is a bad generator: it always generates a value
-that the filter rejects.
-
-The second argument of a `toArbitrary` hook is the arbitrary context. Its
-`constraint` field contains constraints collected from filters on the same
-schema node as the override. If the override is placed before `.check(...)`, the
-context does not include the later filters. If the override is placed after
-`.check(...)`, the context includes those filters and the override must respect
-them.
-
-`context.recursion` is present while deriving inside a recursive schema.
-
-#### Declaration Schemas
-
-Declaration schemas are opaque to Schema. If you define one, provide a
-`toArbitrary` hook.
-
-For an atomic declaration, return a normal `fast-check` arbitrary:
-
-```ts
-import { Schema } from "effect"
-
-const Url = Schema.instanceOf(globalThis.URL, {
-  title: "URL",
-  toArbitrary: () => (fc) => fc.webUrl().map((s) => new globalThis.URL(s))
-})
-```
-
-Generic declarations receive one derivation per type parameter:
-
-- `arbitrary`: the normal generator for the type parameter.
-- `terminal`: a finite generator for the type parameter, used to close recursive generation.
-
-For an opaque wrapper type, you usually map both sources in the same way:
-
-```ts
-import { Effect, Schema, SchemaIssue, SchemaParser } from "effect"
-
-class Box<A> {
-  private constructor(private readonly value: A) {}
-
-  static make<A>(value: A): Box<A> {
-    return new Box(value)
-  }
-
-  static unbox<A>(box: Box<A>): A {
-    return box.value
-  }
-}
-
-const isBox = (u: unknown): u is Box<unknown> => u instanceof Box
-
-const BoxSchema = <A extends Schema.Top>(value: A) =>
-  Schema.declareConstructor<Box<A["Type"]>, Box<A["Encoded"]>>()(
-    [value],
-    ([valueCodec]) => (input, ast, options) => {
-      if (!isBox(input)) {
-        return Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
-      }
-      return Effect.map(
-        SchemaParser.decodeUnknownEffect(valueCodec)(Box.unbox(input), options),
-        Box.make
-      )
-    },
-    {
-      toArbitrary: ([value]) => () => ({
-        arbitrary: value.arbitrary.map(Box.make),
-        terminal: value.terminal?.map(Box.make)
-      })
-    }
-  )
-```
-
-This looks like duplicated code, but it is not the same generator twice. It is
-the same opaque constructor applied to two different sources.
-
-Suppose someone later builds a recursive schema like this:
-
-```ts
-interface Tree<A> {
-  readonly value: A
-  readonly children: ReadonlyArray<Tree<A>>
-}
-
-type BoxedTree<A> = Box<Tree<A>>
-```
-
-`Box` does not know whether `A` is recursive. If `A` is `Tree<A>`, then
-`value.arbitrary` may generate a recursive tree, while `value.terminal` is the
-finite tree generator used when the recursion budget is exhausted. Mapping both
-sources through `Box.make` preserves that information. If `Box` returned only
-`arbitrary`, it would hide the finite path from outer recursive schemas.
-
-If the type parameter has no finite terminal generator, `value.terminal` is
-`undefined`, and the wrapper cannot provide a terminal branch either.
-
-#### Integration with Synthetic Data Generation Tools
-
-Synthetic data libraries such as `@faker-js/faker` are useful when the generated
-values should look realistic. Put them behind a Fast-Check arbitrary instead of
-calling them directly, so Fast-Check still controls randomness and shrinking.
-
-```ts
-import { faker } from "@faker-js/faker"
-import { Schema } from "effect"
-import { FastCheck } from "effect/testing"
-
-/**
- * Make it easy to plug a Faker generator into a Schema's `toArbitrary` override.
- * The seed comes from Fast-Check so data is reproducible and shrinks correctly.
- */
-function fake<A>(
-  gen: (f: typeof faker) => A
-): Schema.Annotations.ToArbitrary.Declaration<A, readonly []> {
-  return () => (fc) =>
-    fc.nat().map((seed) => {
-      faker.seed(seed)
-      return gen(faker)
-    })
-}
-
-const FirstName = Schema.String.annotate({
-  toArbitrary: fake((faker) => faker.person.firstName())
-})
-
-const LastName = Schema.String.annotate({
-  toArbitrary: fake((faker) => faker.person.lastName())
-})
-
-const JobTitle = Schema.String.annotate({
-  toArbitrary: fake((faker) => faker.person.jobTitle())
-})
-
-const Company = Schema.String.annotate({
-  toArbitrary: fake((faker) => faker.company.name())
-})
-
-const Person = Schema.Struct({
-  firstName: FirstName,
-  lastName: LastName,
-  jobTitle: JobTitle,
-  company: Company
-})
-
-console.log(FastCheck.sample(Schema.toArbitrary(Person)(FastCheck), 3))
-```
-
-These overrides are useful because the values have domain shape: names look like
-names, job titles look like job titles, and companies look like companies. For
-plain numeric ranges, prefer Schema constraints and the default arbitrary
-derivation.
-
-If you combine a Faker source with filters, put the override on the base schema
-first and add filters afterwards. This keeps the responsibilities simple: the
-override chooses a realistic source, and the filter remains the final validation
-rule. If you put the override after `.check(...)`, the override must respect
-those filters itself, or generation will spend time producing values that are
-rejected.
 
 ### Generating an Equivalence from a Schema
 
@@ -6361,7 +6009,7 @@ const json = SchemaRepresentation.toJson(
 
 const document = SchemaRepresentation.fromJson(json)
 const rebuilt = SchemaRepresentation.fromRepresentation(document, {
-  revivers: [Schema.isMinLengthReviver]
+  revivers: [SchemaRepresentation.isMinLengthReviver]
 })
 
 console.log(Schema.is(rebuilt)("abc"))
@@ -6370,9 +6018,9 @@ console.log(Schema.is(rebuilt)("a"))
 // false
 ```
 
-Effect exports individual revivers next to the built-in declarations and checks they reconstruct, such as
-`Schema.OptionReviver`, `Schema.DateReviver`, and `Schema.isMinLengthReviver`. Supply every reviver required by the
-document; a missing or duplicate `id`, or a payload that does not satisfy its reviver's `payloadSchema`, is an error.
+`SchemaRepresentation` exports individual revivers for built-in declarations and checks, such as
+`OptionReviver`, `DateReviver`, and `isMinLengthReviver`. Supply every reviver required by the document; a missing or
+duplicate `id`, or a payload that does not satisfy its reviver's `payloadSchema`, is an error.
 
 `fromRepresentations` rebuilds the ordered roots of a `MultiDocument` in a shared reference environment. Only references
 reachable from those roots are revived.
@@ -6385,7 +6033,7 @@ There are separate reviver contracts for opaque declarations, leaf filters, and 
 - `FilterReviver<P>`
 - `FilterGroupReviver<P>`
 
-Use `makeDeclarationReviver`, `makeFilterReviver`, and `makeFilterGroupReviver` to infer `P` from `payloadSchema`.
+Use `makeReviverDeclaration`, `makeReviverFilter`, and `makeReviverFilterGroup` to infer `P` from `payloadSchema`.
 
 ```ts
 import { Schema, SchemaRepresentation } from "effect"
@@ -6402,7 +6050,7 @@ function minLength(
   })
 }
 
-const minLengthReviver = SchemaRepresentation.makeFilterReviver(
+const minLengthReviver = SchemaRepresentation.makeReviverFilter(
   id,
   Schema.Struct({ minimum: Schema.Number }),
   ({ annotations, payload }) => minLength(payload.minimum, annotations)
@@ -6444,15 +6092,27 @@ schema with revivers first.
 `SchemaRepresentation.fromJsonSchemaDocument` imports a JSON Schema Draft 2020-12 document as a runtime `Schema.Top`.
 It does not return a representation document.
 
+Only direct local references to top-level definitions in the form `#/$defs/<escaped-token>` are supported. Root
+references, external references, and pointers below a definition throw an `Unsupported reference` error. A direct
+reference to a missing definition throws an `Invalid reference` error.
+
 `fromJsonSchemaMultiDocument` returns the ordered root schemas. It translates only definitions reachable from those
 roots. To pass the result to a representation compiler, call `toRepresentations` with the returned schemas' ASTs.
 
-Import is best-effort: JSON Schema constructs are translated to Effect schemas where possible, but the result is not a
-lossless reconstruction of an original Effect schema. The optional `onEnter` callback can normalize each JSON Schema node
+Import translates a Draft 2020-12 subset. `$dynamicRef`, `contains`, `dependentRequired`, `dependentSchemas`, `not`,
+active `if` / `then` / `else`, `unevaluatedItems`, and `unevaluatedProperties` throw an
+`Unsupported JSON Schema keyword` error. Inactive conditional keywords and `minContains` / `maxContains` without
+`contains` have no validation effect and are ignored. Unknown extension keywords are ignored and their semantics are not
+enforced. Objects and arrays used as `const` values or `enum` members throw an
+`Unsupported structured JSON Schema value` error. The optional `onEnter` callback can normalize each JSON Schema node
 before it is translated.
 
-Regular expression constraints reached during best-effort translation are rejected by default because imported patterns
-use the runtime's native regular expression engine and may block validation for an unbounded amount of time. Set
+Intersections of overlapping unions are limited to disjoint root-type partitions and finite primitive `anyOf` literal
+sets. Other union intersections, including cases that would duplicate a nested choice, throw an
+`Unsupported intersection of overlapping unions` error.
+
+Regular expression constraints reached during translation are rejected by default because imported patterns use the
+runtime's native regular expression engine and may block validation for an unbounded amount of time. Set
 `patterns: "apply"` only for trusted documents. Set `patterns: "ignore"` to skip reached pattern constraints explicitly;
 the resulting schema accepts values that the source document may reject. The policy includes `pattern`, the keys of
 `patternProperties`, and patterns nested in `propertyNames`. Ignoring `patternProperties` also skips its value constraints

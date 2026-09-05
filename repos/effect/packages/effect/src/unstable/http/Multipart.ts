@@ -98,12 +98,23 @@ export interface Field extends Part.Proto {
 }
 
 /**
- * Returns `true` when a value is a multipart `Part`.
+ * Returns `true` when a value has the multipart part type identifier.
+ *
+ * This includes `Field`, `File`, and `PersistedFile` values. Use
+ * `isStreamPart` to identify only parsed, streamed parts.
  *
  * @category guards
  * @since 4.0.0
  */
 export const isPart = (u: unknown): u is Part => Predicate.hasProperty(u, TypeId)
+
+/**
+ * Returns `true` when a value is a multipart text `Field` or streamed `File`.
+ *
+ * @category guards
+ * @since 4.0.0
+ */
+export const isStreamPart = (u: unknown): u is Part => isPart(u) && (u._tag === "Field" || u._tag === "File")
 
 /**
  * Returns `true` when a value is a multipart text `Field`.
@@ -456,6 +467,7 @@ export const makeChannel = <IE>(headers: Record<string, string>): Channel.Channe
     Effect.map(makeConfig(headers), (config) => {
       let partsBuffer: Array<Part> = []
       let exit = Option.none<Exit.Exit<never, IE | MultipartError | Cause.Done>>()
+      let ended = false
 
       const parser = MP.make({
         ...config,
@@ -503,7 +515,10 @@ export const makeChannel = <IE>(headers: Record<string, string>): Channel.Channe
         }),
         Effect.catchCause((cause) => {
           if (Pull.isDoneCause(cause)) {
-            parser.end()
+            if (!ended) {
+              ended = true
+              parser.end()
+            }
           } else {
             exit = Option.some(Exit.failCause(cause)) as any
           }

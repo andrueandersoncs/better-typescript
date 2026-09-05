@@ -15,7 +15,7 @@ import * as Effect from "../../Effect.ts"
 import * as Encoding from "../../Encoding.ts"
 import * as Fiber from "../../Fiber.ts"
 import type { FileSystem } from "../../FileSystem.ts"
-import { identity } from "../../Function.ts"
+import * as Function from "../../Function.ts"
 import { stringOrRedacted } from "../../internal/redacted.ts"
 import * as Layer from "../../Layer.ts"
 import type { Path } from "../../Path.ts"
@@ -100,8 +100,14 @@ export const layer = <Id extends string, Groups extends HttpApiGroup.Constraint>
     }
     yield* (router.addAll(routes) as Effect.Effect<void>)
     if (options?.openapiPath) {
-      const spec = OpenApi.fromApi(api)
-      yield* router.add("GET", options.openapiPath, Effect.succeed(Response.jsonUnsafe(spec)))
+      const makeResponse = Function.memoize((api: HttpApi.HttpApi<Id, Groups>): HttpServerResponse =>
+        Response.jsonUnsafe(OpenApi.fromApi(api))
+      )
+      yield* router.add(
+        "GET",
+        options.openapiPath,
+        Effect.sync(() => makeResponse(api))
+      )
     }
   }))
 
@@ -153,6 +159,51 @@ export const group = <
       }]])
     )
   })) as any
+
+/**
+ * Creates a reusable handler for a single endpoint in an API group.
+ *
+ * **Details**
+ *
+ * Returns the supplied callback unchanged, with its request, success, and error
+ * types inferred from the endpoint, preserving the callback's service
+ * requirements. Pass the result to `handlers.handle` when implementing the group.
+ *
+ * @category handlers
+ * @since 4.0.0
+ */
+export const handler = <
+  ApiId extends string,
+  Groups extends HttpApiGroup.Constraint,
+  const GroupIdentifier extends HttpApiGroup.Identifier<Groups>,
+  const EndpointIdentifier extends HttpApiGroup.EndpointsWithIdentifier<Groups, GroupIdentifier>["identifier"],
+  R
+>(
+  _api: HttpApi.HttpApi<ApiId, Groups>,
+  _groupIdentifier: GroupIdentifier,
+  _endpointIdentifier: EndpointIdentifier,
+  f: HttpApiEndpoint.HandlerWithIdentifier<
+    HttpApiGroup.EndpointsWithIdentifier<Groups, GroupIdentifier>,
+    EndpointIdentifier,
+    HttpApiEndpoint.MiddlewareError<
+      HttpApiEndpoint.WithIdentifier<
+        HttpApiGroup.EndpointsWithIdentifier<Groups, GroupIdentifier>,
+        EndpointIdentifier
+      >
+    >,
+    R
+  >
+): HttpApiEndpoint.HandlerWithIdentifier<
+  HttpApiGroup.EndpointsWithIdentifier<Groups, GroupIdentifier>,
+  EndpointIdentifier,
+  HttpApiEndpoint.MiddlewareError<
+    HttpApiEndpoint.WithIdentifier<
+      HttpApiGroup.EndpointsWithIdentifier<Groups, GroupIdentifier>,
+      EndpointIdentifier
+    >
+  >,
+  R
+> => f
 
 const HandlersTypeId = "~effect/httpapi/HttpApiBuilder/Handlers"
 
@@ -884,7 +935,7 @@ const makeSecurityMiddleware = (
     middleware: service[securityKey]
   }))
   if (entries.length === 0) {
-    return identity
+    return Function.identity
   }
 
   const middleware = Effect.fnUntraced(function*(handler: Effect.Effect<any, any, any>, options: {
@@ -965,13 +1016,14 @@ function makeWithHeadersEncoder(endpoint: HttpApiEndpoint.Top): WithHeadersEncod
 }
 
 function makeStreamEncoder(endpoint: HttpApiEndpoint.Top): StreamEncoder | undefined {
-  const streamSchema = getStreamSuccessSchema(endpoint)
-  if (streamSchema === undefined) {
+  const successSchema = getStreamSuccessSchema(endpoint)
+  if (successSchema === undefined) {
     return undefined
   }
 
+  const streamSchema = successSchema.body
   const hasBuffered = hasBufferedSuccess(endpoint)
-  const status = HttpApiSchema.getStatusStream(streamSchema)
+  const status = HttpApiSchema.getStatusSuccessSchema(successSchema.schema)
   const contentType = streamSchema.contentType
 
   if (HttpApiSchema.isStreamUint8Array(streamSchema)) {
@@ -1015,7 +1067,7 @@ function getStreamSuccessSchema(endpoint: HttpApiEndpoint.Top) {
   for (const schema of endpoint.success) {
     const body = HttpApiSchema.isWithHeaders(schema) ? schema.schema : schema
     if (HttpApiSchema.isStreamSchema(body)) {
-      return body
+      return { schema, body }
     }
   }
 }
@@ -1058,7 +1110,7 @@ function encodeSseStream(
         event: "message",
         data: value
       })) :
-      identity,
+      Function.identity,
     Stream.mapArrayEffect((chunk) => Effect.orDie(encoder.encodeEvents(chunk))),
     Stream.catchCause((cause) => Stream.fromEffect(encodeFailureEvent(cause, encoder))),
     Stream.map(renderSseEvent),

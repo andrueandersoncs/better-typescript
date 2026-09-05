@@ -11,6 +11,7 @@
  *
  * @since 4.0.0
  */
+import * as Arr from "../../Array.ts"
 import type { Brand } from "../../Brand.ts"
 import * as Context from "../../Context.ts"
 import * as Data from "../../Data.ts"
@@ -18,12 +19,13 @@ import * as DateTime from "../../DateTime.ts"
 import * as Effect from "../../Effect.ts"
 import * as Uuid from "../../internal/uuid.ts"
 import * as Layer from "../../Layer.ts"
+import type { Option } from "../../Option.ts"
 import * as Order from "../../Order.ts"
 import * as PubSub from "../../PubSub.ts"
 import * as Schema from "../../Schema.ts"
 import type { Scope } from "../../Scope.ts"
 import * as Semaphore from "../../Semaphore.ts"
-import * as Msgpack from "../encoding/Msgpack.ts"
+import * as SchemaBinary from "../encoding/SchemaBinary.ts"
 import type { StoreId } from "./EventLogMessage.ts"
 
 /**
@@ -78,12 +80,16 @@ export class EventJournal extends Context.Service<EventJournal, {
   }, EventJournalError>
 
   /**
-   * Return the uncommitted entries for a remote source.
+   * Run an effect with the uncommitted entries for a remote source.
+   *
+   * The effect is not run when there are no uncommitted entries, in which case
+   * `Option.none()` is returned. Otherwise, its result is wrapped in
+   * `Option.some()`.
    */
   readonly withRemoteUncommited: <A, E, R>(
     remoteId: RemoteId,
-    f: (entries: ReadonlyArray<Entry>) => Effect.Effect<A, E, R>
-  ) => Effect.Effect<A, EventJournalError | E, R>
+    f: (entries: Arr.NonEmptyReadonlyArray<Entry>) => Effect.Effect<A, E, R>
+  ) => Effect.Effect<Option<A>, EventJournalError | E, R>
 
   /**
    * Retrieve the first unused sequence number for a remote source.
@@ -266,8 +272,8 @@ export const entryIdMillis = (entryId: EntryId): number => {
  *
  * **Details**
  *
- * An entry records its ID, event tag, primary key, and MessagePack-encoded
- * payload, with helpers for array MessagePack encoding and creation timestamps.
+ * An entry records its ID, event tag, primary key, and SchemaBinary-encoded
+ * payload, with helpers for array SchemaBinary encoding and creation timestamps.
  *
  * @category schemas
  * @since 4.0.0
@@ -279,25 +285,25 @@ export class Entry extends Schema.Class<Entry>("effect/eventlog/EventJournal/Ent
   payload: Schema.Uint8Array
 }) {
   /**
-   * MessagePack schema for arrays of committed event journal entries.
+   * SchemaBinary codec for arrays of committed event journal entries.
    *
    * @since 4.0.0
    */
-  static arrayMsgpack = Schema.Array(Msgpack.schema(Entry))
+  static arraySchemaBinary = Schema.Array(SchemaBinary.toCodec(Entry))
 
   /**
-   * Encodes arrays of committed entries with the MessagePack entry schema.
+   * Encodes arrays of committed entries with the SchemaBinary entry codec.
    *
    * @since 4.0.0
    */
-  static encodeArray = Schema.encodeUnknownEffect(Entry.arrayMsgpack)
+  static encodeArray = Schema.encodeUnknownEffect(Entry.arraySchemaBinary)
 
   /**
-   * Decodes arrays of committed entries with the MessagePack entry schema.
+   * Decodes arrays of committed entries with the SchemaBinary entry codec.
    *
    * @since 4.0.0
    */
-  static decodeArray = Schema.decodeUnknownEffect(Entry.arrayMsgpack)
+  static decodeArray = Schema.decodeUnknownEffect(Entry.arraySchemaBinary)
 
   /**
    * Ordering for committed entries by their event journal entry id.
@@ -471,7 +477,7 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
     withRemoteUncommited: (remoteId, f) =>
       Effect.acquireUseRelease(
         Effect.sync(() => ensureRemote(remoteId).missing.slice()),
-        f,
+        (entries) => Arr.isReadonlyArrayNonEmpty(entries) ? Effect.asSome(f(entries)) : Effect.succeedNone,
         (entries, exit) =>
           Effect.sync(() => {
             if (exit._tag === "Failure") return
@@ -705,7 +711,7 @@ export const makeIndexedDb = (options?: {
           return Effect.sync(() => tx.abort())
         }).pipe(
           Effect.flatMap((entries) => {
-            if (entries.length === 0) return f(entries)
+            if (!Arr.isReadonlyArrayNonEmpty(entries)) return Effect.succeedNone
             const entryId = entries[entries.length - 1].id
             return Effect.uninterruptibleMask((restore) =>
               restore(f(entries)).pipe(
@@ -715,7 +721,8 @@ export const makeIndexedDb = (options?: {
                       remoteId,
                       entryId
                     }))
-                )
+                ),
+                Effect.asSome
               )
             )
           })

@@ -104,6 +104,15 @@ type ServerNotificationRequest<
 
 const BroadcastServerNotificationRpcs = ServerNotificationRpcs.omit("notifications/elicitation/complete")
 
+/**
+ * MCP models `structuredContent` as a JSON object, so a `null` or array
+ * encoded result must be omitted rather than sent through as-is.
+ */
+const toStructuredContent = (value: unknown): Schema.JsonObject | undefined =>
+  typeof value === "object" && value !== null && !Array.isArray(value)
+    ? value as Schema.JsonObject
+    : undefined
+
 const validateStructuredContent = (
   toolName: string,
   value: unknown
@@ -734,7 +743,8 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
           },
           supportsAck: true,
           supportsTransferables: false,
-          supportsStructuredClone: false
+          supportsStructuredClone: false,
+          codecFor: protocol.codecFor
         }
       }))
       const client = yield* selectedProtocol.makeReverseClient(key.profile).pipe(
@@ -1229,6 +1239,7 @@ const mcpStdioSerialization = (
   return RpcSerialization.RpcSerialization.of({
     contentType: serialization.contentType,
     includesFraming: true,
+    codecFor: serialization.codecFor,
     makeUnsafe: () => {
       const frames = RpcSerialization.ndjson.makeUnsafe()
       const parser = serialization.makeUnsafe()
@@ -1377,81 +1388,76 @@ const layerMcpProtocolHttp = (options: {
       if (sessionId !== undefined && session === undefined) {
         return Effect.succeed(HttpServerResponse.empty({ status: 404 }))
       }
-      if (
-        protocolVersion !== undefined &&
-        !state.protocolRegistry.protocols.some((protocol) => protocol.protocolVersion === protocolVersion)
-      ) {
-        return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
-      }
-      if (
-        session?.protocol.transport.requiresVersionHeader === true &&
-        protocolVersion !== session.protocol.protocolVersion
-      ) {
-        return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
-      }
+      const protocolVersionHeaderRejected = (protocolVersion !== undefined &&
+        !state.protocolRegistry.protocols.some((protocol) => protocol.protocolVersion === protocolVersion)) ||
+        (session?.protocol.transport.requiresVersionHeader === true &&
+          protocolVersion !== session.protocol.protocolVersion)
+      const parseErrorResponse = protocolVersionHeaderRejected
+        ? HttpServerResponse.empty({ status: 400 })
+        : HttpServerResponse.jsonUnsafe({
+          jsonrpc: "2.0",
+          id: null,
+          error: new McpSchema.ParseError({ message: "Parse error" })
+        })
       return request.text.pipe(
+        Effect.flatMap(Schema.decodeUnknownEffect(Schema.UnknownFromJsonString)),
         Effect.matchEffect({
-          onFailure: () =>
-            Effect.succeed(HttpServerResponse.jsonUnsafe({
-              jsonrpc: "2.0",
-              id: null,
-              error: new McpSchema.ParseError({ message: "Parse error" })
-            })),
-          onSuccess: (body) =>
-            Effect.matchEffect(Schema.decodeUnknownEffect(Schema.UnknownFromJsonString)(body), {
-              onFailure: () =>
-                Effect.succeed(HttpServerResponse.jsonUnsafe({
-                  jsonrpc: "2.0",
-                  id: null,
-                  error: new McpSchema.ParseError({ message: "Parse error" })
-                })),
-              onSuccess: (input) => {
-                if (!Array.isArray(input)) {
-                  const hasId = Predicate.hasProperty(input, "id")
-                  const id = hasId && (typeof input.id === "string" || typeof input.id === "number")
-                    ? input.id
-                    : null
-                  const isJsonRpc = Predicate.hasProperty(input, "jsonrpc") && input.jsonrpc === "2.0"
-                  const hasValidRequestId = !hasId || typeof input.id === "string" || typeof input.id === "number"
-                  const isRequest = isJsonRpc && hasValidRequestId &&
-                    Predicate.hasProperty(input, "method") && typeof input.method === "string"
-                  const hasValidResponseId = hasId &&
-                    (typeof input.id === "string" || typeof input.id === "number" || input.id === null)
-                  const hasResult = Predicate.hasProperty(input, "result")
-                  const hasError = Predicate.hasProperty(input, "error")
-                  const isResponse = isJsonRpc && hasValidResponseId && hasResult !== hasError
-                  if (!isRequest && !isResponse) {
-                    return Effect.succeed(HttpServerResponse.jsonUnsafe({
-                      jsonrpc: "2.0",
-                      id,
-                      error: new InvalidRequest({ message: "Invalid Request" })
-                    }))
-                  }
-                  const isInitialize = isInitializeJsonRpcMessage(input)
-                  if (isInitialize && sessionId !== undefined) {
-                    return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
-                  }
-                  if (!isInitialize && isRequest && sessionId === undefined) {
-                    return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
-                  }
-                  return httpEffect
-                }
-                if (input.length === 0) {
-                  return Effect.succeed(HttpServerResponse.jsonUnsafe({
-                    jsonrpc: "2.0",
-                    id: null,
-                    error: new InvalidRequest({ message: "Invalid Request" })
-                  }, { status: 400 }))
-                }
-                if (input.some(isInitializeJsonRpcMessage) || session === undefined) {
-                  return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
-                }
-                const selectedProtocol = session.protocol
-                return selectedProtocol.transport.acceptsJsonRpcBatches
-                  ? httpEffect
-                  : Effect.succeed(HttpServerResponse.empty({ status: 400 }))
+          onFailure: () => Effect.succeed(parseErrorResponse),
+          onSuccess: (input) => {
+            if (!Array.isArray(input)) {
+              const hasId = Predicate.hasProperty(input, "id")
+              const id = hasId && (typeof input.id === "string" || typeof input.id === "number")
+                ? input.id
+                : null
+              const isJsonRpc = Predicate.hasProperty(input, "jsonrpc") && input.jsonrpc === "2.0"
+              const hasValidRequestId = !hasId || typeof input.id === "string" || typeof input.id === "number"
+              const isRequest = isJsonRpc && hasValidRequestId &&
+                Predicate.hasProperty(input, "method") && typeof input.method === "string"
+              const hasValidResponseId = hasId &&
+                (typeof input.id === "string" || typeof input.id === "number" || input.id === null)
+              const hasResult = Predicate.hasProperty(input, "result")
+              const hasError = Predicate.hasProperty(input, "error")
+              const isResponse = isJsonRpc && hasValidResponseId && hasResult !== hasError
+              const isInitialize = isRequest && isInitializeJsonRpcMessage(input)
+              // Initialize requests are exempt from the version header check:
+              // rejecting them with a 400 makes clients treat the endpoint as a
+              // legacy HTTP+SSE server and retry initialization with a GET.
+              if (!isInitialize && protocolVersionHeaderRejected) {
+                return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
               }
-            })
+              if (!isRequest && !isResponse) {
+                return Effect.succeed(HttpServerResponse.jsonUnsafe({
+                  jsonrpc: "2.0",
+                  id,
+                  error: new InvalidRequest({ message: "Invalid Request" })
+                }))
+              }
+              if (isInitialize && sessionId !== undefined) {
+                return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
+              }
+              if (!isInitialize && isRequest && sessionId === undefined) {
+                return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
+              }
+              return httpEffect
+            }
+            if (protocolVersionHeaderRejected) {
+              return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
+            }
+            if (input.length === 0) {
+              return Effect.succeed(HttpServerResponse.jsonUnsafe({
+                jsonrpc: "2.0",
+                id: null,
+                error: new InvalidRequest({ message: "Invalid Request" })
+              }, { status: 400 }))
+            }
+            if (input.some(isInitializeJsonRpcMessage) || session === undefined) {
+              return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
+            }
+            const selectedProtocol = session.protocol
+            return selectedProtocol.transport.acceptsJsonRpcBatches
+              ? httpEffect
+              : Effect.succeed(HttpServerResponse.empty({ status: 400 }))
+          }
         })
       )
     })
@@ -1573,7 +1579,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
           Effect.map((result) =>
             new CallToolResult({
               isError: false,
-              structuredContent: typeof result.encodedResult === "object" ? result.encodedResult : undefined,
+              structuredContent: toStructuredContent(result.encodedResult),
               content: result.encodedResult === undefined ? [] : [{
                 type: "text",
                 text: JSON.stringify(result.encodedResult)
@@ -1933,7 +1939,7 @@ export const registerPrompt = <
     readonly [K in keyof Params]?: (
       input: string,
       context: CompletionContext
-    ) => Effect.Effect<Array<Params[K]>, any, any>
+    ) => Effect.Effect<Array<Params[K]["Type"]>, any, any>
   } = {}
 >(
   options: {
@@ -1941,7 +1947,9 @@ export const registerPrompt = <
     readonly description?: string | undefined
     readonly parameters?: Params | undefined
     readonly completion?: ValidateCompletions<Completions, Extract<keyof Params, string>> | undefined
-    readonly content: (params: Params) => Effect.Effect<Array<typeof PromptMessage.Type> | string, E, R>
+    readonly content: (
+      params: Schema.Struct.Type<Params>
+    ) => Effect.Effect<Array<typeof PromptMessage.Type> | string, E, R>
     readonly annotations?: Context.Context<never> | undefined
   }
 ): Effect.Effect<void, never, Exclude<Schema.Struct.DecodingServices<Params> | R, McpServerClient> | McpServer> => {
@@ -2143,9 +2151,9 @@ const makeUriMatcher = <A>() => {
     caseSensitive: true
   })
   const add = (uri: string, value: A) => {
-    router.on("GET", uri as any, value)
+    router.on("GET", `/${uri}`, value)
   }
-  const find = (uri: string) => router.find("GET", uri)
+  const find = (uri: string) => router.find("GET", `/${uri}`)
 
   return { add, find } as const
 }

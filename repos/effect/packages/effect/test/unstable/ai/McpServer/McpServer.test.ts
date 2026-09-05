@@ -55,6 +55,14 @@ const AnnotatedVoidTool = Tool.make("AnnotatedVoidTool", {
   success: Schema.Void.annotate({ description: "No output" })
 })
 
+const NullableResultTool = Tool.make("NullableResultTool", {
+  success: Schema.NullOr(Schema.Struct({ answer: Schema.String }))
+})
+
+const ArrayResultTool = Tool.make("ArrayResultTool", {
+  success: Schema.Array(Schema.String)
+})
+
 const TestToolkit = Toolkit.make(
   OptionalStringTool,
   PublicFailureTool,
@@ -62,7 +70,9 @@ const TestToolkit = Toolkit.make(
   DefectTool,
   UntypedTool,
   StructuredResultTool,
-  AnnotatedVoidTool
+  AnnotatedVoidTool,
+  NullableResultTool,
+  ArrayResultTool
 )
 type TestToolkitHandlers = Toolkit.HandlersFrom<Toolkit.Tools<typeof TestToolkit>>
 
@@ -73,12 +83,16 @@ const testToolkitHandlers = TestToolkit.of({
   DefectTool: () => Effect.die("private defect details"),
   UntypedTool: () => Effect.void,
   StructuredResultTool: () => Effect.succeed({ answer: "result" }),
-  AnnotatedVoidTool: () => Effect.void
+  AnnotatedVoidTool: () => Effect.void,
+  NullableResultTool: () => Effect.succeed(null),
+  ArrayResultTool: () => Effect.succeed(["first", "second"])
 })
 
 const INTERNAL_TOOL_ERROR_MESSAGE = "Tool execution failed due to an internal server error."
 
 const TestServerLayer = makeServerLayer({ name: "TestServer" })
+
+const LatestProtocolServerLayer = makeServerLayer({ name: "TestServer", protocols: [McpProtocol.v2025_11_25] })
 
 const initializePayload = {
   protocolVersion: "2025-06-18",
@@ -177,6 +191,22 @@ describe("McpServer", () => {
         assert.strictEqual(error.message, "Resource 'file:///unknown' not found")
       }))
 
+    it.effect("should resolve an HTTP resource template", () =>
+      Effect.gen(function*() {
+        const server = yield* McpServer.McpServer.make
+        yield* McpServer.registerResource`https://example.test/docs/${Schema.String}`({
+          name: "document",
+          content: (_uri, name) => Effect.succeed(name)
+        }).pipe(Effect.provideService(McpServer.McpServer, server))
+
+        const uri = "https://example.test/docs/alice"
+        const result = yield* server.findResource(uri).pipe(
+          Effect.provideService(McpSchema.McpServerClient, directClient)
+        )
+
+        assert.deepStrictEqual(result.contents, [{ uri, text: "alice" }])
+      }))
+
     it.effect("should preserve a registered resource handler's typed failure", () =>
       Effect.gen(function*() {
         const server = yield* McpServer.McpServer.make
@@ -196,6 +226,28 @@ describe("McpServer", () => {
         )
 
         assert.strictEqual(error, failure)
+      }))
+
+    it.effect("should pass decoded values to prompt handlers", () =>
+      Effect.gen(function*() {
+        const server = yield* McpServer.McpServer.make
+        yield* McpServer.registerPrompt({
+          name: "count",
+          parameters: { count: Schema.FiniteFromString },
+          completion: { count: () => Effect.succeed([13]) },
+          content: ({ count }) => Effect.succeed(count.toFixed(0))
+        }).pipe(Effect.provideService(McpServer.McpServer, server))
+
+        const result = yield* server.getPromptResult({ name: "count", arguments: { count: "12" } }).pipe(
+          Effect.provideService(McpSchema.McpServerClient, directClient)
+        )
+        const completion = yield* server.completion({
+          ref: { type: "ref/prompt", name: "count" },
+          argument: { name: "count", value: "1" }
+        }).pipe(Effect.provideService(McpSchema.McpServerClient, directClient))
+
+        assert.deepStrictEqual(result.messages, [{ role: "user", content: { type: "text", text: "12" } }])
+        assert.deepStrictEqual(completion.completion.values, ["13"])
       }))
 
     it.effect("should pass undefined to a low-level tool handler when arguments are omitted", () =>
@@ -280,6 +332,22 @@ describe("McpServer", () => {
 
       strictEqual(response.status, 400)
     }))
+  it.effect("negotiates an initialize request from a client on an unsupported protocol version", () =>
+    Effect.gen(function*() {
+      const { httpClient } = yield* makeTestClientWith(LatestProtocolServerLayer)
+
+      const response = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
+        HttpClientRequest.setHeader("Mcp-Protocol-Version", "2025-06-18"),
+        HttpClientRequest.bodyJsonUnsafe({ jsonrpc: "2.0", id: 1, method: "initialize", params: initializePayload }),
+        httpClient.execute
+      )
+
+      strictEqual(response.status, 200)
+      strictEqual(response.headers["mcp-protocol-version"], "2025-11-25")
+      assertTrue(response.headers["mcp-session-id"] !== undefined)
+    }))
+
   describe("registerToolkit", () => {
     it.effect("lists output schemas only for structured tool results", () =>
       Effect.gen(function*() {
@@ -371,6 +439,46 @@ describe("McpServer", () => {
             content: []
           })
         )
+      }))
+
+    it.effect("carries object tool results as structured content", () =>
+      Effect.gen(function*() {
+        const client = yield* makeToolkitTestClient()
+
+        const result = yield* client["tools/call"]({
+          name: "StructuredResultTool",
+          arguments: {}
+        })
+
+        assert.deepStrictEqual(result.structuredContent, { answer: "result" })
+        assert.deepStrictEqual(result.content, [{
+          type: "text",
+          text: JSON.stringify({ answer: "result" })
+        }])
+      }))
+
+    it.effect("omits structured content for null and array tool results", () =>
+      Effect.gen(function*() {
+        const client = yield* makeToolkitTestClient()
+
+        const nullResult = yield* client["tools/call"]({
+          name: "NullableResultTool",
+          arguments: {}
+        })
+
+        assert.isUndefined(nullResult.structuredContent)
+        assert.deepStrictEqual(nullResult.content, [{ type: "text", text: "null" }])
+
+        const arrayResult = yield* client["tools/call"]({
+          name: "ArrayResultTool",
+          arguments: {}
+        })
+
+        assert.isUndefined(arrayResult.structuredContent)
+        assert.deepStrictEqual(arrayResult.content, [{
+          type: "text",
+          text: JSON.stringify(["first", "second"])
+        }])
       }))
 
     it.effect("returns schema-validated messages for declared handler failures", () =>
@@ -552,6 +660,55 @@ describe("McpServer", () => {
       strictEqual(yield* unsupportedResponse.text, "")
       strictEqual(unsupportedResponse.headers["access-control-allow-origin"], "*")
 
+      const malformedResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
+        HttpClientRequest.setHeader("Mcp-Protocol-Version", "9999-01-01"),
+        HttpClientRequest.bodyText("{"),
+        HttpClientRequest.setHeader("content-type", "application/json"),
+        httpClient.execute
+      )
+      strictEqual(malformedResponse.status, 400)
+      strictEqual(yield* malformedResponse.text, "")
+
+      const malformedNoVersionResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
+        HttpClientRequest.bodyText("{"),
+        HttpClientRequest.setHeader("content-type", "application/json"),
+        httpClient.execute
+      )
+      strictEqual(malformedNoVersionResponse.status, 200)
+      const malformedNoVersionBody = JSON.parse(yield* malformedNoVersionResponse.text)
+      strictEqual(malformedNoVersionBody.id, null)
+      strictEqual(malformedNoVersionBody.error.code, McpSchema.PARSE_ERROR_CODE)
+
+      const invalidRequestResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
+        HttpClientRequest.setHeader("Mcp-Protocol-Version", "9999-01-01"),
+        HttpClientRequest.bodyJsonUnsafe({ hello: "world" }),
+        httpClient.execute
+      )
+      strictEqual(invalidRequestResponse.status, 400)
+      strictEqual(yield* invalidRequestResponse.text, "")
+
+      const invalidRequestNoVersionResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
+        HttpClientRequest.bodyJsonUnsafe({ hello: "world" }),
+        httpClient.execute
+      )
+      strictEqual(invalidRequestNoVersionResponse.status, 200)
+      const invalidRequestNoVersionBody = JSON.parse(yield* invalidRequestNoVersionResponse.text)
+      strictEqual(invalidRequestNoVersionBody.id, null)
+      strictEqual(invalidRequestNoVersionBody.error.code, McpSchema.INVALID_REQUEST_ERROR_CODE)
+
+      const invalidInitializeResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
+        HttpClientRequest.setHeader("Mcp-Protocol-Version", "9999-01-01"),
+        HttpClientRequest.bodyJsonUnsafe({ method: "initialize", id: 7 }),
+        httpClient.execute
+      )
+      strictEqual(invalidInitializeResponse.status, 400)
+      strictEqual(yield* invalidInitializeResponse.text, "")
+
       const responseOnly = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
         HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
         HttpClientRequest.bodyJsonUnsafe({ jsonrpc: "2.0", id: 1, result: {} }),
@@ -627,7 +784,8 @@ describe("McpServer", () => {
               supportsAck: false,
               supportsTransferables: false,
               supportsSpanPropagation: false,
-              supportsNotifications: true
+              supportsNotifications: true,
+              codecFor: Schema.toCodecJson as RpcSerialization.CodecFor
             })
           )
         )

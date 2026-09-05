@@ -23,15 +23,19 @@ import * as Option from "../../Option.ts"
 import type { Predicate } from "../../Predicate.ts"
 import * as Schema from "../../Schema.ts"
 import type * as Rpc from "../rpc/Rpc.ts"
+import type * as RpcSerialization from "../rpc/RpcSerialization.ts"
 import { EntityNotAssignedToRunner, MalformedMessage, type PersistenceError } from "./ClusterError.ts"
 import * as DeliverAt from "./DeliverAt.ts"
 import type { EntityAddress } from "./EntityAddress.ts"
 import * as Envelope from "./Envelope.ts"
+import * as ClusterAbandon from "./internal/clusterAbandon.ts"
 import * as Message from "./Message.ts"
 import * as Reply from "./Reply.ts"
 import * as ShardId from "./ShardId.ts"
 import type { ShardingConfig } from "./ShardingConfig.ts"
 import * as Snowflake from "./Snowflake.ts"
+
+const codecForJson = Schema.toCodecJson as RpcSerialization.CodecFor
 
 /**
  * Service for cluster mailbox persistence and reply delivery.
@@ -118,8 +122,16 @@ export class MessageStorage extends Context.Service<MessageStorage, {
 
   /**
    * Unregister the reply handlers for the specified ShardId.
+   *
+   * By default the waiters are resumed with `EntityNotAssignedToRunner`, so
+   * they can re-route the wait. With `interrupt: true` the waiters are
+   * interrupted with a cluster-abandon annotation instead, for when the runner
+   * is shutting down and the reply can never be observed here.
    */
-  readonly unregisterShardReplyHandlers: (shardId: ShardId.ShardId) => Effect.Effect<void>
+  readonly unregisterShardReplyHandlers: (
+    shardId: ShardId.ShardId,
+    options?: { readonly interrupt?: boolean | undefined }
+  ) => Effect.Effect<void>
 
   /**
    * Retrieves the unprocessed messages for the specified shards.
@@ -475,10 +487,23 @@ export type EncodedRepliesOptions<A> = {
  * @since 4.0.0
  */
 export const make = (
-  storage: Omit<
-    MessageStorage["Service"],
-    "registerReplyHandler" | "unregisterReplyHandler" | "unregisterShardReplyHandlers"
-  >
+  storage:
+    & Omit<
+      MessageStorage["Service"],
+      "saveReply" | "registerReplyHandler" | "unregisterReplyHandler" | "unregisterShardReplyHandlers"
+    >
+    & {
+      /**
+       * Save the provided `Reply`, returning the reply as it was persisted.
+       *
+       * Implementations that persist a different representation, such as a
+       * defect reply when the original cannot be encoded, return that fallback
+       * so reply handlers deliver exactly what storage recorded.
+       */
+      readonly saveReply: <R extends Rpc.Any>(
+        reply: Reply.ReplyWithContext<R>
+      ) => Effect.Effect<Reply.ReplyWithContext<R>, PersistenceError | MalformedMessage>
+    }
 ): Effect.Effect<MessageStorage["Service"]> =>
   Effect.sync(() => {
     type ReplyHandler = {
@@ -535,7 +560,7 @@ export const make = (
             ))
           }
         }),
-      unregisterShardReplyHandlers: (shardId) =>
+      unregisterShardReplyHandlers: (shardId, options) =>
         Effect.sync(() => {
           const id = shardId.toString()
           const shardSet = replyHandlersShard.get(id)
@@ -543,20 +568,22 @@ export const make = (
           replyHandlersShard.delete(id)
           shardSet.forEach((handler) => {
             replyHandlers.delete(handler.message.envelope.requestId)
-            handler.resume(Effect.fail(
-              new EntityNotAssignedToRunner({
-                address: handler.message.envelope.address
-              })
-            ))
+            handler.resume(
+              options?.interrupt ? ClusterAbandon.interrupt : Effect.fail(
+                new EntityNotAssignedToRunner({
+                  address: handler.message.envelope.address
+                })
+              )
+            )
           })
         }),
       saveReply(reply) {
         const requestId = reply.reply.requestId
-        return Effect.flatMap(storage.saveReply(reply), () => {
+        return Effect.flatMap(storage.saveReply(reply), (persisted) => {
           const handlers = replyHandlers.get(requestId)
           if (!handlers) {
             return Effect.void
-          } else if (reply.reply._tag === "WithExit") {
+          } else if (persisted.reply._tag === "WithExit") {
             replyHandlers.delete(requestId)
             for (let i = 0; i < handlers.length; i++) {
               const handler = handlers[i]
@@ -565,8 +592,8 @@ export const make = (
             }
           }
           return handlers.length === 1
-            ? handlers[0].respond(reply)
-            : Effect.forEach(handlers, (handler) => handler.respond(reply))
+            ? handlers[0].respond(persisted)
+            : Effect.forEach(handlers, (handler) => handler.respond(persisted))
         })
       }
     })
@@ -607,7 +634,7 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
             return Effect.succeed(result as SaveResult<any>)
           }
           const duplicate = result
-          const schema = Reply.Reply(message.rpc)
+          const schema = Reply.Reply(message.rpc, codecForJson)
           return Schema.decodeEffect(schema)(result.lastReceivedReply.value).pipe(
             Effect.provideContext(message.context),
             MalformedMessage.refail,
@@ -631,7 +658,22 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
         ),
         Effect.asVoid
       ),
-    saveReply: (reply) => Effect.flatMap(Reply.serializeOrDefect(reply), encoded.saveReply),
+    saveReply: (reply) =>
+      Reply.serialize(reply, codecForJson).pipe(
+        Effect.map((encodedReply) => ({ encodedReply, persisted: reply })),
+        Effect.catchTag("MalformedMessage", (error) => {
+          const persisted = Reply.ReplyWithContext.fromDefect({
+            id: reply.reply.id,
+            requestId: reply.reply.requestId,
+            defect: error
+          })
+          return Effect.map(
+            Effect.orDie(Reply.serialize(persisted, codecForJson)),
+            (encodedReply) => ({ encodedReply, persisted })
+          )
+        }),
+        Effect.flatMap(({ encodedReply, persisted }) => Effect.as(encoded.saveReply(encodedReply), persisted))
+      ),
     clearReplies: encoded.clearReplies,
     repliesFor: Effect.fnUntraced(function*(messages) {
       const requestIds = Arr.empty<string>()
@@ -655,7 +697,7 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
       return encoded.requestIdForPrimaryKey(primaryKey)
     },
     unprocessedMessages(shardIds, options) {
-      const storage = this as MessageStorage["Service"]
+      const storage = this as unknown as MessageStorage["Service"]
       const shards = Array.from(shardIds, (id) => id.toString())
       if (!Arr.isArrayNonEmpty(shards)) return Effect.succeed([])
       if (options?.addresses !== undefined && options.addresses.length === 0) return Effect.succeed([])
@@ -665,7 +707,7 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
       )
     },
     unprocessedMessagesById(messageIds) {
-      const storage = this as MessageStorage["Service"]
+      const storage = this as unknown as MessageStorage["Service"]
       const ids = Array.from(messageIds)
       if (!Arr.isArrayNonEmpty(ids)) return Effect.succeed([])
       return Effect.flatMap(
@@ -726,7 +768,8 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
               ? new Message.IncomingRequest({
                 envelope: message.envelope,
                 lastSentReply: envelope.lastSentReply,
-                respond: storage.saveReply
+                respond: storage.saveReply,
+                codecFor: codecForJson
               })
               : new Message.IncomingEnvelope({
                 envelope: message.envelope
@@ -752,7 +795,7 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
         if (ignoredRequests.has(reply.requestId)) return Effect.void
         const message = messages.get(reply.requestId)
         if (!message) return Effect.void
-        const schema = Reply.Reply(message.rpc)
+        const schema = Reply.Reply(message.rpc, codecForJson)
         return Schema.decodeEffect(schema)(reply).pipe(
           Effect.provideContext(message.context)
         ) as Effect.Effect<Reply.Reply<any>, Schema.SchemaError>
@@ -795,7 +838,7 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
 export const noop: MessageStorage["Service"] = Effect.runSync(make({
   saveRequest: () => Effect.succeed(SaveResult.Success()),
   saveEnvelope: () => Effect.void,
-  saveReply: () => Effect.void,
+  saveReply: (reply) => Effect.succeed(reply),
   clearReplies: () => Effect.void,
   repliesFor: () => Effect.succeed([]),
   repliesForUnfiltered: () => Effect.succeed([]),
@@ -1062,12 +1105,14 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
             const envelope = journal[i]
             const sameAddress = address.entityType === envelope.address.entityType &&
               address.entityId === envelope.address.entityId
-            if (!sameAddress || envelope._tag !== "Request") {
+            if (!sameAddress) {
               continue
             }
             unprocessed.delete(envelope)
             lastRead.delete(envelope)
-            requests.delete(envelope.requestId)
+            if (envelope._tag === "Request") {
+              requests.delete(envelope.requestId)
+            }
             journal.splice(i, 1)
           }
         }),
