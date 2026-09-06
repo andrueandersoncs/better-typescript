@@ -1,5 +1,7 @@
 import * as THREE from "three"
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js"
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js"
+import { createBoardMaterial } from "./board-materials"
 import { changeColors, entityStyles } from "./board-semantics"
 import type { CodeCategory } from "./review-types"
 import type { SchemaView, ScopeNode, ScopeVersion } from "./scope-types"
@@ -19,11 +21,11 @@ type BoxSpec = Footprint & { readonly x: number; readonly y: number; readonly z:
 const clamp = (value: number, minimum: number, maximum: number) => Math.min(maximum, Math.max(minimum, value))
 
 const fixedFootprints: Record<Exclude<CodeCategory, "Schema">, Footprint> = {
-  Service: { width: 2.34, depth: 2.16 },
-  Interface: { width: 2.72, depth: 1.62 },
-  Type: { width: 2.14, depth: 2.14 },
-  EffectfulFunction: { width: 3.34, depth: 1.44 },
-  Error: { width: 2.06, depth: 1.94 },
+  Service: { width: 2.72, depth: 2.16 },
+  Interface: { width: 3.1, depth: 1.74 },
+  Type: { width: 2.58, depth: 1.82 },
+  EffectfulFunction: { width: 3.42, depth: 1.64 },
+  Error: { width: 2.28, depth: 2.04 },
 }
 
 export const componentFootprint = (category: CodeCategory, schema?: SchemaView): Footprint => {
@@ -37,53 +39,44 @@ export const componentFootprint = (category: CodeCategory, schema?: SchemaView):
 }
 
 const mergedBoxes = (boxes: ReadonlyArray<BoxSpec>) => {
-  const geometries = boxes.map((box) => new THREE.BoxGeometry(box.width, box.height, box.depth)
-    .translate(box.x, box.y, box.z))
+  const geometries = boxes.map((box) => {
+    const radius = Math.min(box.width, box.height, box.depth) * 0.22
+    return new RoundedBoxGeometry(box.width, box.height, box.depth, 3, radius).translate(box.x, box.y, box.z)
+  })
   const merged = mergeGeometries(geometries, false)
   geometries.forEach((geometry) => geometry.dispose())
   return merged ?? new THREE.BufferGeometry()
 }
 
 const prismGeometry = (points: ReadonlyArray<Point>, bottom: number, height: number) => {
-  const contour = points.map((point) => new THREE.Vector2(point.x, point.z))
-  const triangles = THREE.ShapeUtils.triangulateShape(contour, [])
-  const count = points.length
-  const positions = new Float32Array(count * 6)
-
-  points.forEach((point, index) => {
-    const offset = index * 3
-    positions[offset] = point.x
-    positions[offset + 1] = bottom
-    positions[offset + 2] = point.z
-    positions[(count + index) * 3] = point.x
-    positions[(count + index) * 3 + 1] = bottom + height
-    positions[(count + index) * 3 + 2] = point.z
+  const shape = new THREE.Shape()
+  shape.moveTo(points[0].x, -points[0].z)
+  points.slice(1).forEach((point) => shape.lineTo(point.x, -point.z))
+  shape.closePath()
+  const bevel = Math.min(0.04, height * 0.2)
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    depth: Math.max(0.01, height - bevel * 2),
+    steps: 1,
+    bevelEnabled: true,
+    bevelThickness: bevel,
+    bevelSize: bevel,
+    bevelSegments: 3,
+    curveSegments: 1,
   })
-
-  const indices: number[] = []
-  triangles.forEach(([first, second, third]) => {
-    indices.push(count + first, count + third, count + second)
-    indices.push(first, second, third)
-  })
-  points.forEach((_, index) => {
-    const next = (index + 1) % count
-    indices.push(index, count + index, count + next, index, count + next, next)
-  })
-
-  const geometry = new THREE.BufferGeometry()
-  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3))
-  geometry.setIndex(indices)
+  geometry.rotateX(-Math.PI / 2)
+  geometry.translate(0, bottom + bevel, 0)
   geometry.computeVertexNormals()
   return geometry
 }
 
 const createMaterials = (category: CodeCategory) => {
   const entity = new THREE.Color(entityStyles[category].color)
-  const top = entity.clone().lerp(new THREE.Color("#f5f0d4"), 0.18)
+  const body = entity.clone().offsetHSL(0, 0.08, -0.1)
+  const top = entity.clone().offsetHSL(0, 0.04, 0.025).lerp(new THREE.Color("#fff1d6"), 0.08)
   return {
-    primary: new THREE.MeshStandardMaterial({ color: entity, roughness: 0.62, metalness: 0.27 }),
-    top: new THREE.MeshStandardMaterial({ color: top, roughness: 0.46, metalness: 0.48 }),
-    circuit: new THREE.MeshStandardMaterial({ color: "#254d43", roughness: 0.7, metalness: 0.16 }),
+    primary: createBoardMaterial({ color: body, surface: "component", accent: top }),
+    top: createBoardMaterial({ color: top, surface: "component", accent: "#fff2d8" }),
+    circuit: createBoardMaterial({ color: "#12372f", surface: "detail", accent: entity }),
   }
 }
 
@@ -129,6 +122,8 @@ export const createBoardComponent = (options: ComponentOptions) => {
 
   const addSolid = (geometry: THREE.BufferGeometry, material: THREE.MeshStandardMaterial, name: string) => {
     const mesh = new THREE.Mesh(geometry, material)
+    mesh.castShadow = true
+    mesh.receiveShadow = true
     mesh.name = name
     mesh.userData.scopeNodeId = node.id
     group.add(mesh)
@@ -139,123 +134,145 @@ export const createBoardComponent = (options: ComponentOptions) => {
 
   const addSchema = () => {
     const fields = version?.schema?.fields ?? []
-    const rowCount = Math.min(fields.length, 7)
-    const plateCount = Math.max(2, Math.min(4, Math.ceil(Math.max(rowCount, 1) / 2)))
-    const plateDepth = footprint.depth / (plateCount + 0.7)
-    const plates: BoxSpec[] = []
-    for (let index = 0; index < plateCount; index += 1) {
-      const width = footprint.width * (0.94 - index * 0.07)
-      plates.push({
-        width,
-        depth: plateDepth * 0.86,
-        height: 0.14,
-        x: 0,
-        y: 0.09 + index * 0.08,
-        z: (index - (plateCount - 1) / 2) * plateDepth,
-      })
-    }
-    addSolid(mergedBoxes(plates), palette.primary, "schema-plates")
+    const rowCount = clamp(fields.length || 3, 2, 5)
+    const cardWidth = footprint.width * 0.9
+    const cardDepth = footprint.depth * 0.82
+    addSolid(mergedBoxes([
+      { width: cardWidth * 0.94, depth: cardDepth * 0.92, height: 0.1, x: 0.08, y: 0.055, z: 0.08 },
+      { width: cardWidth, depth: cardDepth, height: 0.13, x: -0.04, y: 0.13, z: -0.04 },
+    ]), palette.primary, "schema-record-card")
+    addSolid(mergedBoxes([
+      { width: cardWidth * 0.72, depth: 0.13, height: 0.055, x: -cardWidth * 0.04, y: 0.225, z: -cardDepth * 0.31 },
+      { width: 0.12, depth: cardDepth * 0.7, height: 0.045, x: -cardWidth * 0.39, y: 0.22, z: cardDepth * 0.06 },
+    ]), palette.top, "schema-record-header")
 
-    if (rowCount > 0) {
-      const rows: BoxSpec[] = []
-      fields.slice(0, 7).forEach((field, index) => {
-        const plate = index % plateCount
-        const lane = Math.floor(index / plateCount)
-        const width = footprint.width * (field.optional ? 0.36 : 0.52)
-        rows.push({
-          width,
-          depth: 0.055,
-          height: 0.035,
-          x: field.mutable ? -footprint.width * 0.09 : footprint.width * 0.06,
-          y: 0.19 + plate * 0.08,
-          z: (plate - (plateCount - 1) / 2) * plateDepth + (lane - 0.5) * 0.1,
-        })
-      })
-      addSolid(mergedBoxes(rows), palette.circuit, "schema-field-rows")
+    const rowSpan = cardDepth * 0.47
+    const rows: BoxSpec[] = []
+    for (let index = 0; index < rowCount; index += 1) {
+      const field = fields[index]
+      const z = -cardDepth * 0.08 + index * rowSpan / Math.max(1, rowCount - 1)
+      const lineWidth = cardWidth * (field?.optional ? 0.42 : 0.57)
+      rows.push(
+        { width: 0.13, depth: 0.13, height: 0.05, x: -cardWidth * 0.29, y: 0.225, z },
+        { width: lineWidth, depth: 0.075, height: 0.045, x: cardWidth * (field?.mutable ? 0.08 : 0.04), y: 0.225, z },
+      )
     }
+    addSolid(mergedBoxes(rows), palette.circuit, "schema-field-rows")
   }
 
   const addService = () => {
-    const radius = Math.min(footprint.width, footprint.depth) * 0.46
-    const hub = new THREE.CylinderGeometry(radius, radius, 0.26, 6)
-    hub.rotateY(Math.PI / 6)
-    hub.translate(0, 0.14, 0)
-    addSolid(hub, palette.primary, "service-hub")
-
-    const ring = new THREE.TorusGeometry(radius * 0.47, 0.065, 6, 18)
-    ring.rotateX(Math.PI / 2)
-    ring.translate(0, 0.31, 0)
-    addSolid(ring, palette.top, "service-inset-ring")
-
-    const ports: BoxSpec[] = Array.from({ length: 6 }, (_, index) => {
-      const angle = Math.PI / 6 + index * Math.PI / 3
-      return {
-        width: 0.16,
-        depth: 0.16,
-        height: 0.07,
-        x: Math.cos(angle) * radius * 0.68,
-        y: 0.31,
-        z: Math.sin(angle) * radius * 0.68,
-      }
-    })
-    addSolid(mergedBoxes(ports), palette.circuit, "service-ports")
+    const rackWidth = footprint.width * 0.88
+    const rackDepth = footprint.depth * 0.72
+    addSolid(mergedBoxes([
+      { width: rackWidth, depth: rackDepth, height: 0.13, x: 0, y: 0.075, z: 0.06 },
+      { width: rackWidth * 0.95, depth: rackDepth, height: 0.13, x: 0, y: 0.205, z: 0 },
+      { width: rackWidth * 0.9, depth: rackDepth, height: 0.13, x: 0, y: 0.335, z: -0.06 },
+    ]), palette.primary, "service-server-stack")
+    addSolid(mergedBoxes([
+      { width: rackWidth * 0.82, depth: 0.11, height: 0.055, x: 0, y: 0.145, z: rackDepth * 0.43 },
+      { width: rackWidth * 0.78, depth: 0.11, height: 0.055, x: 0, y: 0.275, z: rackDepth * 0.4 },
+      { width: rackWidth * 0.74, depth: 0.11, height: 0.055, x: 0, y: 0.405, z: rackDepth * 0.37 },
+    ]), palette.top, "service-rack-fascias")
+    addSolid(mergedBoxes([
+      ...Array.from({ length: 3 }, (_, index) => ({
+        width: 0.18,
+        depth: 0.17,
+        height: 0.05,
+        x: (index - 1) * rackWidth * 0.18,
+        y: 0.43,
+        z: rackDepth * 0.2,
+      })),
+      { width: 0.09, depth: 0.09, height: 0.05, x: rackWidth * 0.32, y: 0.43, z: rackDepth * 0.2 },
+      { width: 0.09, depth: 0.09, height: 0.05, x: rackWidth * 0.39, y: 0.43, z: rackDepth * 0.2 },
+    ]), palette.circuit, "service-network-ports")
   }
 
   const addInterface = () => {
-    const rail = 0.16
-    const outerWidth = footprint.width * 0.92
-    const outerDepth = footprint.depth * 0.84
+    const outerWidth = footprint.width * 0.9
+    const outerDepth = footprint.depth * 0.76
+    const rail = 0.18
+    const armWidth = outerWidth * 0.22
     addSolid(mergedBoxes([
-      { width: outerWidth, depth: rail, height: 0.22, x: 0, y: 0.12, z: -outerDepth / 2 + rail / 2 },
-      { width: outerWidth, depth: rail, height: 0.22, x: 0, y: 0.12, z: outerDepth / 2 - rail / 2 },
-      { width: rail, depth: outerDepth - rail * 2, height: 0.22, x: -outerWidth / 2 + rail / 2, y: 0.12, z: 0 },
-      { width: rail, depth: outerDepth - rail * 2, height: 0.22, x: outerWidth / 2 - rail / 2, y: 0.12, z: 0 },
-    ]), palette.primary, "interface-frame")
+      { width: rail, depth: outerDepth, height: 0.22, x: -outerWidth * 0.43, y: 0.12, z: 0 },
+      { width: armWidth, depth: rail, height: 0.22, x: -outerWidth * 0.34, y: 0.12, z: -outerDepth / 2 + rail / 2 },
+      { width: armWidth, depth: rail, height: 0.22, x: -outerWidth * 0.34, y: 0.12, z: outerDepth / 2 - rail / 2 },
+      { width: rail, depth: outerDepth, height: 0.22, x: outerWidth * 0.43, y: 0.12, z: 0 },
+      { width: armWidth, depth: rail, height: 0.22, x: outerWidth * 0.34, y: 0.12, z: -outerDepth / 2 + rail / 2 },
+      { width: armWidth, depth: rail, height: 0.22, x: outerWidth * 0.34, y: 0.12, z: outerDepth / 2 - rail / 2 },
+    ]), palette.primary, "interface-contract-brackets")
 
-    const pins: BoxSpec[] = Array.from({ length: 5 }, (_, index) => ({
-      width: 0.08,
-      depth: 0.13,
-      height: 0.055,
-      x: (index - 2) * (outerWidth * 0.13),
+    const pinRows = [-0.24, 0, 0.24]
+    addSolid(mergedBoxes(pinRows.map((offset) => ({
+      width: outerWidth * 0.58,
+      depth: 0.1,
+      height: 0.07,
+      x: 0,
       y: 0.255,
-      z: -outerDepth * 0.31,
-    }))
-    addSolid(mergedBoxes(pins), palette.circuit, "interface-socket-pins")
+      z: outerDepth * offset,
+    }))), palette.top, "interface-matching-pins")
+    addSolid(mergedBoxes(pinRows.flatMap((offset) => [
+      { width: 0.16, depth: 0.16, height: 0.045, x: -outerWidth * 0.25, y: 0.305, z: outerDepth * offset },
+      { width: 0.16, depth: 0.16, height: 0.045, x: outerWidth * 0.25, y: 0.305, z: outerDepth * offset },
+    ])), palette.circuit, "interface-sockets")
   }
 
   const addType = () => {
-    const radius = Math.min(footprint.width, footprint.depth) * 0.46
+    const halfWidth = footprint.width * 0.46
+    const halfDepth = footprint.depth * 0.42
     addSolid(prismGeometry([
-      { x: 0, z: -radius },
-      { x: radius, z: 0 },
-      { x: 0, z: radius },
-      { x: -radius, z: 0 },
-    ], 0.02, 0.28), palette.primary, "type-diamond")
-    addSolid(prismGeometry([
-      { x: 0, z: -radius * 0.36 },
-      { x: radius * 0.36, z: 0 },
-      { x: 0, z: radius * 0.36 },
-      { x: -radius * 0.36, z: 0 },
-    ], 0.3, 0.055), palette.top, "type-diamond-inset")
+      { x: -halfWidth, z: -halfDepth },
+      { x: halfWidth * 0.45, z: -halfDepth },
+      { x: halfWidth, z: 0 },
+      { x: halfWidth * 0.45, z: halfDepth },
+      { x: -halfWidth, z: halfDepth },
+    ], 0.02, 0.26), palette.primary, "type-tag")
+
+    const hole = new THREE.CylinderGeometry(0.13, 0.13, 0.05, 18)
+    hole.translate(-halfWidth * 0.68, 0.305, 0)
+    addSolid(hole, palette.circuit, "type-tag-hole")
+    addSolid(mergedBoxes([
+      { width: halfWidth * 0.72, depth: 0.13, height: 0.06, x: halfWidth * 0.12, y: 0.31, z: -halfDepth * 0.32 },
+      { width: 0.14, depth: halfDepth * 0.92, height: 0.06, x: halfWidth * 0.12, y: 0.31, z: halfDepth * 0.05 },
+    ]), palette.top, "type-letter-t")
   }
 
   const addFunction = () => {
     const halfWidth = footprint.width * 0.47
-    const halfDepth = footprint.depth * 0.43
-    const neck = footprint.width * 0.1
-    addSolid(prismGeometry([
-      { x: -halfWidth, z: -halfDepth * 0.44 },
-      { x: neck, z: -halfDepth * 0.44 },
-      { x: neck, z: -halfDepth },
-      { x: halfWidth, z: 0 },
-      { x: neck, z: halfDepth },
-      { x: neck, z: halfDepth * 0.44 },
-      { x: -halfWidth, z: halfDepth * 0.44 },
-    ], 0.02, 0.28), palette.primary, "function-arrow")
+    const halfDepth = footprint.depth * 0.42
+    addSolid(mergedBoxes([{
+      width: footprint.width * 0.92,
+      depth: footprint.depth * 0.72,
+      height: 0.13,
+      x: 0,
+      y: 0.075,
+      z: 0,
+    }]), palette.primary, "function-pipeline-base")
+    addSolid(mergedBoxes([{
+      width: footprint.width * 0.24,
+      depth: footprint.depth * 0.58,
+      height: 0.19,
+      x: -footprint.width * 0.03,
+      y: 0.225,
+      z: 0,
+    }]), palette.top, "function-processor")
     addSolid(mergedBoxes([
-      { width: footprint.width * 0.32, depth: 0.09, height: 0.045, x: -footprint.width * 0.18, y: 0.31, z: 0 },
-      { width: 0.09, depth: footprint.depth * 0.2, height: 0.045, x: footprint.width * 0.16, y: 0.31, z: 0 },
-    ]), palette.circuit, "function-operation-mark")
+      { width: footprint.width * 0.24, depth: 0.075, height: 0.05, x: -footprint.width * 0.28, y: 0.18, z: -halfDepth * 0.28 },
+      { width: footprint.width * 0.24, depth: 0.075, height: 0.05, x: -footprint.width * 0.28, y: 0.18, z: halfDepth * 0.28 },
+      { width: 0.14, depth: 0.17, height: 0.055, x: -halfWidth * 0.84, y: 0.18, z: -halfDepth * 0.28 },
+      { width: 0.14, depth: 0.17, height: 0.055, x: -halfWidth * 0.84, y: 0.18, z: halfDepth * 0.28 },
+      { width: 0.11, depth: halfDepth * 0.74, height: 0.055, x: -footprint.width * 0.07, y: 0.35, z: 0 },
+      { width: footprint.width * 0.1, depth: 0.08, height: 0.055, x: -footprint.width * 0.025, y: 0.35, z: -halfDepth * 0.28 },
+      { width: footprint.width * 0.08, depth: 0.08, height: 0.055, x: -footprint.width * 0.035, y: 0.35, z: 0 },
+    ]), palette.circuit, "function-inputs-and-f")
+    addSolid(prismGeometry([
+      { x: footprint.width * 0.1, z: -halfDepth * 0.13 },
+      { x: halfWidth * 0.58, z: -halfDepth * 0.13 },
+      { x: halfWidth * 0.58, z: -halfDepth * 0.38 },
+      { x: halfWidth * 0.86, z: 0 },
+      { x: halfWidth * 0.58, z: halfDepth * 0.38 },
+      { x: halfWidth * 0.58, z: halfDepth * 0.13 },
+      { x: footprint.width * 0.1, z: halfDepth * 0.13 },
+    ], 0.15, 0.12), palette.top, "function-output-arrow")
   }
 
   const addError = () => {
@@ -265,10 +282,15 @@ export const createBoardComponent = (options: ComponentOptions) => {
       { x: 0, z: -halfDepth },
       { x: halfWidth, z: halfDepth },
       { x: -halfWidth, z: halfDepth },
-    ], 0.02, 0.26), palette.primary, "error-warning-triangle")
+    ], 0.02, 0.26), palette.primary, "error-warning-sign")
+    addSolid(prismGeometry([
+      { x: 0, z: -halfDepth * 0.66 },
+      { x: halfWidth * 0.7, z: halfDepth * 0.66 },
+      { x: -halfWidth * 0.7, z: halfDepth * 0.66 },
+    ], 0.27, 0.055), palette.top, "error-warning-face")
     addSolid(mergedBoxes([
-      { width: 0.11, depth: footprint.depth * 0.28, height: 0.06, x: 0, y: 0.3, z: -footprint.depth * 0.03 },
-      { width: 0.14, depth: 0.14, height: 0.06, x: 0, y: 0.3, z: footprint.depth * 0.25 },
+      { width: 0.12, depth: footprint.depth * 0.27, height: 0.06, x: 0, y: 0.355, z: -footprint.depth * 0.025 },
+      { width: 0.15, depth: 0.15, height: 0.06, x: 0, y: 0.355, z: footprint.depth * 0.25 },
     ]), palette.circuit, "error-exclamation")
   }
 
@@ -291,10 +313,10 @@ export const createBoardComponent = (options: ComponentOptions) => {
   }
 
   if (comparison && node.change !== "unchanged") {
-    const changeMaterial = new THREE.MeshStandardMaterial({
+    const changeMaterial = createBoardMaterial({
       color: changeColors[node.change],
-      roughness: 0.52,
-      metalness: 0.34,
+      surface: "status",
+      accent: "#fff4d6",
     })
     materials.push(changeMaterial)
     addSolid(mergedBoxes([{
@@ -302,7 +324,7 @@ export const createBoardComponent = (options: ComponentOptions) => {
       depth: Math.min(0.24, footprint.depth * 0.16),
       height: 0.05,
       x: -footprint.width * 0.12,
-      y: 0.32,
+      y: 0.5,
       z: -footprint.depth * 0.12,
     }]), changeMaterial, "change-status-mark")
   }

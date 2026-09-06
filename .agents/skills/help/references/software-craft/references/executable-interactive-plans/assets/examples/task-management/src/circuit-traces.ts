@@ -1,5 +1,6 @@
 import * as THREE from "three"
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js"
+import { createBoardMaterial } from "./board-materials"
 import { changeColors, relationshipStyles } from "./board-semantics"
 import type { ScopeConnection } from "./scope-types"
 import type { ComponentContacts } from "./board-components"
@@ -360,7 +361,7 @@ export const createCircuitTraces = (options: CircuitTraceOptions) => {
     endpointOrders.set(connection.id, [fromOrder, toOrder])
   })
 
-  const clearanceMaterial = new THREE.MeshStandardMaterial({ color: maskMaterialColor, roughness: 0.78, metalness: 0.05 })
+  const clearanceMaterial = createBoardMaterial({ color: maskMaterialColor, surface: "substrate" })
   const changeGeometries = new Map<string, THREE.BufferGeometry[]>()
   const traces: TraceVisual[] = []
   const placedPaths: Array<{ readonly points: ReadonlyArray<Point>; readonly layer: number; readonly clearance: number }> = []
@@ -404,7 +405,13 @@ export const createCircuitTraces = (options: CircuitTraceOptions) => {
     while (occupiedLayers.has(layer)) layer += 1
     placedPaths.push({ points: path, layer, clearance: routingClearance })
     const y = traceY + layer * layerStep
-    const material = new THREE.MeshStandardMaterial({ color: style.color, emissive: style.color, emissiveIntensity: 0.12, roughness: 0.5, metalness: 0.35 })
+    const material = createBoardMaterial({
+      color: style.color,
+      surface: "trace",
+      accent: style.color,
+      emissive: style.color,
+      emissiveIntensity: 0.08,
+    })
     const trace = new THREE.Group()
     trace.name = `Circuit trace ${connection.id}`
     trace.userData.connectionId = connection.id
@@ -431,8 +438,17 @@ export const createCircuitTraces = (options: CircuitTraceOptions) => {
     copperGeometries.push(...terminalGeometries(path, style.marker, y))
     const maskGeometry = merge(maskGeometries)
     const copperGeometry = merge(copperGeometries)
-    if (maskGeometry) trace.add(new THREE.Mesh(maskGeometry, clearanceMaterial))
-    if (copperGeometry) trace.add(new THREE.Mesh(copperGeometry, material))
+    if (maskGeometry) {
+      const mask = new THREE.Mesh(maskGeometry, clearanceMaterial)
+      mask.receiveShadow = true
+      trace.add(mask)
+    }
+    if (copperGeometry) {
+      const copper = new THREE.Mesh(copperGeometry, material)
+      copper.castShadow = true
+      copper.receiveShadow = true
+      trace.add(copper)
+    }
     group.add(trace)
     traces.push({ connection, material })
     if (options.comparison && connection.change !== "unchanged") {
@@ -446,14 +462,23 @@ export const createCircuitTraces = (options: CircuitTraceOptions) => {
   changeGeometries.forEach((geometries, color) => {
     const geometry = merge(geometries)
     if (!geometry) return
-    const material = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.24, roughness: 0.46, metalness: 0.3 })
-    group.add(new THREE.Mesh(geometry, material))
+    const material = createBoardMaterial({
+      color,
+      surface: "status",
+      accent: "#fff4d6",
+      emissive: color,
+      emissiveIntensity: 0.16,
+    })
+    const mesh = new THREE.Mesh(geometry, material)
+    mesh.castShadow = true
+    mesh.receiveShadow = true
+    group.add(mesh)
   })
 
   const select = (id: string) => {
     traces.forEach((trace) => {
       const incident = !id || trace.connection.from === id || trace.connection.to === id
-      trace.material.emissiveIntensity = incident && id ? 0.45 : 0.12
+      trace.material.emissiveIntensity = incident && id ? 0.34 : 0.08
     })
   }
 

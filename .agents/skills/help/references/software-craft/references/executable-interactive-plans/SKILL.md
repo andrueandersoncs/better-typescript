@@ -53,7 +53,7 @@ Replace plan data, current and proposed declaration source, story tests, and the
 
 ### 3. Review scope, source, then evidence
 
-Start with the top-down Three scope board, or its keyboard-accessible no-WebGL list, to review declared edits, source context, and structural/dependency effects. Then use the exact Monaco current/proposed source diff as the authority for Schemas, Interfaces, Types, and function signatures. Finally run and edit Story Tests, make the explicit approval decision, and export the review.
+Start with the physically lit Three scope board, or its keyboard-accessible no-WebGL list, to review declared edits, source context, and structural/dependency effects. Then use the exact Monaco current/proposed source diff as the authority for Schemas, Interfaces, Types, and function signatures. Finally run and edit Story Tests, make the explicit approval decision, and export the review.
 
 The server binds results to current test and dependency content, invalidates only affected tests, and blocks approval for unresolved save failures. Source changes clear the decision; approval requires every current property to pass. Use [Goodhart's Law](../../../software-laws/references/reference.md#goodharts-law) to distinguish green fixture-agreement evidence from the required human decision.
 

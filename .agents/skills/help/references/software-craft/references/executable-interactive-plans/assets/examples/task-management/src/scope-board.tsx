@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import * as THREE from "three"
 import { OrbitControls } from "three/addons/controls/OrbitControls.js"
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js"
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js"
+import { createBoardMaterial } from "./board-materials"
 import { createCircuitTraces } from "./circuit-traces"
 import { componentFootprint, createBoardComponent } from "./board-components"
 import { changeColors, changeNames, entityStyles, relationshipStyles } from "./board-semantics"
@@ -16,7 +19,12 @@ type ScopeBoardProps = {
 
 type Point = { readonly x: number; readonly z: number }
 type NodeVisual = ReturnType<typeof createBoardComponent>
-type CameraOrientation = { azimuth: number; polar: number }
+type CameraPose = {
+  readonly position: readonly [number, number, number]
+  readonly target: readonly [number, number, number]
+  readonly boardWidth: number
+  readonly boardDepth: number
+}
 type BoardRuntime = {
   readonly select: (id: string) => void
   readonly reset: () => void
@@ -29,7 +37,6 @@ type ComparisonMode = "comparison" | "current" | "proposed"
 
 
 const clamp = (value: number, minimum: number, maximum: number) => Math.min(maximum, Math.max(minimum, value))
-const defaultCameraOrientation: CameraOrientation = { azimuth: 0, polar: 0.00001 }
 const versionFor = (node: ScopeNode, mode: ComparisonMode): ScopeVersion | undefined => mode === "current"
   ? node.current
   : mode === "proposed"
@@ -67,8 +74,8 @@ const boardLayout = (nodes: ReadonlyArray<ScopeNode>, mode: ComparisonMode, comp
   const maximumGroupSize = Math.max(1, ...groups.map((group) => group.nodes.length))
   const localColumns = Math.min(4, Math.max(1, Math.ceil(Math.sqrt(maximumGroupSize))))
   const localRows = Math.ceil(maximumGroupSize / localColumns)
-  const regionWidth = Math.max(6.4, localColumns * 4.8 + 1.8)
-  const regionDepth = Math.max(5.6, localRows * 4.2 + 2.2)
+  const regionWidth = Math.max(6.4, localColumns * 4.2 + 1.45)
+  const regionDepth = Math.max(5.6, localRows * 3.55 + 1.7)
   const groupColumns = compact ? 1 : Math.max(1, Math.ceil(Math.sqrt(groups.length)))
   const groupRows = Math.ceil(groups.length / groupColumns)
   const boardWidth = groupColumns * (regionWidth + 0.55) + 0.75
@@ -86,8 +93,8 @@ const boardLayout = (nodes: ReadonlyArray<ScopeNode>, mode: ComparisonMode, comp
       const column = index % localColumns
       const row = Math.floor(index / localColumns)
       positions.set(node.id, {
-        x: centerX + (column - (localColumns - 1) / 2) * 4.8,
-        z: centerZ + (row - (localRows - 1) / 2) * 4.2,
+        x: centerX + (column - (localColumns - 1) / 2) * 4.2,
+        z: centerZ + (row - (localRows - 1) / 2) * 3.55,
       })
     })
   })
@@ -130,9 +137,7 @@ export const ScopeBoard = ({ graph, selectedId, onSelect, disabled = false }: Sc
   const [compact, setCompact] = useState(() => window.matchMedia("(max-width: 620px)").matches)
   const [hoveredId, setHoveredId] = useState("")
   const selectedIdRef = useRef(selectedId)
-  const cameraOrientationRef = useRef<CameraOrientation | null>(null)
-  if (cameraOrientationRef.current === null) cameraOrientationRef.current = { ...defaultCameraOrientation }
-  const cameraOrientation = cameraOrientationRef.current
+  const cameraPoseRef = useRef<CameraPose | undefined>(undefined)
   const [rendererStatus, setRendererStatus] = useState<"checking" | "ready" | "fallback">("checking")
   selectRef.current = onSelect
   disabledRef.current = disabled
@@ -156,7 +161,7 @@ export const ScopeBoard = ({ graph, selectedId, onSelect, disabled = false }: Sc
 
     let renderer: THREE.WebGLRenderer
     try {
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "low-power" })
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" })
     } catch {
       setRendererStatus("fallback")
       return
@@ -166,50 +171,82 @@ export const ScopeBoard = ({ graph, selectedId, onSelect, disabled = false }: Sc
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75))
     renderer.outputColorSpace = THREE.SRGBColorSpace
     renderer.toneMapping = THREE.ACESFilmicToneMapping
-    renderer.setClearColor(0xf6f7f2, 0)
+    renderer.toneMappingExposure = 0.94
+    renderer.shadowMap.enabled = true
+    renderer.shadowMap.type = THREE.PCFShadowMap
+    renderer.setClearColor(0xe8eee8, 0)
     renderer.domElement.className = "scope-board-canvas"
     renderer.domElement.setAttribute("aria-hidden", "true")
     stage.prepend(renderer.domElement)
 
     const scene = new THREE.Scene()
-    const cameraRadius = Math.hypot(layout.boardWidth, layout.boardDepth) + 2
-    const camera = new THREE.OrthographicCamera(-8, 8, 8, -8, 0.1, cameraRadius * 2)
-    camera.position.setFromSphericalCoords(cameraRadius, cameraOrientation.polar, cameraOrientation.azimuth)
-    camera.lookAt(0, 0, 0)
+    const boardSpan = Math.max(layout.boardWidth, layout.boardDepth)
+    const camera = new THREE.PerspectiveCamera(36, 1, 0.1, boardSpan * 12)
     const controls = new OrbitControls(camera, renderer.domElement)
-    controls.target.set(0, 0, 0)
-    controls.enableDamping = false
-    controls.enablePan = false
-    controls.enableZoom = false
-    controls.autoRotate = false
-    controls.minPolarAngle = defaultCameraOrientation.polar
-    controls.maxPolarAngle = Math.PI / 2 - 0.18
+    controls.enablePan = true
+    controls.enableRotate = true
+    controls.enableZoom = true
+    controls.minPolarAngle = 0.08
+    controls.maxPolarAngle = Math.PI / 2 - 0.035
+    controls.keyPanSpeed = 14
+    controls.listenToKeyEvents(stage)
     controls.enabled = !disabledRef.current
-    controls.update()
-    scene.add(new THREE.HemisphereLight(0xf2f7ec, 0x173b31, 1.8))
-    const keyLight = new THREE.DirectionalLight(0xffffff, 2)
-    keyLight.position.set(-7, 14, 9)
+
+    const createEnvironmentTarget = () => {
+      const generator = new THREE.PMREMGenerator(renderer)
+      const environmentScene = new RoomEnvironment()
+      const target = generator.fromScene(environmentScene, 0.04)
+      disposeObject(environmentScene)
+      generator.dispose()
+      return target
+    }
+    let environmentTarget = createEnvironmentTarget()
+    scene.environment = environmentTarget.texture
+    scene.environmentIntensity = 0.34
+
+    const hemisphere = new THREE.HemisphereLight(0xe8f4ff, 0x061d18, 0.72)
+    scene.add(hemisphere)
+    const keyLight = new THREE.DirectionalLight(0xfff0d2, 2.15)
+    keyLight.position.set(-boardSpan * 0.38, boardSpan * 0.72, boardSpan * 0.42)
+    keyLight.castShadow = true
+    keyLight.shadow.mapSize.set(1024, 1024)
+    keyLight.shadow.camera.left = -boardSpan * 0.65
+    keyLight.shadow.camera.right = boardSpan * 0.65
+    keyLight.shadow.camera.top = boardSpan * 0.65
+    keyLight.shadow.camera.bottom = -boardSpan * 0.65
+    keyLight.shadow.camera.near = 0.1
+    keyLight.shadow.camera.far = boardSpan * 2.2
+    keyLight.shadow.bias = -0.00025
+    keyLight.shadow.normalBias = 0.025
     scene.add(keyLight)
+    const fillLight = new THREE.DirectionalLight(0xb7ddff, 0.62)
+    fillLight.position.set(boardSpan * 0.46, boardSpan * 0.34, boardSpan * 0.3)
+    scene.add(fillLight)
+    const rimLight = new THREE.DirectionalLight(0xffbd82, 0.42)
+    rimLight.position.set(0, boardSpan * 0.28, -boardSpan * 0.55)
+    scene.add(rimLight)
 
     const board = new THREE.Mesh(
-      new THREE.BoxGeometry(layout.boardWidth, 0.26, layout.boardDepth),
-      new THREE.MeshStandardMaterial({ color: 0x245f4d, roughness: 0.77, metalness: 0.13 }),
+      new RoundedBoxGeometry(layout.boardWidth, 0.32, layout.boardDepth, 4, 0.12),
+      createBoardMaterial({ color: "#0b342b", surface: "substrate", accent: "#4b9278" }),
     )
-    board.position.y = -0.14
+    board.position.y = -0.18
+    board.receiveShadow = true
     scene.add(board)
 
     layout.regions.forEach((region) => {
       const regionPlate = new THREE.Mesh(
-        new THREE.BoxGeometry(layout.regionWidth, 0.045, layout.regionDepth),
-        new THREE.MeshStandardMaterial({ color: 0x397762, roughness: 0.82, metalness: 0.08, transparent: true, opacity: 0.68 }),
+        new RoundedBoxGeometry(layout.regionWidth, 0.055, layout.regionDepth, 3, 0.075),
+        createBoardMaterial({ color: "#185340", surface: "region", accent: "#72b99b", transparent: true, opacity: 0.86 }),
       )
-      regionPlate.position.set(region.x, 0.01, region.z)
+      regionPlate.position.set(region.x, 0.005, region.z)
+      regionPlate.receiveShadow = true
       scene.add(regionPlate)
       const perimeter = new THREE.LineSegments(
-        new THREE.EdgesGeometry(new THREE.BoxGeometry(layout.regionWidth, 0.06, layout.regionDepth)),
-        new THREE.LineBasicMaterial({ color: 0x9bc8ac, transparent: true, opacity: 0.42 }),
+        new THREE.EdgesGeometry(new RoundedBoxGeometry(layout.regionWidth, 0.065, layout.regionDepth, 3, 0.075)),
+        new THREE.LineBasicMaterial({ color: 0xb5dec6, transparent: true, opacity: 0.52 }),
       )
-      perimeter.position.set(region.x, 0.04, region.z)
+      perimeter.position.set(region.x, 0.045, region.z)
       scene.add(perimeter)
     })
 
@@ -241,17 +278,19 @@ export const ScopeBoard = ({ graph, selectedId, onSelect, disabled = false }: Sc
     const labelPoint = new THREE.Vector3()
     const fitPoint = new THREE.Vector3()
     const regionPoint = new THREE.Vector3()
-    const cameraOffset = new THREE.Vector3()
-    const cameraSpherical = new THREE.Spherical()
+    const cameraTarget = new THREE.Vector3(0, 0.12, 0)
+    const defaultCameraDirection = new THREE.Vector3(0, 0.92, 0.39).normalize()
     let viewport = { width: 0, height: 0 }
+    let cameraInitialized = false
     const labelBounds = components.map((component) => ({ id: component.id, left: 0, top: 0, width: 0, height: 0, hidden: true }))
 
     const updateLabels = () => {
-      const labelWidth = clamp(viewport.width / (camera.right - camera.left) * 4.45, 44, 124)
+      const visibleHeight = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.position.distanceTo(controls.target)
+      const labelWidth = clamp(viewport.height / visibleHeight * 4.45, 62, 150)
       components.forEach((component, index) => {
         const label = nodeLabelRefs.current.get(component.id)
         if (!label) return
-        labelPoint.set(component.x, 0.12, component.z + component.depth / 2 + 0.35).project(camera)
+        labelPoint.set(component.x, 0.08, component.z + component.depth / 2 + 0.56).project(camera)
         const bounds = labelBounds[index]
         bounds.left = (labelPoint.x * 0.5 + 0.5) * viewport.width
         bounds.top = (-labelPoint.y * 0.5 + 0.5) * viewport.height
@@ -282,37 +321,50 @@ export const ScopeBoard = ({ graph, selectedId, onSelect, disabled = false }: Sc
       updateLabels()
     }
 
-    const fitCamera = () => {
-      if (!viewport.width || !viewport.height) return
+    const fitDistanceFor = (direction: THREE.Vector3) => {
+      camera.position.copy(cameraTarget).add(direction)
+      camera.lookAt(cameraTarget)
       camera.updateMatrixWorld(true)
-      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+      const tanVertical = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))
+      const tanHorizontal = tanVertical * camera.aspect
+      let distance = 1
       for (let corner = 0; corner < 8; corner += 1) {
-        fitPoint.set((corner & 1 ? 1 : -1) * layout.boardWidth / 2, corner & 4 ? 0.9 : -0.26, (corner & 2 ? 1 : -1) * layout.boardDepth / 2).applyMatrix4(camera.matrixWorldInverse)
-        minX = Math.min(minX, fitPoint.x); maxX = Math.max(maxX, fitPoint.x)
-        minY = Math.min(minY, fitPoint.y); maxY = Math.max(maxY, fitPoint.y)
+        fitPoint.set(
+          (corner & 1 ? 1 : -1) * layout.boardWidth / 2,
+          corner & 4 ? 0.95 : -0.34,
+          (corner & 2 ? 1 : -1) * layout.boardDepth / 2,
+        ).applyMatrix4(camera.matrixWorldInverse)
+        const alongView = fitPoint.z + 1
+        distance = Math.max(
+          distance,
+          alongView + Math.abs(fitPoint.x) * 1.08 / tanHorizontal,
+          alongView + Math.abs(fitPoint.y) * 1.08 / tanVertical,
+        )
       }
-      const aspect = viewport.width / viewport.height
-      const verticalSpan = Math.max(maxY - minY, (maxX - minX) / aspect) * 1.18
-      const centerX = (minX + maxX) / 2, centerY = (minY + maxY) / 2
-      camera.left = centerX - verticalSpan * aspect / 2
-      camera.right = centerX + verticalSpan * aspect / 2
-      camera.top = centerY + verticalSpan / 2
-      camera.bottom = centerY - verticalSpan / 2
-      camera.updateProjectionMatrix()
+      return distance
     }
 
-    const rememberOrientation = () => {
-      cameraOffset.copy(camera.position).sub(controls.target)
-      cameraSpherical.setFromVector3(cameraOffset)
-      cameraOrientation.azimuth = cameraSpherical.theta
-      cameraOrientation.polar = cameraSpherical.phi
-    }
-
-    const onCameraChange = () => {
-      rememberOrientation()
-      fitCamera()
+    const resetView = () => {
+      if (!viewport.width || !viewport.height) return
+      const distance = fitDistanceFor(defaultCameraDirection)
+      controls.target.copy(cameraTarget)
+      camera.position.copy(cameraTarget).addScaledVector(defaultCameraDirection, distance)
+      controls.minDistance = distance * 0.38
+      controls.maxDistance = distance * 2.6
+      controls.update()
       draw()
     }
+
+    const restoreView = () => {
+      const pose = cameraPoseRef.current
+      if (!pose || Math.abs(pose.boardWidth - layout.boardWidth) > 0.01 || Math.abs(pose.boardDepth - layout.boardDepth) > 0.01) return
+      camera.position.fromArray(pose.position)
+      controls.target.fromArray(pose.target)
+      controls.update()
+      draw()
+    }
+
+    const onCameraChange = () => draw()
 
     const resize = () => {
       const { width, height } = stage.getBoundingClientRect()
@@ -320,23 +372,13 @@ export const ScopeBoard = ({ graph, selectedId, onSelect, disabled = false }: Sc
       setCompact(width < 560)
       viewport = { width, height }
       renderer.setSize(width, height, false)
-      fitCamera()
-      draw()
-    }
-
-    const rotateCamera = (azimuth: number, polar: number) => {
-      cameraOffset.copy(camera.position).sub(controls.target)
-      cameraSpherical.setFromVector3(cameraOffset)
-      cameraSpherical.theta += azimuth
-      cameraSpherical.phi = clamp(cameraSpherical.phi + polar, controls.minPolarAngle, controls.maxPolarAngle)
-      camera.position.setFromSphericalCoords(cameraOffset.length(), cameraSpherical.phi, cameraSpherical.theta).add(controls.target)
-      controls.update()
-    }
-
-    const resetView = () => {
-      camera.position.setFromSphericalCoords(cameraRadius, defaultCameraOrientation.polar, defaultCameraOrientation.azimuth)
-      controls.target.set(0, 0, 0)
-      controls.update()
+      camera.aspect = width / height
+      camera.updateProjectionMatrix()
+      if (!cameraInitialized) {
+        cameraInitialized = true
+        resetView()
+        restoreView()
+      } else draw()
     }
 
     const applySelection = (id: string) => {
@@ -411,20 +453,14 @@ export const ScopeBoard = ({ graph, selectedId, onSelect, disabled = false }: Sc
       setHoveredId("")
     }
     const onPointerLeave = () => setHoveredId("")
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (disabledRef.current) return
-      if (event.key === "ArrowLeft") rotateCamera(0.16, 0)
-      else if (event.key === "ArrowRight") rotateCamera(-0.16, 0)
-      else if (event.key === "ArrowUp") rotateCamera(0, -0.1)
-      else if (event.key === "ArrowDown") rotateCamera(0, 0.1)
-      else return
-      event.preventDefault()
-    }
     const onContextLost = (event: Event) => {
       event.preventDefault()
       setRendererStatus("fallback")
     }
     const onContextRestored = () => {
+      environmentTarget = createEnvironmentTarget()
+      scene.environment = environmentTarget.texture
+      renderer.shadowMap.needsUpdate = true
       setRendererStatus("ready")
       resize()
     }
@@ -437,7 +473,6 @@ export const ScopeBoard = ({ graph, selectedId, onSelect, disabled = false }: Sc
     renderer.domElement.addEventListener("pointerleave", onPointerLeave)
     renderer.domElement.addEventListener("webglcontextlost", onContextLost)
     renderer.domElement.addEventListener("webglcontextrestored", onContextRestored)
-    stage.addEventListener("keydown", onKeyDown)
     const observer = new ResizeObserver(resize)
     observer.observe(stage)
     resize()
@@ -451,9 +486,15 @@ export const ScopeBoard = ({ graph, selectedId, onSelect, disabled = false }: Sc
         if (isDisabled) setHoveredId("")
       },
       dispose: () => {
-        rememberOrientation()
+        cameraPoseRef.current = {
+          position: [camera.position.x, camera.position.y, camera.position.z],
+          target: [controls.target.x, controls.target.y, controls.target.z],
+          boardWidth: layout.boardWidth,
+          boardDepth: layout.boardDepth,
+        }
         observer.disconnect()
         controls.removeEventListener("change", onCameraChange)
+        controls.stopListenToKeyEvents()
         controls.dispose()
         renderer.domElement.removeEventListener("pointerdown", onPointerDown, true)
         renderer.domElement.removeEventListener("pointerup", onPointerUp, true)
@@ -462,7 +503,7 @@ export const ScopeBoard = ({ graph, selectedId, onSelect, disabled = false }: Sc
         renderer.domElement.removeEventListener("pointerleave", onPointerLeave)
         renderer.domElement.removeEventListener("webglcontextlost", onContextLost)
         renderer.domElement.removeEventListener("webglcontextrestored", onContextRestored)
-        stage.removeEventListener("keydown", onKeyDown)
+        environmentTarget.dispose()
         disposeObject(scene)
         renderer.renderLists.dispose()
         renderer.dispose()
@@ -475,7 +516,7 @@ export const ScopeBoard = ({ graph, selectedId, onSelect, disabled = false }: Sc
       runtimeRef.current?.dispose()
       runtimeRef.current = undefined
     }
-  }, [graph, layout, comparisonMode, visibleConnections, cameraOrientation])
+  }, [graph, layout, comparisonMode, visibleConnections])
 
   useEffect(() => {
     runtimeRef.current?.select(selectedId)
@@ -498,18 +539,18 @@ export const ScopeBoard = ({ graph, selectedId, onSelect, disabled = false }: Sc
     data-node-count={graph.nodes.length}
   >
     <header className="scope-board-header">
-      <div><h2>Contract scope</h2><p>Select a component or browse all contracts. Connections describe source contracts, not runtime execution.</p></div>
+      <div><h2>Contract scope</h2><p>Record cards are schemas; server stacks are services; matching connectors are interfaces; tags are types; pipelines are functions; warning signs are errors.</p></div>
       <div className="scope-board-tools">
         <div className="scope-board-modes" aria-label="Comparison mode">
           {(["comparison", "current", "proposed"] as const).map((mode) => <button key={mode} type="button" disabled={disabled} aria-pressed={comparisonMode === mode} onClick={() => setComparisonMode(mode)} data-comparison-mode={mode}>{mode === "comparison" ? "Compare" : mode[0].toUpperCase() + mode.slice(1)}</button>)}
         </div>
-        <button className="scope-board-reset" type="button" disabled={disabled || rendererStatus !== "ready"} onClick={() => runtimeRef.current?.reset()}>Top view</button>
+        <button className="scope-board-reset" type="button" disabled={disabled || rendererStatus !== "ready"} onClick={() => runtimeRef.current?.reset()}>Reset camera</button>
         <div className="scope-board-legend" aria-label="Change legend">
           {(Object.keys(changeNames) as ScopeChange[]).map((change) => <span key={change} data-change={change} style={{ "--change-color": changeColors[change] } as CSSProperties}><i aria-hidden="true" />{changeNames[change]}</span>)}
         </div>
       </div>
     </header>
-    <p className="scope-board-description" id="scope-board-description">Arrows point to referenced contracts. Drag or use arrow keys to rotate. Unchanged source does not mean unaffected behavior.</p>
+    <p className="scope-board-description" id="scope-board-description">Connections describe source contracts, not runtime execution. Arrows point to referenced contracts. Drag to orbit, scroll or pinch to zoom, and use a secondary drag to pan. Unchanged source does not mean unaffected behavior.</p>
     <ul className="scope-board-relationship-key" aria-label="Relationship key">
       {(Object.keys(relationshipStyles) as ScopeConnection["kind"][]).map((kind) => <li key={kind} data-connection-kind={kind}><RelationshipSwatch kind={kind} /><span>{relationshipStyles[kind].label}</span></li>)}
     </ul>

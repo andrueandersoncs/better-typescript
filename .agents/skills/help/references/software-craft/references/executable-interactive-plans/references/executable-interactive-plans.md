@@ -26,7 +26,7 @@ Do not make type-compatible inferred wires, repository-wide declaration inventor
 - **Unchanged source context** is nearby or connected source retained to orient the reviewer. It does not claim behavioral non-impact.
 - **Structural/dependency effects** are the graph relationships derived by the bounded rules above.
 
-The scope board starts top-down. Entity silhouettes and persistent labels identify categories; trace colors, rail patterns, and terminals identify relationship kinds, with an on-board key. Trace arrowheads point toward referenced contracts. Drag or swipe to rotate, use arrow keys while focused, and use Top view to restore the overhead view. Rotation does not change the selected contract.
+The scope board uses a perspective camera with standard Three.js OrbitControls: primary drag orbits, wheel or pinch zooms, and secondary drag or a two-finger gesture pans. Reset camera restores the initial elevated view without changing the selected contract. Its category silhouettes use literal code-role metaphors: record cards for Schemas, warning signs for Errors, server stacks for Services, matching connectors for Interfaces, `T` tags for Types, and input–processor–output pipelines marked `F` for effectful functions. Persistent labels repeat each category. Physically lit PBR surfaces use restrained shader-enhanced highlights. Trace colors, rail patterns, and terminals identify relationship kinds, with an on-board key and arrowheads pointing toward referenced contracts.
 
 A keyboard-accessible contract list provides the same review information without WebGL. Use either surface to select a declaration, inspect its category and relationship, and move to its exact source.
 
