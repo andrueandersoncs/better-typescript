@@ -50,3 +50,11 @@ function rawAdapter(response: Response): Promise<unknown> {
 function shadowed(response: { json(): unknown }) {
   return decode(User)(response.json())
 }
+
+const json = (value: unknown) => JSON.stringify(value)
+const serialized = json({ id: "local" })
+
+declare function sql(parts: TemplateStringsArray, ...values: ReadonlyArray<unknown>): unknown
+const rows = sql`SELECT * FROM users WHERE payload = ${serialized}`
+const decodedRows = Schema.decodeUnknownEffect(User)(rows)
+void decodedRows

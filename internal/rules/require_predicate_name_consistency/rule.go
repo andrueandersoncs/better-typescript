@@ -7,6 +7,7 @@ import (
 
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
 	"github.com/andrueandersoncs/typescript-go/ast"
+	"github.com/andrueandersoncs/typescript-go/checker"
 	"github.com/andrueandersoncs/typescript-go/scanner"
 )
 
@@ -80,6 +81,11 @@ func callableAt(ctx rule.RuleContext, node *ast.Node) (callable, bool) {
 	c := callable{nameNode: name, name: name.Text(), words: words(name.Text()), body: bodyText, construction: body != nil && (ast.IsObjectLiteralExpression(body) || strings.HasPrefix(bodyText, "({") || strings.Contains(bodyText, "return {") || strings.Contains(bodyText, "new "))}
 	if fn.Type() != nil {
 		c.returnType = sourceText(ctx, fn.Type())
+	} else if signature := ctx.TypeChecker.GetSignatureFromDeclaration(fn); signature != nil {
+		returned := ctx.TypeChecker.GetReturnTypeOfSignature(signature)
+		if returned != nil && checker.Type_flags(returned)&checker.TypeFlagsBooleanLike != 0 {
+			c.returnType = "boolean"
+		}
 	}
 	for _, p := range fn.Parameters() {
 		c.params = append(c.params, sourceText(ctx, p.Type()))

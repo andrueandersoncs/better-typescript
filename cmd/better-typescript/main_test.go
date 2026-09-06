@@ -23,8 +23,10 @@ func TestCLIAnalyzesCurrentProject(t *testing.T) {
 	var stderr bytes.Buffer
 	command.Stdout = &stdout
 	command.Stderr = &stderr
-	if err := command.Run(); err != nil {
-		t.Fatalf("run CLI: %v\n%s", err, stderr.String())
+	err := command.Run()
+	var exitError *exec.ExitError
+	if !errors.As(err, &exitError) || exitError.ExitCode() != 1 {
+		t.Fatalf("error = %v, want exit code 1\n%s", err, stderr.String())
 	}
 
 	absoluteProject, err := filepath.Abs(projectDirectory)
@@ -62,6 +64,35 @@ func TestCLIAnalyzesCurrentProject(t *testing.T) {
 		if !found[ruleName] {
 			t.Errorf("missing representative %s violation", ruleName)
 		}
+	}
+}
+
+func TestCLIExitsZeroWhenNoErrorsAreReported(t *testing.T) {
+	binary, packageDirectory := buildCLI(t)
+	projectDirectory := filepath.Join(packageDirectory, "testdata", "project")
+	command := exec.Command(binary, "--files", "src/main.ts", "--rules", "no-undefined")
+	command.Dir = projectDirectory
+
+	output, err := command.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(output) != 0 {
+		t.Fatalf("stdout = %q, want empty", output)
+	}
+}
+
+func TestCLIHelpExitsZero(t *testing.T) {
+	binary, _ := buildCLI(t)
+	command := exec.Command(binary, "--help")
+
+	output, err := command.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "Usage: better-typescript [--files glob] [--rules name]\nRepeat flags or separate values with commas. better-typescript.json supplies per-file rule commands.\n"
+	if string(output) != want {
+		t.Fatalf("stdout = %q, want %q", output, want)
 	}
 }
 
@@ -111,10 +142,7 @@ func TestCLISelectsGlobFilesAndOneRule(t *testing.T) {
 
 	command := exec.Command(binary, "--files", "src/missing.ts", "--files", "src/**/selected.ts", "--rules", "no-throw")
 	command.Dir = projectDirectory
-	output, err := command.Output()
-	if err != nil {
-		t.Fatal(err)
-	}
+	output := outputWithExitCode(t, command, 1)
 
 	violations := decodeViolations(t, output)
 	if len(violations) != 1 {
@@ -131,10 +159,7 @@ func TestCLISelectsManyRules(t *testing.T) {
 
 	command := exec.Command(binary, "--files", "src/main.ts,src/nested/selected.ts", "--rules", "no-error-type", "--rules", "no-throw")
 	command.Dir = projectDirectory
-	output, err := command.Output()
-	if err != nil {
-		t.Fatal(err)
-	}
+	output := outputWithExitCode(t, command, 1)
 
 	foundRules := map[string]bool{}
 	foundFiles := map[string]bool{}
@@ -166,10 +191,7 @@ func TestCLIUsesCascadingJSONRuleConfiguration(t *testing.T) {
 
 	command := exec.Command(binary)
 	command.Dir = projectDirectory
-	output, err := command.Output()
-	if err != nil {
-		t.Fatal(err)
-	}
+	output := outputWithExitCode(t, command, 1)
 
 	violations := decodeViolations(t, output)
 	if len(violations) != 3 {
@@ -229,4 +251,14 @@ func decodeViolations(t *testing.T, output []byte) []analysis.Violation {
 		t.Fatal(err)
 	}
 	return violations
+}
+
+func outputWithExitCode(t *testing.T, command *exec.Cmd, want int) []byte {
+	t.Helper()
+	output, err := command.Output()
+	var exitError *exec.ExitError
+	if !errors.As(err, &exitError) || exitError.ExitCode() != want {
+		t.Fatalf("error = %v, want exit code %d", err, want)
+	}
+	return output
 }

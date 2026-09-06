@@ -90,34 +90,34 @@ func selectRuleNames(names []string) ([]rule.Rule, error) {
 	return result, nil
 }
 
-func run() error {
+func run() (bool, error) {
 	options, err := parseCLIOptions(os.Args[1:])
 	if errors.Is(err, flag.ErrHelp) {
 		fmt.Fprintln(os.Stdout, "Usage: better-typescript [--files glob] [--rules name]")
 		fmt.Fprintln(os.Stdout, "Repeat flags or separate values with commas. better-typescript.json supplies per-file rule commands.")
-		return nil
+		return false, nil
 	}
 	if err != nil {
-		return err
+		return false, err
 	}
 	root, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("get current directory: %w", err)
+		return false, fmt.Errorf("get current directory: %w", err)
 	}
 	root, err = filepath.Abs(root)
 	if err != nil {
-		return fmt.Errorf("resolve current directory: %w", err)
+		return false, fmt.Errorf("resolve current directory: %w", err)
 	}
 
 	selectedRules, err := selectRules(options.ruleNames)
 	if err != nil {
-		return err
+		return false, err
 	}
 	var overrides []analysis.RuleOverride
 	if len(options.ruleNames) == 0 {
 		overrides, err = loadRuleCommands(root)
 		if err != nil {
-			return err
+			return false, err
 		}
 	}
 
@@ -125,7 +125,7 @@ func run() error {
 
 	violations, err := analysis.RunWithRuleOverrides(root, selectedRules, overrides, options.filePatterns...)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	writer := bufio.NewWriter(os.Stdout)
@@ -133,15 +133,27 @@ func run() error {
 	encoder.SetEscapeHTML(false)
 	for _, violation := range violations {
 		if err := encoder.Encode(violation); err != nil {
-			return fmt.Errorf("write violation: %w", err)
+			return false, fmt.Errorf("write violation: %w", err)
 		}
 	}
-	return writer.Flush()
+	if err := writer.Flush(); err != nil {
+		return false, err
+	}
+	for _, violation := range violations {
+		if violation.Level == "error" {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func main() {
-	if err := run(); err != nil {
+	hasErrors, err := run()
+	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	if hasErrors {
 		os.Exit(1)
 	}
 }

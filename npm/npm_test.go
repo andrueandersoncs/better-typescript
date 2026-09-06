@@ -289,8 +289,8 @@ func testInstalledLauncher(t *testing.T, repository string, archives map[string]
 	run(t, consumer, "npm", "install", "--offline", "--ignore-scripts", "--no-audit", "--no-fund", "--package-lock=false", archives["better-typescript"], archives[host])
 	command := installedCommand(consumer)
 	stdout, stderr, code := commandOutput(command, consumer)
-	if code != 0 {
-		t.Fatalf("installed command exit = %d\nstderr:\n%s", code, stderr)
+	if code != 1 {
+		t.Fatalf("installed command exit = %d, want 1\nstderr:\n%s", code, stderr)
 	}
 	consumer = canonicalDirectory(t, consumer)
 	if stderr != "Analyzing "+consumer+".\n" {

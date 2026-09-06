@@ -8,6 +8,9 @@
     "paths": {
       "effect": [
         "./effect/index.d.ts"
+      ],
+      "effect/unstable/sql/Statement": [
+        "./packages/effect/src/unstable/sql/Statement.d.ts"
       ]
     }
   },

@@ -12,7 +12,7 @@ var Rule = rule.Rule{
 		message := rule.RuleMessage{Id: "no-unsafe-effect-apis", Description: "Avoid unsafe Effect APIs.", Help: "Use the safe Effect API and handle its Effect, Option, Result, or identity semantics explicitly. If no safe counterpart preserves the required behavior, redesign the boundary instead of using an API whose name contains unsafe."}
 		check := func(reference, target *ast.Node) {
 			symbol := resolvedSymbol(ctx, target)
-			if symbol == nil || !strings.Contains(strings.ToLower(symbol.Name), "unsafe") || !declaredInEffect(symbol) {
+			if symbol == nil || !strings.Contains(strings.ToLower(symbol.Name), "unsafe") || !declaredInEffect(symbol) || isEffectSQLRawAPI(symbol) {
 				return
 			}
 			ctx.ReportNode(reference, message)
@@ -62,7 +62,29 @@ func declaredInEffect(symbol *ast.Symbol) bool {
 			continue
 		}
 		path := strings.ReplaceAll(file.FileName(), "\\", "/")
-		if strings.Contains(path, "/node_modules/effect/") || strings.HasSuffix(path, "/effect/index.d.ts") {
+		if strings.Contains(path, "/node_modules/effect/") || strings.Contains(path, "/packages/effect/src/") || strings.HasSuffix(path, "/effect/index.d.ts") {
+			return true
+		}
+	}
+	return false
+}
+
+func isEffectSQLRawAPI(symbol *ast.Symbol) bool {
+	if symbol == nil || symbol.Name != "unsafe" {
+		return false
+	}
+	for _, declaration := range symbol.Declarations {
+		if !ast.IsMethodSignatureDeclaration(declaration) || declaration.Parent == nil ||
+			!ast.IsInterfaceDeclaration(declaration.Parent) || declaration.Parent.Name() == nil ||
+			declaration.Parent.Name().Text() != "Constructor" {
+			continue
+		}
+		file := ast.GetSourceFileOfNode(declaration)
+		if file == nil {
+			continue
+		}
+		path := strings.ReplaceAll(file.FileName(), "\\", "/")
+		if strings.HasSuffix(path, "/unstable/sql/Statement.ts") || strings.HasSuffix(path, "/unstable/sql/Statement.d.ts") {
 			return true
 		}
 	}

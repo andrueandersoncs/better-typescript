@@ -52,3 +52,11 @@ function shadowed(response: HttpClientResponseShadow) {
 async function typedReturn(response: Response): Promise<User> {
   return response.json()
 }
+
+const json = (value: unknown) => JSON.stringify(value)
+const serialized = json({ id: "local" })
+
+declare function sql(parts: TemplateStringsArray, ...values: ReadonlyArray<unknown>): unknown
+const rows = sql`SELECT * FROM users WHERE payload = ${serialized}`
+const decodedRows = decode(UserSchema)(rows)
+void decodedRows

@@ -2,7 +2,7 @@
 
 ## What it does
 
-Reports a call or `new` expression when a supported ancestor chain places its result inside another call or `new` argument. The walked ancestor kinds are parentheses, `as`, `satisfies`, non-null, object literals, property assignments, shorthand properties, object spreads, array literals, spread elements, conditionals, binary and prefix or postfix unary expressions, `await`, `yield`, `typeof`, `void`, property and element access, and template spans and expressions. Calls that return functions are allowed. The `pipe` exemption requires the nested call to be the direct, unwrapped first argument. A parenthesized first argument can report. Unsupported ancestry, such as a computed property name, is not traversed.
+Reports a call or `new` expression when a supported ancestor chain places its result inside another call or `new` argument. The walked ancestor kinds are parentheses, `as`, `satisfies`, non-null, object literals, property assignments, shorthand properties, object spreads, array literals, spread elements, conditionals, binary and prefix or postfix unary expressions, `await`, `yield`, `typeof`, `void`, property and element access, and template spans and expressions. Calls that return functions and calls nested in a resolved Effect Schema API call are allowed. The `pipe` exemption requires the nested call to be the direct, unwrapped first argument. A parenthesized first argument can report. Unsupported ancestry, such as a computed property name, is not traversed.
 
 ## When to use it
 

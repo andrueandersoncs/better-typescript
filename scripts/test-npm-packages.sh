@@ -33,6 +33,11 @@ cp -R "$project"/. "$temporary"/
   cd "$temporary"
   npm install --offline --ignore-scripts --no-audit --no-fund --package-lock=false \
     "${launcher[0]}" "${native[0]}"
-  node_modules/.bin/better-typescript >results.ndjson
+  status=0
+  node_modules/.bin/better-typescript >results.ndjson || status=$?
+  if [[ $status -ne 1 ]]; then
+    printf 'better-typescript exit status = %s, want 1 for diagnostics\n' "$status" >&2
+    exit 1
+  fi
   grep -F '"ruleName":"no-throw"' results.ndjson >/dev/null
 )

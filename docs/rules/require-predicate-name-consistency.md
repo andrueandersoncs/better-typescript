@@ -2,7 +2,7 @@
 
 ## What it does
 
-For identifier-named arrow/function-expression variables, function declarations, and methods, requires predicate-style names to have explicit return-type text containing boolean or a type-predicate form; an inferred boolean result has unknown shape and can still report. For the tested case, it reports: `isUser claims a predicate, but its result shape is object.` It also reports boolean results named with incompatible operations such as `get`, `parse`, or `save`.
+For identifier-named arrow/function-expression variables, function declarations, and methods, requires predicate-style names to return boolean or a type predicate. It uses an explicit return annotation when present and otherwise recognizes checker-inferred boolean types without treating generic types that merely contain `boolean` as predicates. For the tested case, it reports: `isUser claims a predicate, but its result shape is object.` It also reports boolean results named with incompatible operations such as `get`, `parse`, or `save`.
 
 ## When to use it
 

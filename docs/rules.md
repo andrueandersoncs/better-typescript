@@ -10,6 +10,8 @@ The fixed catalog contains these 138 rules:
 
 Unary `make`, `create`, `build`, and `construct` functions may use inline generic construction records.
 
+Recursive and generic-inference-guiding annotations are retained. Effect Schema constructors may nest declarative calls. Effect SQL raw statements may use `unsafe`. Predicate naming recognizes checker-inferred boolean return types.
+
 See [Engineering principles](./engineering-principles.md) for ownership, validation, concurrency, and compatibility boundaries.
 
 - [`boundary-schema-decode`](./rules/boundary-schema-decode.md)

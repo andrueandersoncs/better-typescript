@@ -52,7 +52,40 @@ func genericCall(ctx rule.RuleContext, node *ast.Node) bool {
 	declaration := checker.Signature_declaration(signature)
 	return declaration != nil && len(declaration.TypeParameters()) > 0
 }
+func referencesSymbol(ctx rule.RuleContext, node *ast.Node, target *ast.Symbol, seen map[*ast.Symbol]bool) bool {
+	if node == nil || target == nil {
+		return false
+	}
+	if ast.IsIdentifier(node) {
+		symbol := utils.ResolvedSymbol(ctx.TypeChecker, node)
+		if symbol == target {
+			return true
+		}
+		if symbol != nil && !seen[symbol] {
+			seen[symbol] = true
+			for _, declaration := range symbol.Declarations {
+				if ast.IsVariableDeclaration(declaration) && referencesSymbol(ctx, declaration.AsVariableDeclaration().Initializer, target, seen) {
+					return true
+				}
+				if ast.IsFunctionDeclaration(declaration) && referencesSymbol(ctx, declaration.Body(), target, seen) {
+					return true
+				}
+			}
+		}
+	}
+	found := false
+	node.ForEachChild(func(child *ast.Node) bool {
+		if referencesSymbol(ctx, child, target, seen) {
+			found = true
+		}
+		return found
+	})
+	return found
+}
 func checkContextual(ctx rule.RuleContext, node *ast.Node) {
+	if genericCall(ctx, node.Parent) {
+		return
+	}
 	if ast.IsCallExpression(node.Parent) {
 		for _, argument := range node.Parent.AsCallExpression().Arguments.Nodes {
 			if argument == node {
@@ -104,7 +137,9 @@ var PreferInferredTypesRule = rule.Rule{Name: "prefer-inferred-types", Run: func
 			if d.Parent.Flags&ast.NodeFlagsConst == 0 || d.Initializer == nil {
 				return
 			}
-			if d.Type != nil && !genericCall(ctx, d.Initializer) && equivalent(ctx, d.Type, d.Initializer) {
+			if d.Type != nil && !genericCall(ctx, d.Initializer) &&
+				!referencesSymbol(ctx, d.Initializer, utils.ResolvedSymbol(ctx.TypeChecker, d.Name()), map[*ast.Symbol]bool{}) &&
+				equivalent(ctx, d.Type, d.Initializer) {
 				ctx.ReportNode(d.Type, constMessage)
 				return
 			}

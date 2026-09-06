@@ -27,9 +27,22 @@ func run(ctx rule.RuleContext, _ any) rule.RuleListeners {
 		if consumer.Kind == ast.KindCallExpression && callee.Kind == ast.KindIdentifier && callee.Text() == "pipe" && len(args) > 0 && args[0] == node {
 			return
 		}
+		if isEffectSchemaCall(ctx, consumer) {
+			return
+		}
 		ctx.ReportNode(node, rule.RuleMessage{Id: "no-nested-calls", Description: fmt.Sprintf("Avoid computing %s inline in the arguments of %s.", calleeText(ctx, node), calleeText(ctx, consumer)), Help: help})
 	}
 	return rule.RuleListeners{ast.KindCallExpression: check, ast.KindNewExpression: check}
+}
+func isEffectSchemaCall(ctx rule.RuleContext, node *ast.Node) bool {
+	if node == nil || node.Kind != ast.KindCallExpression {
+		return false
+	}
+	callee := callExpression(node)
+	if ast.IsPropertyAccessExpression(callee) {
+		callee = callee.AsPropertyAccessExpression().Name()
+	}
+	return utils.IsEffectSchemaSymbolAtLocation(ctx.TypeChecker, callee)
 }
 func consumingCall(node *ast.Node) *ast.Node {
 	parent := node.Parent
