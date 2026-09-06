@@ -74,7 +74,7 @@ func isEffectSQLRawAPI(symbol *ast.Symbol) bool {
 		return false
 	}
 	for _, declaration := range symbol.Declarations {
-		if !ast.IsMethodSignatureDeclaration(declaration) || declaration.Parent == nil ||
+		if (!ast.IsMethodSignatureDeclaration(declaration) && !ast.IsPropertySignatureDeclaration(declaration)) || declaration.Parent == nil ||
 			!ast.IsInterfaceDeclaration(declaration.Parent) || declaration.Parent.Name() == nil ||
 			declaration.Parent.Name().Text() != "Constructor" {
 			continue

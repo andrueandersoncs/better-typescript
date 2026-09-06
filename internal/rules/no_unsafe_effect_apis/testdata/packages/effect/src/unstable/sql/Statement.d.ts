@@ -1,6 +1,9 @@
 export interface Constructor {
-  unsafe(sql: string, params?: ReadonlyArray<unknown>): unknown
-  literal(sql: string): unknown
+  readonly unsafe: <A extends object>(
+    sql: string,
+    params?: ReadonlyArray<unknown> | undefined
+  ) => A
+  readonly literal: (sql: string) => unknown
 }
 
 export function unsafe(sql: string): unknown
