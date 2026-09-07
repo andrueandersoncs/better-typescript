@@ -68,6 +68,11 @@ function timedLookup(): Timed {
   if (cached === undefined) local.set(key, load(key))
 }
 
+
+function bareReturn(): void {
+  return
+}
+
 void separateMaps
 void commandFor
 void differentLiterals
@@ -75,5 +80,6 @@ void refreshOnly
 void readOnly
 void writeOnly
 void timedLookup
+void bareReturn
 
 export {}

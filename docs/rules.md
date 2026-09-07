@@ -14,6 +14,8 @@ Recursive and generic-inference-guiding annotations are retained. Effect Schema 
 
 `unbounded-stream-collect` accepts `Stream.take` as a local bound only when its count is a nonnegative finite numeric literal.
 
+`cache-preference` ignores bare returns because they cannot return cached values.
+
 See [Engineering principles](./engineering-principles.md) for ownership, validation, concurrency, and compatibility boundaries.
 
 - [`boundary-schema-decode`](./rules/boundary-schema-decode.md)

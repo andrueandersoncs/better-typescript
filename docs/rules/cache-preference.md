@@ -4,6 +4,8 @@
 
 Reports a native `Map` only when one local execution owner uses the same map and key to get a value, return that value on a direct hit guard, compute a replacement from that key, and set it. TTL entry protocols and running-Promise protocols belong to `handrolled-ttl-cache` and `inflight-dedupe-map`; cold `Effect` registries are allowed.
 
+Bare returns are ignored because they cannot return a cached value.
+
 The report says: “Prefer Effect Cache for a hand-rolled value-cache protocol when its lifecycle fits. Use Cache.make or Cache.makeWith after choosing key equality, ownership, failure, and retention semantics.”
 
 ## When to use it

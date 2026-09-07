@@ -149,7 +149,7 @@ func isThenBranch(node, statement *ast.Node) bool {
 
 func markCacheHit(ctx rule.RuleContext, node *ast.Node, maps map[*ast.Symbol]*valueMap, undefinedSymbol *ast.Symbol) {
 	value := unwrap(node.AsReturnStatement().Expression)
-	if !ast.IsIdentifier(value) {
+	if value == nil || !ast.IsIdentifier(value) {
 		return
 	}
 	symbol := ctx.TypeChecker.GetSymbolAtLocation(value)
