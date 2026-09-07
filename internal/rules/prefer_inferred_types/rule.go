@@ -45,6 +45,7 @@ func checkReturn(ctx rule.RuleContext, fn *ast.Node) {
 var contextualMessage = rule.RuleMessage{Id: "prefer-inferred-types", Description: "Avoid annotations on a contextually typed function.", Help: "Delete the parameter and return annotations together; the surrounding expression supplies them."}
 
 func genericCall(ctx rule.RuleContext, node *ast.Node) bool {
+	node = ast.SkipParentheses(node)
 	if !ast.IsCallExpression(node) {
 		return false
 	}
@@ -52,6 +53,14 @@ func genericCall(ctx rule.RuleContext, node *ast.Node) bool {
 	declaration := checker.Signature_declaration(signature)
 	return declaration != nil && len(declaration.TypeParameters()) > 0
 }
+
+func outerExpression(node *ast.Node) *ast.Node {
+	for node != nil && node.Parent != nil && ast.IsParenthesizedExpression(node.Parent) {
+		node = node.Parent
+	}
+	return node
+}
+
 func referencesSymbol(ctx rule.RuleContext, node *ast.Node, target *ast.Symbol, seen map[*ast.Symbol]bool) bool {
 	if node == nil || target == nil {
 		return false
@@ -67,7 +76,14 @@ func referencesSymbol(ctx rule.RuleContext, node *ast.Node, target *ast.Symbol, 
 				if ast.IsVariableDeclaration(declaration) && referencesSymbol(ctx, declaration.AsVariableDeclaration().Initializer, target, seen) {
 					return true
 				}
-				if ast.IsFunctionDeclaration(declaration) && referencesSymbol(ctx, declaration.Body(), target, seen) {
+				if (ast.IsFunctionDeclaration(declaration) || ast.IsMethodDeclaration(declaration) || ast.IsGetAccessorDeclaration(declaration)) &&
+					referencesSymbol(ctx, declaration.Body(), target, seen) {
+					return true
+				}
+				if ast.IsPropertyDeclaration(declaration) && referencesSymbol(ctx, declaration.Initializer(), target, seen) {
+					return true
+				}
+				if ast.IsParameterDeclaration(declaration) && referencesSymbol(ctx, declaration.Initializer(), target, seen) {
 					return true
 				}
 			}
@@ -83,15 +99,17 @@ func referencesSymbol(ctx rule.RuleContext, node *ast.Node, target *ast.Symbol, 
 	return found
 }
 func checkContextual(ctx rule.RuleContext, node *ast.Node) {
-	if genericCall(ctx, node.Parent) {
+	argument := outerExpression(node)
+	parent := argument.Parent
+	if genericCall(ctx, parent) {
 		return
 	}
-	if ast.IsCallExpression(node.Parent) {
-		for _, argument := range node.Parent.AsCallExpression().Arguments.Nodes {
-			if argument == node {
+	if ast.IsCallExpression(parent) {
+		for _, candidate := range parent.AsCallExpression().Arguments.Nodes {
+			if candidate == argument {
 				break
 			}
-			if ast.IsArrayLiteralExpression(argument) && len(argument.AsArrayLiteralExpression().Elements.Nodes) == 0 {
+			if ast.IsArrayLiteralExpression(candidate) && len(candidate.AsArrayLiteralExpression().Elements.Nodes) == 0 {
 				return
 			}
 		}
@@ -150,7 +168,7 @@ var PreferInferredTypesRule = rule.Rule{Name: "prefer-inferred-types", Run: func
 		},
 		ast.KindFunctionDeclaration: func(node *ast.Node) { checkReturn(ctx, node) },
 		ast.KindArrowFunction: func(node *ast.Node) {
-			if !ast.IsVariableDeclaration(node.Parent) {
+			if outer := outerExpression(node); outer.Parent == nil || !ast.IsVariableDeclaration(outer.Parent) {
 				checkContextual(ctx, node)
 			}
 		},
