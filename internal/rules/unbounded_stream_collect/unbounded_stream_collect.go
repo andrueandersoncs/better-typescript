@@ -1,6 +1,7 @@
 package unbounded_stream_collect
 
 import (
+	"math"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -13,7 +14,7 @@ import (
 var message = rule.RuleMessage{
 	Id:          "unboundedStreamCollect",
 	Description: "Avoid collecting a Stream without a locally established bound.",
-	Help:        "Use a finite source or apply Stream.take before runCollect, collect, or Sink.collect. Incremental consumers such as runForEach and runDrain do not retain every element.",
+	Help:        "Use a finite source or apply Stream.take with a nonnegative finite numeric literal before runCollect, collect, or Sink.collect. Incremental consumers such as runForEach and runDrain do not retain every element.",
 }
 
 type bound uint8
@@ -256,7 +257,7 @@ func finiteTakeArguments(arguments []*ast.Node) bool {
 		return false
 	}
 	count, err := strconv.ParseFloat(value.Text(), 64)
-	return err == nil && count >= 0 && count < 1.7976931348623157e+308
+	return err == nil && count >= 0 && !math.IsInf(count, 0)
 }
 
 func preservesBound(ctx rule.RuleContext, node *ast.Node) bool {

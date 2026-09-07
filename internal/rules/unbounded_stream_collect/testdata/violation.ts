@@ -1,5 +1,5 @@
 import { runCollect as collectAll } from "effect/Stream"
-import { Channel, Effect, Sink, Stream, Stream as S } from "effect"
+import { Channel, Effect, pipe, Sink, Stream, Stream as S } from "effect"
 
 const next = Effect.succeed(1)
 const source = Stream.fromEffectRepeat(next)
@@ -15,3 +15,11 @@ Channel.runCollect(channel)
 source.pipe(Stream.collect, Stream.flatMap(() => source), Stream.runCollect)
 S.runCollect(source)
 collectAll(source)
+
+declare const limit: number
+source.pipe(Stream.take(limit), Stream.runCollect)
+
+function collectLimited(limit: number) {
+  return pipe(source, Stream.take(limit), Stream.runCollect)
+}
+collectLimited(16)
