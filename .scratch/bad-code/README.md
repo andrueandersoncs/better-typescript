@@ -37,4 +37,5 @@ Status counts: confirmed 0, prospective 9, rejected 3.
 | [010](snippets/010-renamable-object-property-aliases.md) | Renamable object property aliases | [renamable-object-property-aliases](patterns/renamable-object-property-aliases.md) |
 | [011](snippets/011-terminal-yield-without-return.md) | Terminal yield without return | [terminal-yield-without-return](patterns/terminal-yield-without-return.md) |
 | [012](snippets/012-inconsistent-rpc-schema-references.md) | Inconsistent RPC schema references | [inconsistent-sibling-schema-references](patterns/inconsistent-sibling-schema-references.md) |
+| [013](snippets/013-unbroken-schema-rpc-declarations.md) | Unbroken schema and RPC declarations | none |
 
