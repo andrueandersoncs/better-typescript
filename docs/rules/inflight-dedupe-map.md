@@ -2,7 +2,7 @@
 
 ## What it does
 
-Reports a native `Map` only when the same map and key get a previously started native `Promise`, return it on a direct hit guard, and set a new Promise for the miss. A map of cold `Effect` values, a Promise key, and a Promise map without this get-or-start protocol are allowed.
+Reports a native `Map` only when the same map and key get a previously started native `Promise`, return it on a direct hit guard, and set a new Promise for the miss. A map of cold `Effect` values, a Promise key, a Promise map without this get-or-start protocol, and bare returns are allowed.
 
 The report says: “Avoid a hand-rolled in-flight Promise Map when Effect Cache fits. Cache.get shares a missing-key lookup; choose its cancellation and failure-retention semantics deliberately.”
 

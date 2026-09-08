@@ -136,7 +136,7 @@ func isDescendant(node, parent *ast.Node) bool {
 
 func markGetOrStart(ctx rule.RuleContext, node *ast.Node, maps map[*ast.Symbol]*pendingMap, undefinedSymbol *ast.Symbol) {
 	value := unwrap(node.AsReturnStatement().Expression)
-	if !ast.IsIdentifier(value) {
+	if value == nil || !ast.IsIdentifier(value) {
 		return
 	}
 	symbol := ctx.TypeChecker.GetSymbolAtLocation(value)
