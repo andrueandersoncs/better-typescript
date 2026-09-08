@@ -2,7 +2,7 @@
 
 Disliked TypeScript shapes mined from maintainer-fed snippets. Not the built-in rule catalog.
 
-Status counts: confirmed 0, prospective 8, rejected 3.
+Status counts: confirmed 0, prospective 9, rejected 3.
 
 ## Patterns
 
@@ -13,6 +13,7 @@ Status counts: confirmed 0, prospective 8, rejected 3.
 | [boilerplate-existence-checks](patterns/boilerplate-existence-checks.md) | prospective | 003 | none |
 | [constructable-runtime-record-object](patterns/constructable-runtime-record-object.md) | prospective | 008 | none |
 | [hardcoded-timestamp-string-literal](patterns/hardcoded-timestamp-string-literal.md) | prospective | 007 | none |
+| [inconsistent-sibling-schema-references](patterns/inconsistent-sibling-schema-references.md) | prospective | 012 | none |
 | [renamable-object-property-aliases](patterns/renamable-object-property-aliases.md) | prospective | 010 | none |
 | [terminal-yield-without-return](patterns/terminal-yield-without-return.md) | prospective | 011 | none |
 | [unknown-effect-service-error](patterns/unknown-effect-service-error.md) | prospective | 004 | none |
@@ -35,4 +36,5 @@ Status counts: confirmed 0, prospective 8, rejected 3.
 | [009](snippets/009-dense-generic-function-signature.md) | Dense generic function signature | none |
 | [010](snippets/010-renamable-object-property-aliases.md) | Renamable object property aliases | [renamable-object-property-aliases](patterns/renamable-object-property-aliases.md) |
 | [011](snippets/011-terminal-yield-without-return.md) | Terminal yield without return | [terminal-yield-without-return](patterns/terminal-yield-without-return.md) |
+| [012](snippets/012-inconsistent-rpc-schema-references.md) | Inconsistent RPC schema references | [inconsistent-sibling-schema-references](patterns/inconsistent-sibling-schema-references.md) |
 
