@@ -1,6 +1,6 @@
 ---
 name: help
-description: Gather task context and select one specialist for writing, planning, product, projects, wikis, Grok Bots, agent systems, skills, software laws, or engineering.
+description: Gather task context and select one specialist for marketing, writing, planning, product, projects, wikis, Grok Bots, agent systems, skills, software laws, or engineering.
 ---
 
 # Help
@@ -18,7 +18,8 @@ Read [the shared routing guide](references/skill-routers/references/canonical-de
 | An agent system's harness, context, memory, tools, interaction, coding loop, evaluation, training strategy, learning loop, or multi-agent architecture needs designing or improving; or an existing skill needs compiling into a cheaper runtime representation without an already-chosen LoRA target. | [`agent-systems`](references/agent-systems/SKILL.md) |
 | A multi-task project needs a durable record to coordinate work, blockers, asynchronous results, review, or resumption. | [`manage-project`](references/manage-project/SKILL.md) |
 | A plan, estimate, proposal, roadmap, or strategy needs testable forecasts, probabilities, and response rules. | [`predictive-planning`](references/predictive-planning/SKILL.md) |
-| Product capabilities, features, journeys, requirements, releases, discovery, or AI opportunities need defining or maintaining in a durable product record. | [`product-management`](references/product-management/SKILL.md) |
+| Product capabilities, features, journeys, requirements, releases, positioning, customer evidence, or AI opportunities need defining or maintaining in a durable product record. | [`product-management`](references/product-management/SKILL.md) |
+| Customer research, pricing or packaging decisions, persuasive marketing-page copy, organic-search audits, or lifecycle email sequences need a focused workflow. | [`marketing`](references/marketing/SKILL.md) |
 | A workflow needs a source-grounded callstack trace, state-machine projection, or both, without executing it. | [`workflows`](references/workflows/SKILL.md) |
 | Technical documentation needs creating, restructuring, or auditing around a reader's learning, task, lookup, or understanding need. | [`technical-documentation`](references/technical-documentation/SKILL.md) |
 | Existing prose needs editing or auditing for AI-writing patterns while preserving its meaning and voice. | [`deslop`](references/deslop/SKILL.md) |

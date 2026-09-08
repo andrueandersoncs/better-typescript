@@ -1,6 +1,6 @@
 import * as THREE from "three"
 
-type BoardSurface = "substrate" | "region" | "component" | "detail" | "trace" | "status"
+type BoardSurface = "substrate" | "region" | "component" | "cap" | "detail" | "trace" | "status"
 
 type BoardMaterialOptions = {
   readonly color: THREE.ColorRepresentation
@@ -22,11 +22,12 @@ const profiles: Record<BoardSurface, {
   readonly topLift: number
   readonly machining: number
 }> = {
-  substrate: { roughness: 0.74, metalness: 0.06, clearcoat: 0.18, clearcoatRoughness: 0.58, sheen: 0.04, rim: 0.018, topLift: 0.008, machining: 0 },
-  region: { roughness: 0.64, metalness: 0.08, clearcoat: 0.28, clearcoatRoughness: 0.44, sheen: 0.06, rim: 0.025, topLift: 0.012, machining: 0 },
-  component: { roughness: 0.28, metalness: 0.18, clearcoat: 0.72, clearcoatRoughness: 0.2, sheen: 0.2, rim: 0.09, topLift: 0.026, machining: 0.009 },
+  substrate: { roughness: 0.9, metalness: 0, clearcoat: 0, clearcoatRoughness: 0.58, sheen: 0, rim: 0.008, topLift: 0, machining: 0 },
+  region: { roughness: 0.85, metalness: 0, clearcoat: 0, clearcoatRoughness: 0.44, sheen: 0, rim: 0.012, topLift: 0, machining: 0 },
+  component: { roughness: 0.38, metalness: 0.24, clearcoat: 0.52, clearcoatRoughness: 0.24, sheen: 0.12, rim: 0.06, topLift: 0.01, machining: 0.005 },
+  cap: { roughness: 0.16, metalness: 0.16, clearcoat: 0.9, clearcoatRoughness: 0.1, sheen: 0.28, rim: 0.075, topLift: 0.065, machining: 0.004 },
   detail: { roughness: 0.3, metalness: 0.58, clearcoat: 0.46, clearcoatRoughness: 0.22, sheen: 0.1, rim: 0.06, topLift: 0.02, machining: 0.018 },
-  trace: { roughness: 0.22, metalness: 0.78, clearcoat: 0.62, clearcoatRoughness: 0.16, sheen: 0.08, rim: 0.08, topLift: 0.03, machining: 0.026 },
+  trace: { roughness: 0.4, metalness: 0.15, clearcoat: 0.32, clearcoatRoughness: 0.16, sheen: 0.08, rim: 0.08, topLift: 0.03, machining: 0.026 },
   status: { roughness: 0.26, metalness: 0.42, clearcoat: 0.58, clearcoatRoughness: 0.18, sheen: 0.14, rim: 0.08, topLift: 0.024, machining: 0.014 },
 }
 

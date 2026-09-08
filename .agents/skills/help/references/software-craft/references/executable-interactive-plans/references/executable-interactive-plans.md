@@ -28,6 +28,8 @@ Do not make type-compatible inferred wires, repository-wide declaration inventor
 
 The scope board uses a perspective camera with standard Three.js OrbitControls: primary drag orbits, wheel or pinch zooms, and secondary drag or a two-finger gesture pans. Reset camera restores the initial elevated view without changing the selected contract. Its category silhouettes use literal code-role metaphors: record cards for Schemas, warning signs for Errors, server stacks for Services, matching connectors for Interfaces, `T` tags for Types, and input–processor–output pipelines marked `F` for effectful functions. Persistent labels repeat each category. Physically lit PBR surfaces use restrained shader-enhanced highlights. Trace colors, rail patterns, and terminals identify relationship kinds, with an on-board key and arrowheads pointing toward referenced contracts.
 
+Select a contract to highlight its connections and mute unrelated wires. Numbered controls above the board and in the connection list isolate one wire; the matching number marks its referenced endpoint. The focus bar names both contracts and the relationship. Choose the same number again or Show all connections to restore the selected contract's connections. Contract-name links change the selection. Expand diagram opens a full-screen review; Escape or Exit expanded view returns to the source comparison. Narrow layouts use two component columns and stack the scopes.
+
 A keyboard-accessible contract list provides the same review information without WebGL. Use either surface to select a declaration, inspect its category and relationship, and move to its exact source.
 
 ## Exact source contracts

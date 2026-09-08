@@ -64,4 +64,4 @@ Apply this recipe as context within `implement-change` when the requested behavi
    bun run lint:bts
    ```
 
-   Confirm that the command analyzes the intended project. A completed analysis exits `1` when it reports error-level violations and `0` when it reports none; do not fix violations unless asked.
+   Confirm that the command analyzes the intended project. A completed analysis exits successfully even when it reports violations; do not fix those violations unless asked.

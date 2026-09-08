@@ -32,7 +32,10 @@ type RelationshipPattern = (typeof relationshipStyles)[ScopeConnection["kind"]][
 type RelationshipMarker = (typeof relationshipStyles)[ScopeConnection["kind"]]["marker"]
 type TraceVisual = {
   readonly connection: ScopeConnection
+  readonly group: THREE.Group
   readonly material: THREE.MeshStandardMaterial
+  readonly maskMaterial: THREE.MeshStandardMaterial
+  readonly layer: number
 }
 
 const trackWidth = 0.145
@@ -49,6 +52,8 @@ const traceHeight = 0.018
 const markerHeight = 0.034
 const markerSize = 0.44
 const maskMaterialColor = 0x123d32
+const laneInset = 0.12
+const laneStride = 0.56
 
 const distance = (from: Point, to: Point) => Math.abs(from.x - to.x) + Math.abs(from.z - to.z)
 const pointEquals = (left: Point, right: Point) => Math.abs(left.x - right.x) < 0.0001 && Math.abs(left.z - right.z) < 0.0001
@@ -64,6 +69,8 @@ const simplify = (points: ReadonlyArray<Point>) => points.reduce<Point[]>((resul
 }, [])
 
 const segmentsOf = (points: ReadonlyArray<Point>) => points.slice(1).map((to, index) => ({ from: points[index], to }))
+const pathLength = (points: ReadonlyArray<Point>) =>
+  points.reduce((total, point, index) => index === 0 ? total : total + distance(points[index - 1], point), 0)
 
 const intersects = (segment: Segment, obstacle: Obstacle) => {
   if (segment.from.x === segment.to.x) {
@@ -122,6 +129,36 @@ const detourCandidates = (from: Point, to: Point, xLanes: ReadonlyArray<number>,
   }))
   return candidates.map(simplify)
 }
+const routingLanes = (intervals: ReadonlyArray<{ readonly start: number; readonly end: number }>, minimum: number, maximum: number) => {
+  const merged = intervals
+    .map((interval) => ({ start: Math.max(minimum, interval.start), end: Math.min(maximum, interval.end) }))
+    .filter((interval) => interval.start < interval.end)
+    .sort((left, right) => left.start - right.start)
+    .reduce<Array<{ start: number; end: number }>>((result, interval) => {
+      const previous = result[result.length - 1]
+      if (previous && interval.start <= previous.end) previous.end = Math.max(previous.end, interval.end)
+      else result.push({ ...interval })
+      return result
+    }, [])
+  const lanes = new Set<number>([minimum, maximum])
+  let previousEnd = minimum
+  merged.forEach((interval, index) => {
+    const start = index === 0 ? minimum : previousEnd + laneInset
+    const end = interval.start - laneInset
+    if (start <= end) {
+      lanes.add(start)
+      lanes.add(end)
+      if (end - start >= laneStride) lanes.add((start + end) / 2)
+    }
+    previousEnd = Math.max(previousEnd, interval.end)
+  })
+  const start = merged.length === 0 ? minimum : previousEnd + laneInset
+  if (start <= maximum) {
+    lanes.add(start)
+    if (maximum - start >= laneStride) lanes.add((start + maximum) / 2)
+  }
+  return [...lanes].sort((left, right) => left - right)
+}
 
 const segmentsConflict = (left: Segment, right: Segment, clearance: number) => {
   const leftVertical = left.from.x === left.to.x
@@ -143,6 +180,33 @@ const segmentsConflict = (left: Segment, right: Segment, clearance: number) => {
 
 const pathsConflict = (left: ReadonlyArray<Point>, right: ReadonlyArray<Point>, clearance: number) =>
   segmentsOf(left).some((segment) => segmentsOf(right).some((other) => segmentsConflict(segment, other, clearance)))
+const segmentInteractionCost = (left: Segment, right: Segment, clearance: number) => {
+  const leftVertical = left.from.x === left.to.x
+  const rightVertical = right.from.x === right.to.x
+  if (leftVertical === rightVertical) {
+    const separation = leftVertical ? Math.abs(left.from.x - right.from.x) : Math.abs(left.from.z - right.from.z)
+    if (separation >= clearance) return 0
+    const leftLow = leftVertical ? Math.min(left.from.z, left.to.z) : Math.min(left.from.x, left.to.x)
+    const leftHigh = leftVertical ? Math.max(left.from.z, left.to.z) : Math.max(left.from.x, left.to.x)
+    const rightLow = leftVertical ? Math.min(right.from.z, right.to.z) : Math.min(right.from.x, right.to.x)
+    const rightHigh = leftVertical ? Math.max(right.from.z, right.to.z) : Math.max(right.from.x, right.to.x)
+    const overlap = Math.min(leftHigh, rightHigh) - Math.max(leftLow, rightLow)
+    return overlap > 0 ? overlap * (10 + (1 - separation / clearance) * 28) : 0
+  }
+  const vertical = leftVertical ? left : right
+  const horizontal = leftVertical ? right : left
+  const crosses = vertical.from.x > Math.min(horizontal.from.x, horizontal.to.x)
+    && vertical.from.x < Math.max(horizontal.from.x, horizontal.to.x)
+    && horizontal.from.z > Math.min(vertical.from.z, vertical.to.z)
+    && horizontal.from.z < Math.max(vertical.from.z, vertical.to.z)
+  return crosses ? 7 : 0
+}
+
+const routingInteractionCost = (path: ReadonlyArray<Point>, placedPaths: ReadonlyArray<{ readonly points: ReadonlyArray<Point>; readonly clearance: number }>, clearance: number) =>
+  placedPaths.reduce((total, placed) =>
+    total + segmentsOf(path).reduce((pathTotal, segment) =>
+      pathTotal + segmentsOf(placed.points).reduce((segmentTotal, other) =>
+        segmentTotal + segmentInteractionCost(segment, other, Math.max(clearance, placed.clearance)), 0), 0), 0)
 
 const offsetSegment = (segment: Segment, offset: number): Segment => {
   const length = distance(segment.from, segment.to)
@@ -336,16 +400,8 @@ export const createCircuitTraces = (options: CircuitTraceOptions) => {
   }))
   const halfWidth = options.boardWidth / 2 - boardMargin
   const halfDepth = options.boardDepth / 2 - boardMargin
-  const xLanes = [...new Set([
-    -halfWidth,
-    halfWidth,
-    ...obstacles.flatMap((obstacle) => [obstacle.left - 0.12, obstacle.right + 0.12]),
-  ])].filter((lane) => lane >= -halfWidth && lane <= halfWidth)
-  const zLanes = [...new Set([
-    -halfDepth,
-    halfDepth,
-    ...obstacles.flatMap((obstacle) => [obstacle.top - 0.12, obstacle.bottom + 0.12]),
-  ])].filter((lane) => lane >= -halfDepth && lane <= halfDepth)
+  const xLanes = routingLanes(obstacles.map(({ left, right }) => ({ start: left, end: right })), -halfWidth, halfWidth)
+  const zLanes = routingLanes(obstacles.map(({ top, bottom }) => ({ start: top, end: bottom })), -halfDepth, halfDepth)
   const endpointTotals = new Map<string, number>()
   options.connections.forEach((connection) => {
     endpointTotals.set(connection.from, (endpointTotals.get(connection.from) ?? 0) + 1)
@@ -361,8 +417,8 @@ export const createCircuitTraces = (options: CircuitTraceOptions) => {
     endpointOrders.set(connection.id, [fromOrder, toOrder])
   })
 
-  const clearanceMaterial = createBoardMaterial({ color: maskMaterialColor, surface: "substrate" })
   const changeGeometries = new Map<string, THREE.BufferGeometry[]>()
+  const endpoints = new Map<string, { x: number; y: number; z: number }>()
   const traces: TraceVisual[] = []
   const placedPaths: Array<{ readonly points: ReadonlyArray<Point>; readonly layer: number; readonly clearance: number }> = []
 
@@ -373,33 +429,35 @@ export const createCircuitTraces = (options: CircuitTraceOptions) => {
     const [fromOrder, toOrder] = endpointOrders.get(connection.id) ?? [0, 0]
     const fromTotal = endpointTotals.get(from.id) ?? 1
     const toTotal = endpointTotals.get(to.id) ?? 1
+    const style = relationshipStyles[connection.kind]
+    const routingClearance = routingClearanceFor(style.pattern)
     let route: Point[] | undefined
     let fromEndpoint: Endpoint | undefined
     let toEndpoint: Endpoint | undefined
 
     const fromSides: ReadonlyArray<Side> = from.id === to.id ? ["right"] : sidesToward(from, to)
     const toSides: ReadonlyArray<Side> = from.id === to.id ? ["bottom"] : sidesToward(to, from)
-    let shortest = Infinity
-    for (const candidates of [routeCandidates, detourCandidates]) {
-      for (const fromSide of fromSides) for (const toSide of toSides) {
-        const source = endpointFor(from, fromSide, fromOrder, fromTotal)
-        const target = endpointFor(to, toSide, toOrder, toTotal)
-        for (const candidate of candidates(source.exit, target.exit, xLanes, zLanes)) {
-          const length = candidate.reduce((total, point, index) => index === 0 ? total : total + distance(candidate[index - 1], point), 0)
-          if (length >= shortest || !routeIsClear(candidate, obstacles)) continue
-          shortest = length
-          route = candidate
-          fromEndpoint = source
-          toEndpoint = target
-        }
+    let bestScore = Infinity
+    for (const fromSide of fromSides) for (const toSide of toSides) {
+      const source = endpointFor(from, fromSide, fromOrder, fromTotal)
+      const target = endpointFor(to, toSide, toOrder, toTotal)
+      const candidates = [
+        ...routeCandidates(source.exit, target.exit, xLanes, zLanes),
+        ...detourCandidates(source.exit, target.exit, xLanes, zLanes),
+      ]
+      for (const candidate of candidates) {
+        if (!routeIsClear(candidate, obstacles)) continue
+        const score = pathLength(candidate) + routingInteractionCost(candidate, placedPaths, routingClearance)
+        if (score >= bestScore) continue
+        bestScore = score
+        route = candidate
+        fromEndpoint = source
+        toEndpoint = target
       }
-      if (route) break
     }
     if (!route || !fromEndpoint || !toEndpoint) return
 
     const path = simplify([fromEndpoint.pad, ...route, toEndpoint.pad])
-    const style = relationshipStyles[connection.kind]
-    const routingClearance = routingClearanceFor(style.pattern)
     const occupiedLayers = new Set(placedPaths.filter((placed) => pathsConflict(path, placed.points, Math.max(routingClearance, placed.clearance))).map((placed) => placed.layer))
     let layer = 0
     while (occupiedLayers.has(layer)) layer += 1
@@ -411,7 +469,15 @@ export const createCircuitTraces = (options: CircuitTraceOptions) => {
       accent: style.color,
       emissive: style.color,
       emissiveIntensity: 0.08,
+      transparent: true,
     })
+    const maskMaterial = createBoardMaterial({
+      color: maskMaterialColor,
+      surface: "substrate",
+      transparent: true,
+      opacity: 0.72,
+    })
+    maskMaterial.depthWrite = false
     const trace = new THREE.Group()
     trace.name = `Circuit trace ${connection.id}`
     trace.userData.connectionId = connection.id
@@ -439,7 +505,7 @@ export const createCircuitTraces = (options: CircuitTraceOptions) => {
     const maskGeometry = merge(maskGeometries)
     const copperGeometry = merge(copperGeometries)
     if (maskGeometry) {
-      const mask = new THREE.Mesh(maskGeometry, clearanceMaterial)
+      const mask = new THREE.Mesh(maskGeometry, maskMaterial)
       mask.receiveShadow = true
       trace.add(mask)
     }
@@ -450,7 +516,8 @@ export const createCircuitTraces = (options: CircuitTraceOptions) => {
       trace.add(copper)
     }
     group.add(trace)
-    traces.push({ connection, material })
+    endpoints.set(connection.id, { x: toEndpoint.pad.x, y, z: toEndpoint.pad.z })
+    traces.push({ connection, group: trace, material, maskMaterial, layer })
     if (options.comparison && connection.change !== "unchanged") {
       const markColor = changeColors[connection.change]
       const marks = changeGeometries.get(markColor) ?? []
@@ -475,12 +542,22 @@ export const createCircuitTraces = (options: CircuitTraceOptions) => {
     group.add(mesh)
   })
 
-  const select = (id: string) => {
+  const select = (nodeId: string, connectionId?: string) => {
     traces.forEach((trace) => {
-      const incident = !id || trace.connection.from === id || trace.connection.to === id
-      trace.material.emissiveIntensity = incident && id ? 0.34 : 0.08
+      const selected = connectionId
+        ? trace.connection.id === connectionId
+        : Boolean(nodeId) && (trace.connection.from === nodeId || trace.connection.to === nodeId)
+      const resting = !nodeId && !connectionId
+      const muted = !resting && !selected
+      trace.material.opacity = muted ? 0.12 : 1
+      trace.material.emissiveIntensity = selected ? 0.38 : resting ? 0.08 : 0.025
+      trace.maskMaterial.opacity = muted ? 0.06 : 0.72
+      trace.material.depthTest = !selected
+      trace.material.depthWrite = !selected
+      trace.maskMaterial.depthTest = !selected
+      trace.group.renderOrder = selected ? 10 + trace.layer : 0
     })
   }
 
-  return { group, select }
+  return { group, select, endpoints: endpoints as ReadonlyMap<string, { x: number; y: number; z: number }> }
 }

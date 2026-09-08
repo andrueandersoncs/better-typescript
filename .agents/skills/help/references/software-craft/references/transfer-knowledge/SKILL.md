@@ -19,6 +19,8 @@ These are output choices within `transfer-knowledge`, not routes to other skills
 - A person must perform an external procedure → create an **executable guide** with exact stages and value flow.
 - Knowledge must persist across sessions → create a **learning artifact** with retrieval practice, or a **reference artifact** for lookup without compulsory exercises.
 
+For software session save or restore, apply [branch-aware handoffs](references/branch-aware-handoffs.md) to select the right context and reconcile it with current repository state.
+
 ## Method
 
 1. Identify the receiver, decision or action, available context, and delivery medium.

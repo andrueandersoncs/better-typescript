@@ -25,6 +25,11 @@ The exact software claim, candidate artifact or runtime surface, authoritative e
 6. Compare results with the claim. Report **failure** only for an observed contradiction. Report **unverified/incomplete** when an observation is missing, naming the missing observation and limiting the claim.
 7. Preserve durable constraints or regression guards only when they defend a plausible future break.
 
+
+## Report-only procedures
+
+For exploratory web behavior requested without a change or remediation, use [exploratory web QA](references/exploratory-web-qa.md). For a newcomer-path audit of developer documentation, CLI, or API, use [developer onboarding](references/developer-onboarding.md). Both produce evidence for this workflow; they do not assume authority to modify the target.
+
 ## Output
 
 A claim-specific **pass**, **failure**, or **unverified/incomplete** result tied to fresh command output, direct runtime observation, or authoritative revision-scoped artifact inspection. An unverified/incomplete result names the missing observation and limit on the claim.

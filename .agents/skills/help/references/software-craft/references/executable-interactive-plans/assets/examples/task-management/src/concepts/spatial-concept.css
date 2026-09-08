@@ -1,0 +1,75 @@
+.spatial-concept { display: grid; grid-template-columns: minmax(0, 1fr) 290px; color: #23323a; }
+.spatial-viewport { min-width: 0; position: relative; }
+.spatial-stage { position: relative; height: clamp(520px, 67vh, 820px); overflow: hidden; outline-offset: -3px; touch-action: none; scroll-margin-top: 12px; }
+.spatial-stage canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+.spatial-stage canvas:active { cursor: grabbing; }
+.spatial-labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.spatial-node-label { position: absolute; left: 0; top: 0; max-width: 170px; padding: 3px 7px; pointer-events: auto; white-space: nowrap; font-size: 11px; font-weight: 650; background: #faf7f0; color: #25363d; border: 1px solid #c8c5ba; border-radius: 3px; cursor: pointer; }
+.spatial-node-label[aria-pressed="true"] { color: #fff; background: #8f3d20; border-color: #8f3d20; }
+.spatial-node-label:hover { background: #fff; color: #6b321e; }
+.spatial-scope-label { position: absolute; top: 0; left: 0; color: #474c48; background: #f9f8f1; padding: 3px 6px; font-size: 12px; font-weight: 750; white-space: nowrap; }
+.spatial-caption-leaders { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.spatial-caption-leaders line { stroke: #69736e; stroke-width: 1; stroke-dasharray: 2 3; }
+.spatial-concept[data-dark="true"] .spatial-caption-leaders line { stroke: #819eb0; }
+.spatial-camera-controls { position: absolute; top: 14px; left: 14px; display: flex; flex-wrap: wrap; gap: 5px; z-index: 10; }
+.spatial-camera-controls button { padding: 7px 10px; background: #fcfaf5; color: #25363d; border: 1px solid #bfc5c6; border-radius: 4px; font-size: 12px; cursor: pointer; }
+.spatial-camera-controls button:hover, .spatial-camera-controls button[aria-pressed="true"] { background: #263d48; border-color: #263d48; color: #fff; }
+.spatial-manipulation { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; background: #f5f5f0; border-top: 1px solid #d7dcd7; padding: 12px 18px; }
+.spatial-manipulation label { display: flex; align-items: center; gap: 12px; font-size: 12px; font-weight: 650; }
+.spatial-manipulation input { width: 130px; cursor: ew-resize; accent-color: #8f3d20; }
+.spatial-manipulation output { font-variant-numeric: tabular-nums; min-width: 4ch; }
+.spatial-manipulation > span { color: #52615e; font-size: 11px; }
+.spatial-mapping { margin: 0; padding: 10px 18px 14px; font-size: 12px; line-height: 1.6; color: #53625e; background: #f5f5f0; }
+.spatial-inspector { border-left: 1px solid #d7dcd7; padding: 23px 20px; max-height: calc(clamp(520px, 67vh, 820px) + 110px); overflow: auto; scrollbar-color: #a5b0ad #f2f4f0; }
+.spatial-inspector h3 { margin: 0; font-size: 23px; letter-spacing: -.025em; overflow-wrap: anywhere; }
+.spatial-contract-meta { font-size: 12px; color: #566961; margin: 7px 0 12px; }
+.spatial-schema-summary { font-size: 12px; line-height: 1.65; overflow-wrap: anywhere; padding-bottom: 12px; border-bottom: 1px solid #e2e6df; }
+.spatial-references { margin-top: 24px; }
+.spatial-references h4 { margin: 0 0 9px; font-size: 13px; display: flex; justify-content: space-between; }
+.spatial-references h4 span { color: #68786f; font-weight: 500; }
+.spatial-references ul { list-style: none; padding: 0; margin: 0; }
+.spatial-references li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid #e4e8e1; }
+.spatial-references li > div { min-width: 0; }
+.spatial-references li > div button { display: block; font-size: 12px; font-weight: 650; color: #28464a; text-align: left; overflow-wrap: anywhere; background: none; border: 0; padding: 0; cursor: pointer; }
+.spatial-references li > div button:hover { text-decoration: underline; text-underline-offset: 3px; }
+.spatial-references small { display: block; color: #60716a; font-size: 10px; margin-top: 4px; }
+.spatial-link-toggle { border: 1px solid #d7dcd7; border-radius: 3px; color: #465e54; background: transparent; font-size: 10px; padding: 5px 7px; cursor: pointer; }
+.spatial-link-toggle[aria-pressed="true"] { color: #fff; background: #28464a; border-color: #28464a; }
+.spatial-references > p { font-size: 12px; color: #68786f; }
+.spatial-inspector details { margin-top: 25px; font-size: 12px; }
+.spatial-inspector summary { cursor: pointer; }
+.spatial-inspector dl > div { margin: 12px 0; }
+.spatial-inspector dt { font-weight: 650; }
+.spatial-inspector dd { margin: 4px 0; overflow-wrap: anywhere; }
+.spatial-inspector dd small { display: block; color: #5d6f65; line-height: 1.5; }
+.spatial-source-button { margin-top: 24px; border: 0; padding: 9px 14px; background: #28464a; color: #fff; border-radius: 3px; font-size: 12px; cursor: pointer; }
+.spatial-source-button:hover { background: #142d30; }
+.spatial-loading { position: absolute; inset: 45% 20px auto; text-align: center; font-size: 14px; }
+.spatial-concept[data-dark="true"] .spatial-node-label { color: #e6eef0; background: #122e40; border-color: #416277; }
+.spatial-concept[data-dark="true"] .spatial-node-label[aria-pressed="true"] { color: #182b31; background: #f2d098; border-color: #f2d098; }
+.spatial-concept[data-dark="true"] .spatial-node-label:hover { background: #325069; color: #fff; }
+.spatial-concept[data-dark="true"] .spatial-scope-label { color: #cedfe3; background: #122e40; }
+.spatial-concept[data-dark="true"] .spatial-camera-controls button { background: #122e40; border-color: #416277; color: #e6eef0; }
+.spatial-concept[data-dark="true"] .spatial-camera-controls button[aria-pressed="true"] { color: #182b31; background: #f2d098; }
+.spatial-concept ::selection { background: #f2d098; color: #182b31; }
+
+@media (max-width: 1000px) {
+  .spatial-concept { grid-template-columns: minmax(0, 1fr); }
+  .spatial-inspector { max-height: none; border-left: 0; border-top: 1px solid #d7dcd7; display: grid; grid-template-columns: 1fr 1fr; gap: 0 30px; }
+  .spatial-inspector h3, .spatial-contract-meta, .spatial-schema-summary, .spatial-inspector > .concept-change { grid-column: 1 / -1; }
+  .spatial-inspector > .concept-change { justify-self: start; }
+  .spatial-source-button { justify-self: start; align-self: start; }
+}
+@media (max-width: 600px) {
+  .spatial-stage { height: 500px; }
+  .spatial-camera-controls { top: 10px; left: 10px; gap: 4px; }
+  .spatial-camera-controls button { padding: 7px 8px; font-size: 11px; }
+  .spatial-manipulation { padding: 12px; gap: 6px; }
+  .spatial-manipulation label { flex-wrap: wrap; gap: 8px; font-size: 11px; }
+  .spatial-manipulation input { width: 110px; }
+  .spatial-manipulation > span { font-size: 10px; }
+  .spatial-mapping { padding: 7px 12px 12px; font-size: 11px; }
+  .spatial-inspector { padding: 20px 16px; gap: 0 20px; }
+  .spatial-references li { flex-wrap: wrap; }
+  .spatial-node-label { font-size: 10px; }
+}

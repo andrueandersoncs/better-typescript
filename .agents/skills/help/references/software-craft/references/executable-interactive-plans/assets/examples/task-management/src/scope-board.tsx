@@ -26,7 +26,7 @@ type CameraPose = {
   readonly boardDepth: number
 }
 type BoardRuntime = {
-  readonly select: (id: string) => void
+  readonly select: (id: string, connectionId?: string) => void
   readonly reset: () => void
   readonly setInteractionDisabled: (disabled: boolean) => void
   readonly dispose: () => void
@@ -72,7 +72,7 @@ const boardLayout = (nodes: ReadonlyArray<ScopeNode>, mode: ComparisonMode, comp
   })
   const groups = [...byScope.entries()].map(([scope, groupNodes]) => ({ scope, nodes: groupNodes }))
   const maximumGroupSize = Math.max(1, ...groups.map((group) => group.nodes.length))
-  const localColumns = Math.min(4, Math.max(1, Math.ceil(Math.sqrt(maximumGroupSize))))
+  const localColumns = Math.min(compact ? 2 : 4, Math.max(1, Math.ceil(Math.sqrt(maximumGroupSize))))
   const localRows = Math.ceil(maximumGroupSize / localColumns)
   const regionWidth = Math.max(6.4, localColumns * 4.2 + 1.45)
   const regionDepth = Math.max(5.6, localRows * 3.55 + 1.7)
@@ -127,6 +127,8 @@ const RelationshipSwatch = ({ kind }: { readonly kind: ScopeConnection["kind"] }
 
 export const ScopeBoard = ({ graph, selectedId, onSelect, disabled = false }: ScopeBoardProps) => {
   const stageRef = useRef<HTMLDivElement>(null)
+  const boardRef = useRef<HTMLElement>(null)
+  const connectionLabelRefs = useRef(new Map<string, HTMLButtonElement>())
   const overlayRef = useRef<HTMLDivElement>(null)
   const nodeLabelRefs = useRef(new Map<string, HTMLButtonElement>())
   const regionLabelRefs = useRef(new Map<string, HTMLSpanElement>())
@@ -136,6 +138,8 @@ export const ScopeBoard = ({ graph, selectedId, onSelect, disabled = false }: Sc
   const [comparisonMode, setComparisonMode] = useState<ComparisonMode>("comparison")
   const [compact, setCompact] = useState(() => window.matchMedia("(max-width: 620px)").matches)
   const [hoveredId, setHoveredId] = useState("")
+  const [focusedConnection, setFocusedConnection] = useState({ nodeId: "", mode: comparisonMode, id: "" })
+  const [expanded, setExpanded] = useState(false)
   const selectedIdRef = useRef(selectedId)
   const cameraPoseRef = useRef<CameraPose | undefined>(undefined)
   const [rendererStatus, setRendererStatus] = useState<"checking" | "ready" | "fallback">("checking")
@@ -154,6 +158,28 @@ export const ScopeBoard = ({ graph, selectedId, onSelect, disabled = false }: Sc
   const nodeById = useMemo(() => new Map(graph.nodes.map((node) => [node.id, node])), [graph.nodes])
   const selectedNode = nodeById.get(selectedId)
 
+  const focusedConnectionId = focusedConnection.nodeId === selectedId && focusedConnection.mode === comparisonMode
+    && selectedConnections.some((connection) => connection.id === focusedConnection.id) ? focusedConnection.id : ""
+  const activeConnection = selectedConnections.find((connection) => connection.id === focusedConnectionId)
+  const focusedConnectionIdRef = useRef(focusedConnectionId)
+  focusedConnectionIdRef.current = focusedConnectionId
+  const connectedIds = useMemo(() => {
+    const ids = new Set([selectedId])
+    selectedConnections.forEach((connection) => {
+      if (!focusedConnectionId || connection.id === focusedConnectionId) {
+        ids.add(connection.from)
+        ids.add(connection.to)
+      }
+    })
+    return ids
+  }, [selectedConnections, selectedId, focusedConnectionId])
+  const focusConnection = (id: string) => setFocusedConnection({ nodeId: selectedId, mode: comparisonMode, id: focusedConnectionId === id ? "" : id })
+
+  useEffect(() => {
+    const onFullscreenChange = () => setExpanded(document.fullscreenElement === boardRef.current)
+    document.addEventListener("fullscreenchange", onFullscreenChange)
+    return () => document.removeEventListener("fullscreenchange", onFullscreenChange)
+  }, [])
   useEffect(() => {
     const stage = stageRef.current
     const overlay = overlayRef.current
@@ -202,12 +228,12 @@ export const ScopeBoard = ({ graph, selectedId, onSelect, disabled = false }: Sc
     }
     let environmentTarget = createEnvironmentTarget()
     scene.environment = environmentTarget.texture
-    scene.environmentIntensity = 0.34
+    scene.environmentIntensity = 0.25
 
-    const hemisphere = new THREE.HemisphereLight(0xe8f4ff, 0x061d18, 0.72)
+    const hemisphere = new THREE.HemisphereLight(0xe8f4ff, 0x061d18, 0.9)
     scene.add(hemisphere)
     const keyLight = new THREE.DirectionalLight(0xfff0d2, 2.15)
-    keyLight.position.set(-boardSpan * 0.38, boardSpan * 0.72, boardSpan * 0.42)
+    keyLight.position.set(-boardSpan * 0.38, boardSpan * 0.52, boardSpan * 0.28)
     keyLight.castShadow = true
     keyLight.shadow.mapSize.set(1024, 1024)
     keyLight.shadow.camera.left = -boardSpan * 0.65
@@ -219,32 +245,32 @@ export const ScopeBoard = ({ graph, selectedId, onSelect, disabled = false }: Sc
     keyLight.shadow.bias = -0.00025
     keyLight.shadow.normalBias = 0.025
     scene.add(keyLight)
-    const fillLight = new THREE.DirectionalLight(0xb7ddff, 0.62)
-    fillLight.position.set(boardSpan * 0.46, boardSpan * 0.34, boardSpan * 0.3)
+    const fillLight = new THREE.DirectionalLight(0xb7ddff, 0.85)
+    fillLight.position.set(boardSpan * 0.46, boardSpan * 0.24, boardSpan * 0.3)
     scene.add(fillLight)
-    const rimLight = new THREE.DirectionalLight(0xffbd82, 0.42)
+    const rimLight = new THREE.DirectionalLight(0xffbd82, 1.2)
     rimLight.position.set(0, boardSpan * 0.28, -boardSpan * 0.55)
     scene.add(rimLight)
 
     const board = new THREE.Mesh(
-      new RoundedBoxGeometry(layout.boardWidth, 0.32, layout.boardDepth, 4, 0.12),
+      new RoundedBoxGeometry(layout.boardWidth, 0.5, layout.boardDepth, 4, 0.12),
       createBoardMaterial({ color: "#0b342b", surface: "substrate", accent: "#4b9278" }),
     )
-    board.position.y = -0.18
+    board.position.y = -0.27
     board.receiveShadow = true
     scene.add(board)
 
     layout.regions.forEach((region) => {
       const regionPlate = new THREE.Mesh(
         new RoundedBoxGeometry(layout.regionWidth, 0.055, layout.regionDepth, 3, 0.075),
-        createBoardMaterial({ color: "#185340", surface: "region", accent: "#72b99b", transparent: true, opacity: 0.86 }),
+        createBoardMaterial({ color: "#12372f", surface: "region", accent: "#72b99b" }),
       )
       regionPlate.position.set(region.x, 0.005, region.z)
       regionPlate.receiveShadow = true
       scene.add(regionPlate)
       const perimeter = new THREE.LineSegments(
         new THREE.EdgesGeometry(new RoundedBoxGeometry(layout.regionWidth, 0.065, layout.regionDepth, 3, 0.075)),
-        new THREE.LineBasicMaterial({ color: 0xb5dec6, transparent: true, opacity: 0.52 }),
+        new THREE.LineBasicMaterial({ color: 0xb5dec6, transparent: true, opacity: 0.24 }),
       )
       perimeter.position.set(region.x, 0.045, region.z)
       scene.add(perimeter)
@@ -279,14 +305,14 @@ export const ScopeBoard = ({ graph, selectedId, onSelect, disabled = false }: Sc
     const fitPoint = new THREE.Vector3()
     const regionPoint = new THREE.Vector3()
     const cameraTarget = new THREE.Vector3(0, 0.12, 0)
-    const defaultCameraDirection = new THREE.Vector3(0, 0.92, 0.39).normalize()
+    const defaultCameraDirection = new THREE.Vector3(0, 0.95, 0.36).normalize()
     let viewport = { width: 0, height: 0 }
     let cameraInitialized = false
     const labelBounds = components.map((component) => ({ id: component.id, left: 0, top: 0, width: 0, height: 0, hidden: true }))
 
     const updateLabels = () => {
       const visibleHeight = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.position.distanceTo(controls.target)
-      const labelWidth = clamp(viewport.height / visibleHeight * 4.45, 62, 150)
+      const labelWidth = clamp(viewport.height / visibleHeight * 3.8, 60, 150)
       components.forEach((component, index) => {
         const label = nodeLabelRefs.current.get(component.id)
         if (!label) return
@@ -305,6 +331,13 @@ export const ScopeBoard = ({ graph, selectedId, onSelect, disabled = false }: Sc
         regionPoint.set(region.x, 0.12, region.z - layout.regionDepth / 2 + 0.65).project(camera)
         label.style.transform = `translate3d(${(regionPoint.x * 0.5 + 0.5) * viewport.width}px, ${(-regionPoint.y * 0.5 + 0.5) * viewport.height}px, 0) translate(-50%, -50%)`
         label.hidden = regionPoint.z < -1 || regionPoint.z > 1
+      })
+      connectionLabelRefs.current.forEach((label, id) => {
+        const point = circuitTraces.endpoints.get(id)
+        if (!point) { label.hidden = true; return }
+        labelPoint.set(point.x, point.y + 0.22, point.z).project(camera)
+        label.style.transform = `translate3d(${(labelPoint.x * 0.5 + 0.5) * viewport.width}px, ${(-labelPoint.y * 0.5 + 0.5) * viewport.height}px, 0) translate(-50%, -50%)`
+        label.hidden = labelPoint.z < -1 || labelPoint.z > 1
       })
       // Read after all label writes so hit targets share a single layout pass.
       labelBounds.forEach((bounds) => {
@@ -369,7 +402,7 @@ export const ScopeBoard = ({ graph, selectedId, onSelect, disabled = false }: Sc
     const resize = () => {
       const { width, height } = stage.getBoundingClientRect()
       if (!width || !height) return
-      setCompact(width < 560)
+      setCompact(width < 900)
       viewport = { width, height }
       renderer.setSize(width, height, false)
       camera.aspect = width / height
@@ -378,19 +411,26 @@ export const ScopeBoard = ({ graph, selectedId, onSelect, disabled = false }: Sc
         cameraInitialized = true
         resetView()
         restoreView()
-      } else draw()
+      } else resetView()
     }
 
-    const applySelection = (id: string) => {
+    const applySelection = (id: string, connectionId = "") => {
+      const connected = new Set([id])
+      visibleConnections.forEach((connection) => {
+        if (connectionId ? connection.id === connectionId : connection.from === id || connection.to === id) {
+          connected.add(connection.from)
+          connected.add(connection.to)
+        }
+      })
       nodeVisuals.forEach((visual, nodeId) => {
         const isSelected = nodeId === id
         visual.halo.visible = isSelected
         visual.materials.forEach((material) => {
           material.emissive.copy(material.color)
-          material.emissiveIntensity = isSelected ? 0.24 : 0.025
+          material.emissiveIntensity = isSelected ? 0.18 : connected.has(nodeId) ? 0.07 : 0
         })
       })
-      circuitTraces.select(id)
+      circuitTraces.select(id, connectionId)
       draw()
     }
 
@@ -476,7 +516,7 @@ export const ScopeBoard = ({ graph, selectedId, onSelect, disabled = false }: Sc
     const observer = new ResizeObserver(resize)
     observer.observe(stage)
     resize()
-    applySelection(selectedIdRef.current)
+    applySelection(selectedIdRef.current, focusedConnectionIdRef.current)
 
     runtimeRef.current = {
       select: applySelection,
@@ -519,8 +559,8 @@ export const ScopeBoard = ({ graph, selectedId, onSelect, disabled = false }: Sc
   }, [graph, layout, comparisonMode, visibleConnections])
 
   useEffect(() => {
-    runtimeRef.current?.select(selectedId)
-  }, [selectedId])
+    runtimeRef.current?.select(selectedId, focusedConnectionId)
+  }, [selectedId, focusedConnectionId])
 
   useEffect(() => {
     runtimeRef.current?.setInteractionDisabled(disabled)
@@ -532,9 +572,11 @@ export const ScopeBoard = ({ graph, selectedId, onSelect, disabled = false }: Sc
 
   return <section
     className={`scope-board ${rendererStatus === "fallback" ? "is-fallback" : ""}`}
+    ref={boardRef}
     aria-label="Contract scope board"
     data-renderer-status={rendererStatus}
     data-selected-node-id={selectedId}
+    data-focused-connection-id={focusedConnectionId}
     data-comparison-mode={comparisonMode}
     data-node-count={graph.nodes.length}
   >
@@ -545,6 +587,7 @@ export const ScopeBoard = ({ graph, selectedId, onSelect, disabled = false }: Sc
           {(["comparison", "current", "proposed"] as const).map((mode) => <button key={mode} type="button" disabled={disabled} aria-pressed={comparisonMode === mode} onClick={() => setComparisonMode(mode)} data-comparison-mode={mode}>{mode === "comparison" ? "Compare" : mode[0].toUpperCase() + mode.slice(1)}</button>)}
         </div>
         <button className="scope-board-reset" type="button" disabled={disabled || rendererStatus !== "ready"} onClick={() => runtimeRef.current?.reset()}>Reset camera</button>
+        {document.fullscreenEnabled && <button className="scope-board-reset" type="button" onClick={() => expanded ? document.exitFullscreen() : boardRef.current?.requestFullscreen()}>{expanded ? "Exit expanded view" : "Expand diagram"}</button>}
         <div className="scope-board-legend" aria-label="Change legend">
           {(Object.keys(changeNames) as ScopeChange[]).map((change) => <span key={change} data-change={change} style={{ "--change-color": changeColors[change] } as CSSProperties}><i aria-hidden="true" />{changeNames[change]}</span>)}
         </div>
@@ -554,6 +597,15 @@ export const ScopeBoard = ({ graph, selectedId, onSelect, disabled = false }: Sc
     <ul className="scope-board-relationship-key" aria-label="Relationship key">
       {(Object.keys(relationshipStyles) as ScopeConnection["kind"][]).map((kind) => <li key={kind} data-connection-kind={kind}><RelationshipSwatch kind={kind} /><span>{relationshipStyles[kind].label}</span></li>)}
     </ul>
+    <div className="scope-board-focus-bar">
+      <div><strong>{selectedNode ? labelFor(selectedNode, comparisonMode) : "Select a contract"}</strong><span>{activeConnection
+        ? `${relationshipStyles[activeConnection.kind].label} · ${labelFor(nodeById.get(activeConnection.from)!, comparisonMode)} → ${labelFor(nodeById.get(activeConnection.to)!, comparisonMode)}`
+        : `${selectedConnections.length} connections · Choose a number to follow one wire`}</span></div>
+      {focusedConnectionId && <button type="button" disabled={disabled} onClick={() => focusConnection("")}>Show all connections</button>}
+    </div>
+    {selectedConnections.length > 0 && <nav className="scope-board-wire-controls" aria-label="Isolate a connection">
+      {selectedConnections.map((connection, index) => <button key={connection.id} type="button" className="scope-board-wire-choice" style={{ "--wire-color": relationshipStyles[connection.kind].color } as CSSProperties} disabled={disabled} aria-pressed={focusedConnectionId === connection.id} title={`${relationshipStyles[connection.kind].label} · ${connection.label}`} aria-label={`Isolate connection ${index + 1}: ${relationshipStyles[connection.kind].label}`} onClick={() => focusConnection(connection.id)}>{index + 1}</button>)}
+    </nav>}
     <div className="scope-board-stage" ref={stageRef} style={{ aspectRatio: layout.boardWidth / layout.boardDepth }} tabIndex={rendererStatus === "ready" ? 0 : -1} aria-label="Interactive contract circuit board" aria-describedby="scope-board-description" data-board-stage="circuit">
       <div className="scope-board-overlay" ref={overlayRef} hidden={rendererStatus !== "ready"}>
         {graph.nodes.map((node) => {
@@ -564,6 +616,7 @@ export const ScopeBoard = ({ graph, selectedId, onSelect, disabled = false }: Sc
           className={`scope-board-node-label is-${node.change}`}
           style={{ "--entity-color": entity.color } as CSSProperties}
           data-active={node.id === selectedId || node.id === hoveredId}
+          data-connected={!selectedId || connectedIds.has(node.id)}
           data-category={versionFor(node, comparisonMode)?.category ?? node.category}
           title={`${labelFor(node, comparisonMode)} · ${entity.label} · ${nodeStatus(node, comparisonMode)}`}
           ref={(element) => { if (element) nodeLabelRefs.current.set(node.id, element); else nodeLabelRefs.current.delete(node.id) }}
@@ -574,6 +627,17 @@ export const ScopeBoard = ({ graph, selectedId, onSelect, disabled = false }: Sc
           data-change={node.change}
         ><span>{labelFor(node, comparisonMode)}</span><small>{entity.label}{comparisonMode === "comparison" && node.change !== "unchanged" ? ` · ${node.change}` : !versionFor(node, comparisonMode) ? " · absent" : ""}</small></button>
         })}
+        {selectedConnections.map((connection, index) => focusedConnectionId === connection.id && <button
+          key={connection.id}
+          type="button"
+          className="scope-board-wire-label"
+          style={{ "--wire-color": relationshipStyles[connection.kind].color } as CSSProperties}
+          ref={(element) => { if (element) connectionLabelRefs.current.set(connection.id, element); else connectionLabelRefs.current.delete(connection.id) }}
+          aria-label={`Isolate connection ${index + 1}: ${relationshipStyles[connection.kind].label}`}
+          aria-pressed={focusedConnectionId === connection.id}
+          onClick={() => focusConnection(connection.id)}
+          disabled={disabled}
+        >{index + 1}</button>)}
         {layout.regions.map((region) => <span
           key={region.scope}
           className="scope-board-region-label"
@@ -588,12 +652,19 @@ export const ScopeBoard = ({ graph, selectedId, onSelect, disabled = false }: Sc
         <summary>All contracts ({graph.nodes.length})</summary>
         <nav aria-label="Contract components">{graph.nodes.map((node) => <button key={node.id} type="button" disabled={disabled} aria-current={selectedId === node.id ? "true" : undefined} onClick={() => selectNode(node.id)} data-node-id={node.id} data-change={node.change}><span>{labelFor(node, comparisonMode)}</span><small>{versionFor(node, comparisonMode)?.category ?? node.category} · {versionFor(node, comparisonMode)?.scope ?? node.scope} · {nodeStatus(node, comparisonMode)}</small></button>)}</nav>
       </details>
-      <aside className="scope-board-connection-note"><h3>Connected to {selectedNode ? labelFor(selectedNode, comparisonMode) : "selection"}</h3>{selectedConnections.length > 0 ? <ul>{selectedConnections.map((connection) => {
-        const otherId = connection.from === selectedId ? connection.to : connection.from
-        const label = comparisonMode === "current" ? connection.currentLabel : comparisonMode === "proposed" ? connection.proposedLabel : connection.label
-        const other = nodeById.get(otherId)
-        return <li key={connection.id} data-connection-id={connection.id} data-connection-kind={connection.kind} data-change={connection.change}><button disabled={disabled} onClick={() => selectNode(otherId)}>{other ? labelFor(other, comparisonMode) : otherId}</button><span>{relationshipStyles[connection.kind].label}{connection.kind === "schema" ? ` · ${label}` : ""}{comparisonMode === "comparison" && connection.change !== "unchanged" ? ` · ${changeNames[connection.change]}` : ""}</span></li>
-      })}</ul> : <span>No connections in this view.</span>}</aside>
+      <aside className="scope-board-connection-note">
+        <h3>Connections for {selectedNode ? labelFor(selectedNode, comparisonMode) : "selection"}</h3>
+        <p>Choose a number to isolate its wire. Choose a contract name to inspect it.</p>
+        {selectedConnections.length > 0 ? <ol>{selectedConnections.map((connection, index) => {
+          const otherId = connection.from === selectedId ? connection.to : connection.from
+          const label = comparisonMode === "current" ? connection.currentLabel : comparisonMode === "proposed" ? connection.proposedLabel : connection.label
+          const other = nodeById.get(otherId)
+          return <li key={connection.id} data-connection-id={connection.id} data-connection-kind={connection.kind} data-change={connection.change} data-focused={focusedConnectionId === connection.id}>
+            <button className="scope-board-wire-choice" style={{ "--wire-color": relationshipStyles[connection.kind].color } as CSSProperties} disabled={disabled} aria-pressed={focusedConnectionId === connection.id} aria-label={`Isolate connection ${index + 1}: ${relationshipStyles[connection.kind].label}`} onClick={() => focusConnection(connection.id)}>{index + 1}</button>
+            <div><button className="scope-board-contract-link" disabled={disabled} onClick={() => selectNode(otherId)}>{other ? labelFor(other, comparisonMode) : otherId}</button><span>{connection.from === selectedId ? "References" : "Referenced by"} · {relationshipStyles[connection.kind].label}{connection.kind === "schema" ? ` · ${label}` : ""}{comparisonMode === "comparison" && connection.change !== "unchanged" ? ` · ${changeNames[connection.change]}` : ""}</span></div>
+          </li>
+        })}</ol> : <span>No connections in this view.</span>}
+      </aside>
     </div>
   </section>
 }

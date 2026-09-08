@@ -19,6 +19,7 @@ Choose the document type from the reader's current need:
 | Understand a bounded topic | Explanation | [Explanation](references/explanation.md) |
 
 Read the selected reference for its document contract. Use [the Diátaxis workflow](references/how-to-use-diataxis.md) for a mixed documentation set or audit, and [quality guidance](references/quality.md) when the requested judgment goes beyond factual correctness.
+When a base-to-candidate change may affect a reader-visible surface or a diagram, use the [release coverage audit](references/release-coverage.md) to assess only the relevant documentation needs.
 
 ## Shared method
 

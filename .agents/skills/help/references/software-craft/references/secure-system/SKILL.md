@@ -5,6 +5,9 @@ description: Threat-model and harden software that crosses trust, authorization,
 
 # Secure System
 
+
+For an infrastructure, CI, or executable-skill supply-chain assessment, read [infrastructure supply-chain audit](references/infrastructure-supply-chain-audit.md). In assessment-only work, inspect existing controls and recommend changes; do not implement controls or run live abuse probes without authorization.
+
 ## Inputs
 
 The software boundary, assets and actors, privileged actions, data classes, concrete abuse outcomes, and applicable operational constraints.
@@ -22,8 +25,8 @@ The software boundary, assets and actors, privileged actions, data classes, conc
 
 ## Output
 
-A threat model, correctly placed preventive or detective controls, and real-boundary evidence for the highest-consequence abuse paths.
+A threat model, correctly placed preventive or detective controls, and real-boundary evidence for the highest-consequence abuse paths. For assessment-only work, deliver a report that separates observed controls, unverified runtime controls, and recommendations; do not represent a recommendation as installed or proven.
 
 ## Done
 
-Each material threat has a preventive or detective control at the correct boundary, and the highest-risk controls are demonstrated rather than assumed.
+For implementation work, each material threat has a preventive or detective control at the correct boundary, and the highest-risk controls are demonstrated rather than assumed. For assessment-only work, each material finding records its evidence, reachable impact, relevant controls or counterevidence, and verification status; implementation remains separately authorized.
