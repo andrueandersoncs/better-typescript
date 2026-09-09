@@ -28,6 +28,8 @@ The exact software claim, candidate artifact or runtime surface, authoritative e
 
 ## Report-only procedures
 
+For browser evidence, use [agent-browser](../../../agent-browser/SKILL.md) when it fits the available tools and user-selected session. This workflow retains the verification claim and completion decision.
+
 For exploratory web behavior requested without a change or remediation, use [exploratory web QA](references/exploratory-web-qa.md). For a newcomer-path audit of developer documentation, CLI, or API, use [developer onboarding](references/developer-onboarding.md). Both produce evidence for this workflow; they do not assume authority to modify the target.
 
 ## Output

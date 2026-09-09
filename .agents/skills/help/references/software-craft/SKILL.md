@@ -16,7 +16,6 @@ Follow the shared [gather → match → handoff procedure](../skill-routers/refe
 | A reusable agent skill with one direct workflow must be created, consolidated, or improved. | [`author-agent-skill`](references/author-agent-skill/SKILL.md) |
 | A bounded code artifact needs the requested three-stage removal-versus-retention steelman and independent adjudication report. | [`absurd-code-review`](references/absurd-code-review/SKILL.md) |
 | Code needs a focused review for symmetry between related concepts, including missing counterpart abstractions or inconsistent API shapes. | [`review-symmetry`](references/review-symmetry/SKILL.md) |
-| An Effect v4 outcome needs a human-approved artifact containing executable stories and exact Schemas, Errors, Services, and function signatures before implementation. | [`executable-interactive-plans`](references/executable-interactive-plans/SKILL.md) |
 | The requested outcome is agreement on a production Effect Schema domain model through generated examples and behavior-linked properties. | [`effect-schema-brainstorming`](references/effect-schema-brainstorming/SKILL.md) |
 | Existing pages, screenshots, video, or interaction references need capturing and translating into an original builder-ready brief. | [`capture-design-reference`](references/capture-design-reference/SKILL.md) |
 | The requested result is one integrated software outcome that must be partitioned among at least two genuinely independent work units. | [`coordinate-agents`](references/coordinate-agents/SKILL.md) |
@@ -29,7 +28,7 @@ Follow the shared [gather → match → handoff procedure](../skill-routers/refe
 | A current external API, standard, dependency, technique, or comparative fact needs primary-source evidence to answer a software decision. | [`research-evidence`](references/research-evidence/SKILL.md) |
 | A named design question needs a disposable runnable probe, technical spike, or divergent UI comparison to decide it. | [`prototype-options`](references/prototype-options/SKILL.md) |
 | The requester wants to resolve unclear software intent, success conditions, constraints, or a human decision boundary into an accepted outcome. | [`define-work`](references/define-work/SKILL.md) |
-| The requested result is a stable domain model, module seam, public API, schema, architecture, or compatibility contract, other than the dedicated Effect Schema or executable Effect-contract artifacts. | [`design-contract`](references/design-contract/SKILL.md) |
+| The requested result is a stable domain model, module seam, public API, schema, architecture, or compatibility contract, other than the dedicated Effect Schema agreement workflow. | [`design-contract`](references/design-contract/SKILL.md) |
 | The requested result is a dependency-ordered, evidence-producing implementation plan for an accepted outcome or contract. | [`plan-change`](references/plan-change/SKILL.md) |
 | A large, foggy, or issue-driven software program needs a canonical work queue with justified states, blockers, and a claimable ready frontier. | [`manage-work-queue`](references/manage-work-queue/SKILL.md) |
 | A reproducible failure, regression, flaky behavior, hang, integration failure, or unexplained slowness needs root-cause diagnosis and a fix. | [`diagnose-problem`](references/diagnose-problem/SKILL.md) |

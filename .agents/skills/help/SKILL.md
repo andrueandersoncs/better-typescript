@@ -1,6 +1,6 @@
 ---
 name: help
-description: Gather task context and select one specialist for marketing, writing, planning, product, projects, wikis, Grok Bots, agent systems, skills, software laws, or engineering.
+description: Gather task context and select one specialist for browser tasks, marketing, writing, planning, product, projects, wikis, Grok Bots, agent systems, skills, software laws, or engineering.
 ---
 
 # Help
@@ -11,6 +11,7 @@ Read [the shared routing guide](references/skill-routers/references/canonical-de
 
 | Situation pattern | Skill |
 | --- | --- |
+| The requested outcome is operating a website, filling a form, extracting rendered data, or capturing a page through browser interaction. Software fixes, QA reports, and design research retain their engineering owner, which may use this browser workflow for evidence. | [`agent-browser`](references/agent-browser/SKILL.md) |
 | An agent skill router needs explaining, designing, implementing, or auditing. | [`skill-routers`](references/skill-routers/SKILL.md) |
 | LoRA training is already chosen: a source skill needs distilling into a small adapter with a sealed comparison against that skill. | [`distill-skill-to-model`](references/distill-skill-to-model/SKILL.md) |
 | Grok Bot capabilities, skills, routines, roster, autonomy rules, handoffs, or templates need creating or changing. | [`grok-bot`](references/grok-bot/SKILL.md) |

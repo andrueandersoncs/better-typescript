@@ -11,6 +11,8 @@ The design question, candidate sources or discovery scope, target product contex
 
 ## Method
 
+For live-page browser interaction and screenshots, use [agent-browser](../../../agent-browser/SKILL.md) when compatible with the user's selected tools and session. Keep the design question, capture manifest, and brief in this workflow.
+
 1. State the design question and select a small, diverse reference set that can answer it.
 2. Record each source URL, date, viewport, state, and asset provenance. Deduplicate against existing captures.
 3. Capture evidence from the live surface:

@@ -33,7 +33,6 @@ The [selected gstack source mapping](../../gstack-sources.md) records six later 
 | `optimize-system` | Addy: `performance-optimization`; Meng: web animation, Three.js, game, and Apple profiling; Emil: web/Expo motion performance | Attribute one measured bottleneck, change one cause, and remeasure under comparable conditions. | `diagnose-problem`, `animate-interface`, `build-immersive-web`, `build-web-game` |
 | `author-agent-skill` | Superpowers: `writing-skills`; Matt: `writing-for-agents`; Meng: article/technique extraction; Addy: skill anatomy and eval system; Pstack: `create-verification-skill`, `maintain-verification-skill` | Treat skills as routed behavior programs: deduplicate, progressively disclose, and pressure-test them. | `research-evidence`, `prototype-options`, `review-change`, `verify-change` |
 | `effect-schema-brainstorming` | Local | Agree on production Effect Schemas through generated examples and behavior-linked properties. | `design-contract`, `effect` context |
-| `executable-interactive-plans` | Local | Produce a human-approved Effect contract artifact with executable story properties. | `design-contract`, `prototype-options`, `effect` context |
 
 ## Source snapshots
 
