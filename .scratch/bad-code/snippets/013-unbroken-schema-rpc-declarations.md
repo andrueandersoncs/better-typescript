@@ -61,7 +61,7 @@ Particularly, I don't like the lack of spacing and boundaries
 ### Shape: Unbroken heterogeneous declaration run
 
 - Observable shape: Forty-two adjacent single-line declarations in one block cross schema construction, wire conversion, RPC procedure, and handler concerns without a syntactic separator or extracted boundary.
-- Existing rules: `no-blank-lines-between-single-line-declarations` deliberately keeps adjacent single-line declarations contiguous. `require-blank-lines-around-multiline-declarations` applies only when a declaration already spans multiple lines.
+- Existing rules: `no-blank-lines-between-single-line-declarations` deliberately keeps adjacent single-line declarations contiguous. `require-blank-lines-around-multiline-statements` applies only when a statement already spans multiple lines.
 - Pattern: none
 - Emergence: no-pattern
 - Reason: The AST and checker cannot identify the intended conceptual group boundaries. A declaration-count threshold would be arbitrary, and inserting blank lines between these single-line declarations would conflict with the existing rule. Formatting complex declarations across lines would activate the existing multiline-boundary rule; extracting cohesive helpers is a design decision rather than a predictable lint replacement.

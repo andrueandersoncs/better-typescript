@@ -109,7 +109,7 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/rules/raw_fetch_outside_adapter"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/redundant_alias"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/require_because_in_comments"
-	"github.com/andrueandersoncs/better-typescript/internal/rules/require_blank_lines_around_multiline_declarations"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/require_blank_lines_around_multiline_statements"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/require_callable_role_name_consistency"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/require_command_name_consistency"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/require_construction_name_consistency"
@@ -252,7 +252,7 @@ var BuiltinRules = []rule.Rule{
 	raw_fetch_outside_adapter.Rule,
 	redundant_alias.Rule,
 	require_because_in_comments.Rule,
-	require_blank_lines_around_multiline_declarations.Rule,
+	require_blank_lines_around_multiline_statements.Rule,
 	require_callable_role_name_consistency.Rule,
 	require_command_name_consistency.Rule,
 	require_construction_name_consistency.Rule,

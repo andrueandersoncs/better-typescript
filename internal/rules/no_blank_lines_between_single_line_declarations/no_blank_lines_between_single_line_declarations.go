@@ -14,7 +14,7 @@ var blankLinePattern = regexp.MustCompile(`\n[ \t]*\r?\n`)
 var message = rule.RuleMessage{
 	Id:          "noBlankLinesBetweenSingleLineDeclarations",
 	Description: "Single-line declarations must not have blank lines between them.",
-	Help:        "Remove the empty line between these adjacent single-line declarations so they stay contiguous. Blank lines remain required around multi-line declarations; keep those separators when a neighbor is multi-line.",
+	Help:        "Remove the empty line between these adjacent single-line declarations so they stay contiguous. Blank lines remain required around multi-line statements; keep those separators when a neighbor is multi-line.",
 }
 
 func isDeclarationStatement(node *ast.Node) bool {

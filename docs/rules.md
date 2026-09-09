@@ -128,7 +128,7 @@ See [Engineering principles](./engineering-principles.md) for ownership, validat
 - [`raw-fetch-outside-adapter`](./rules/raw-fetch-outside-adapter.md)
 - [`redundant-alias`](./rules/redundant-alias.md)
 - [`require-because-in-comments`](./rules/require-because-in-comments.md)
-- [`require-blank-lines-around-multiline-declarations`](./rules/require-blank-lines-around-multiline-declarations.md)
+- [`require-blank-lines-around-multiline-statements`](./rules/require-blank-lines-around-multiline-statements.md)
 - [`require-callable-role-name-consistency`](./rules/require-callable-role-name-consistency.md)
 - [`require-command-name-consistency`](./rules/require-command-name-consistency.md)
 - [`require-construction-name-consistency`](./rules/require-construction-name-consistency.md)

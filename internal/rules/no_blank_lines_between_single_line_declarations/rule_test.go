@@ -9,6 +9,6 @@ import (
 
 func TestRule(t *testing.T) {
 	ruletest.Assert(t, "testdata", NoBlankLinesBetweenSingleLineDeclarationsRule, []analysis.Violation{
-		{RuleName: "no-blank-lines-between-single-line-declarations", Level: "error", Message: "Single-line declarations must not have blank lines between them. Remove the empty line between these adjacent single-line declarations so they stay contiguous. Blank lines remain required around multi-line declarations; keep those separators when a neighbor is multi-line.", FilePath: "src/violation.ts", Line: 4, Column: 3},
+		{RuleName: "no-blank-lines-between-single-line-declarations", Level: "error", Message: "Single-line declarations must not have blank lines between them. Remove the empty line between these adjacent single-line declarations so they stay contiguous. Blank lines remain required around multi-line statements; keep those separators when a neighbor is multi-line.", FilePath: "src/violation.ts", Line: 4, Column: 3},
 	})
 }

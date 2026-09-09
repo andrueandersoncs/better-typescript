@@ -60,7 +60,7 @@ This count assumes a port must preserve current findings. It does not count:
 - `prefer-implicit-return`
 - `prefer-option-match`
 - `require-because-in-comments`
-- `require-blank-lines-around-multiline-declarations`
+- `require-blank-lines-around-multiline-statements`
 - `typescript-namespaces`
 - `unsafe-casts`
 
