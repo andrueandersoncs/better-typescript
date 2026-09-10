@@ -38,4 +38,5 @@ Status counts: confirmed 0, prospective 9, rejected 3.
 | [011](snippets/011-terminal-yield-without-return.md) | Terminal yield without return | [terminal-yield-without-return](patterns/terminal-yield-without-return.md) |
 | [012](snippets/012-inconsistent-rpc-schema-references.md) | Inconsistent RPC schema references | [inconsistent-sibling-schema-references](patterns/inconsistent-sibling-schema-references.md) |
 | [013](snippets/013-unbroken-schema-rpc-declarations.md) | Unbroken schema and RPC declarations | none |
+| [014](snippets/014-manual-reference-validation-branches.md) | Manual reference validation branches | none |
 
