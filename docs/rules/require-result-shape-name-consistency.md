@@ -2,7 +2,7 @@
 
 ## What it does
 
-Checks whether the first operation word in a callable name matches its written return annotation. The rule lowercases that text and uses the first matching classification:
+Checks whether the first operation word in a callable name matches its written or checker-inferred return type. The rule uses the annotation when present and the inferred signature otherwise, then lowercases that text and uses the first matching classification:
 
 - Text containing `=>` is `callable`.
 - Text containing `boolean` or ` is ` is `boolean`. The ` is ` test covers written type predicates.
@@ -11,7 +11,7 @@ Checks whether the first operation word in a callable name matches its written r
 - Text containing `record<` or `map<` is `keyed`.
 - Text containing `readonlyarray`, `array<`, or `set<`, or ending in `[]`, is `collection`.
 - Text containing `string` is `string`.
-- Other nonempty text is `object`. A missing annotation is `unknown`.
+- Other nonempty text is `object`. A return type unavailable from both the annotation and checker is `unknown`.
 
 `average`, `count`, and `sum` require `number`. `group` and `index` require `keyed`. `filter` and `map` require `collection`. `boolean` results are ignored.
 
@@ -25,10 +25,11 @@ Use it when operation words such as `count` should reliably describe the shape r
 
 ## Conformant
 
-The fixture allows a matching numeric count and an unrelated function name:
+The fixture allows explicit and inferred numeric counts and an unrelated function name:
 
 ```ts
 const countItems = (): number => 0
+const countSource = (count: number, present: boolean) => present ? count + 1 : count
 declare function parseValue(): string
 ```
 
@@ -38,4 +39,5 @@ The fixture reports a count that returns a string:
 
 ```ts
 const countUsers = (): string => "0"
+const countLabels = () => "0"
 ```
