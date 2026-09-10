@@ -73,6 +73,16 @@ function bareReturn(): void {
   return
 }
 
+const migrationCache = new Map<string, string>()
+function populate(key: string, values: readonly string[]): string {
+  const cached = migrationCache.get(key)
+  if (cached !== undefined) return cached
+  for (const value of values) {
+    migrationCache.set(key, value)
+  }
+  return "fallback"
+}
+
 void separateMaps
 void commandFor
 void differentLiterals
@@ -81,5 +91,6 @@ void readOnly
 void writeOnly
 void timedLookup
 void bareReturn
+void populate
 
 export {}

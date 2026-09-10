@@ -6,6 +6,8 @@ Reports a native `Map` only when one local execution owner uses the same map and
 
 Bare returns are ignored because they cannot return a cached value.
 
+Initializer-free variable declarations, including `for...of` bindings, are treated as unproven values instead of terminating analysis.
+
 The report says: “Prefer Effect Cache for a hand-rolled value-cache protocol when its lifecycle fits. Use Cache.make or Cache.makeWith after choosing key equality, ownership, failure, and retention semantics.”
 
 ## When to use it

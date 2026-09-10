@@ -207,6 +207,9 @@ func effectValue(ctx rule.RuleContext, node *ast.Node) bool {
 
 func dependsOnKey(ctx rule.RuleContext, node *ast.Node, key cacheKey) bool {
 	node = unwrap(node)
+	if node == nil {
+		return false
+	}
 	candidate, ok := keyFor(ctx, node)
 	if ok && sameKey(candidate, key) {
 		return true
