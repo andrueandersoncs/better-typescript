@@ -2,7 +2,9 @@
 
 ## What it does
 
-Reports a blank line between adjacent single-line declarations inside a function. The report says: “Single-line declarations must not have blank lines between them. Remove the empty line between these adjacent single-line declarations so they stay contiguous. Blank lines remain required around multi-line statements; keep those separators when a neighbor is multi-line.” This rule does not enforce separators around multi-line statements. Top-level declarations and pairs with a multi-line declaration are not reported.
+Reports a blank line between adjacent single-line declarations of the same syntax kind inside a function. Remove that empty line to keep the declarations contiguous. `const`, `let`, and `var` share one kind; classes, functions, interfaces, type aliases, enums, and namespaces each have their own kind. Top-level declarations, different-kind pairs, and pairs with a multi-line declaration are not reported.
+
+Keep separators required by [`require-blank-lines-between-statement-kinds`](./require-blank-lines-between-statement-kinds.md) and [`require-blank-lines-around-multiline-statements`](./require-blank-lines-around-multiline-statements.md).
 
 ## When to use it
 

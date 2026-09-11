@@ -2,7 +2,7 @@
 
 ## What it does
 
-Reports a statement that spans multiple lines without a blank line between it and a neighboring statement. The first and last statements in a statement list are exempt on their outer sides. Single-line statements do not require surrounding blank lines.
+Reports a statement that spans multiple lines without a blank line between it and a neighboring statement. The first and last statements in a statement list are exempt on their outer sides. This rule does not require separators between two single-line statements; [`require-blank-lines-between-statement-kinds`](./require-blank-lines-between-statement-kinds.md) requires them when their syntax kinds differ.
 
 ## When to use it
 

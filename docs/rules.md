@@ -1,6 +1,6 @@
 # Built-in rules
 
-The fixed catalog contains these 138 rules:
+The fixed catalog contains these 139 rules:
 
 `prefer-effect-schema-constructor` requires Effect Schema classes to use their static `make` method.
 
@@ -20,6 +20,8 @@ Recursive and generic-inference-guiding annotations are retained. Effect Schema 
 `cache-preference` ignores bare returns and initializer-free loop bindings because they do not prove a cache protocol.
 
 `inflight-dedupe-map` ignores bare returns because they cannot return an in-flight value.
+
+Statement spacing separates different syntax kinds. Single-line declarations inside functions stay contiguous only within the same kind; multiline statements retain their surrounding separators.
 
 See [Engineering principles](./engineering-principles.md) for ownership, validation, concurrency, and compatibility boundaries.
 
@@ -132,6 +134,7 @@ See [Engineering principles](./engineering-principles.md) for ownership, validat
 - [`redundant-alias`](./rules/redundant-alias.md)
 - [`require-because-in-comments`](./rules/require-because-in-comments.md)
 - [`require-blank-lines-around-multiline-statements`](./rules/require-blank-lines-around-multiline-statements.md)
+- [`require-blank-lines-between-statement-kinds`](./rules/require-blank-lines-between-statement-kinds.md)
 - [`require-callable-role-name-consistency`](./rules/require-callable-role-name-consistency.md)
 - [`require-command-name-consistency`](./rules/require-command-name-consistency.md)
 - [`require-construction-name-consistency`](./rules/require-construction-name-consistency.md)
