@@ -9,6 +9,7 @@ import (
 
 func TestRule(t *testing.T) {
 	ruletest.Assert(t, "testdata/project", Rule, []analysis.Violation{
-		{RuleName: "no-type-specific-equivalence-strict", Level: "error", Message: "Avoid families of primitive-specific Equivalence.strictEqual bindings. Compare at the use site or expose one generic comparison operation. A single semantically named binding is allowed.", FilePath: "src/violation.ts", Line: 4, Column: 7},
+		{RuleName: "no-type-specific-equivalence-strict", Level: "error", Message: "Avoid primitive-specific Equivalence.strictEqual bindings. Call Equivalence.strictEqual at the comparison site instead.", FilePath: "src/violation.ts", Line: 4, Column: 7},
+		{RuleName: "no-type-specific-equivalence-strict", Level: "error", Message: "Avoid primitive-specific Equivalence.strictEqual bindings. Call Equivalence.strictEqual at the comparison site instead.", FilePath: "src/violation.ts", Line: 5, Column: 7},
 	})
 }

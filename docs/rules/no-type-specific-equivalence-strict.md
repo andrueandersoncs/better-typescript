@@ -2,20 +2,19 @@
 
 ## What it does
 
-Reports each top-level primitive-specific binding of Effect's `Equivalence.strictEqual` after the first binding in a module. It reports the excess variable name.
+Reports every top-level binding of Effect's `Equivalence.strictEqual` with a direct primitive type argument. It reports the variable name.
 
 The primitive boundary is a direct `string`, `number`, `boolean`, `bigint`, or `symbol` type argument. Direct comparisons, nested bindings, reference types, aliases, literals, and unions are allowed.
 
 ## When to use it
 
-Use it to avoid families of primitive comparators that duplicate the same runtime operation. Compare at the use site or expose one generic comparison operation. A single semantically named binding is allowed.
+Use it to avoid primitive comparators that bind the same runtime operation without adding behavior. Call `Equivalence.strictEqual` at the comparison site instead.
 
 ## Conformant
 
 ```ts
 import { Equivalence } from "effect"
 
-const userIdEqual = Equivalence.strictEqual<string>()
 const same = Equivalence.strictEqual<string>()("left", "right")
 ```
 
@@ -25,5 +24,4 @@ const same = Equivalence.strictEqual<string>()("left", "right")
 import { Equivalence } from "effect"
 
 const stringEqual = Equivalence.strictEqual<string>()
-const booleanEqual = Equivalence.strictEqual<boolean>()
 ```

@@ -13,6 +13,7 @@ Unary `make`, `create`, `build`, and `construct` functions may use inline generi
 Recursive and generic-inference-guiding annotations are retained. Effect Schema constructors may nest declarative calls. Effect SQL raw statements may use `unsafe`. Predicate naming recognizes checker-inferred boolean return types.
 
 `require-result-shape-name-consistency` uses checker-inferred returns when no annotation exists.
+`no-type-specific-equivalence-strict` reports every top-level primitive-specific `Equivalence.strictEqual` binding.
 
 `unbounded-stream-collect` accepts `Stream.take` as a local bound only when its count is a nonnegative finite numeric literal.
 

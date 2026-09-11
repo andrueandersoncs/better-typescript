@@ -10,7 +10,6 @@ type Text = string
 declare const left: string
 declare const right: string
 
-const userIdEqual = Equivalence.strictEqual<string>()
 const same = Equivalence.strictEqual<string>()(left, right)
 const userEqual = Equivalence.strictEqual<User>()
 const aliasEqual = Equivalence.strictEqual<Text>()
@@ -34,7 +33,6 @@ const nested = () => {
   return { stringEqual, booleanEqual }
 }
 
-void userIdEqual
 void same
 void userEqual
 void aliasEqual

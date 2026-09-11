@@ -11,24 +11,18 @@ import (
 
 var message = rule.RuleMessage{
 	Id:          "no-type-specific-equivalence-strict",
-	Description: "Avoid families of primitive-specific Equivalence.strictEqual bindings.",
-	Help:        "Compare at the use site or expose one generic comparison operation. A single semantically named binding is allowed.",
+	Description: "Avoid primitive-specific Equivalence.strictEqual bindings.",
+	Help:        "Call Equivalence.strictEqual at the comparison site instead.",
 }
 
 var Rule = rule.Rule{
 	Name: "no-type-specific-equivalence-strict",
 	Run: func(ctx rule.RuleContext, _ any) rule.RuleListeners {
-		seen := false
 		return rule.RuleListeners{
 			ast.KindVariableDeclaration: func(node *ast.Node) {
-				if !isPrimitiveStrictEqualBinding(ctx, node) {
-					return
+				if isPrimitiveStrictEqualBinding(ctx, node) {
+					ctx.ReportNode(node.AsVariableDeclaration().Name(), message)
 				}
-				if !seen {
-					seen = true
-					return
-				}
-				ctx.ReportNode(node.AsVariableDeclaration().Name(), message)
 			},
 		}
 	},

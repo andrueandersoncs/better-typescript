@@ -1,4 +1,5 @@
+import { Equivalence } from "effect"
 import { Equivalence as Equal } from "effect"
 
-const stringEqual = Equal.strictEqual<string>()
-const booleanEqual = Equal.strictEqual<boolean>()
+const sameName = Equivalence.strictEqual<string>()
+const sameBoolean = Equal.strictEqual<boolean>()
