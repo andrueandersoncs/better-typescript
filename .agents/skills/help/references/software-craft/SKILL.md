@@ -47,4 +47,9 @@ Follow the shared [gather → match → handoff procedure](../skill-routers/refe
 - [Interface design](references/design-interface/SKILL.md), [motion](references/animate-interface/SKILL.md), [immersive web](references/build-immersive-web/SKILL.md), and [web games](references/build-web-game/SKILL.md)
 - [Security](references/secure-system/SKILL.md)
 
+## Coding examples
+
+- [Kody](https://github.com/kentcdodds/kody) by Kent C. Dodds. Use this repository as an example of good coding.
+- [Epicflare](https://github.com/epicweb-dev/epicflare) by Epic Web. Use this starter as a reference for full-stack Cloudflare Workers apps with Remix and OAuth-protected MCP endpoints.
+
 See [`references/catalog.md`](references/catalog.md) for component origins and boundaries.

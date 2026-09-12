@@ -9,7 +9,7 @@ Treat the agent as `model + context + tools`; treat the harness as the system th
 
 ## Method
 
-1. Write the task, environment, success evidence, failure cost, and allowed autonomy.
+1. Write the task, environment, success evidence, failure cost, and allowed autonomy. Assign an owner for acceptance criteria and changes to them. The implementing agent may propose corrections but cannot unilaterally weaken criteria or alter protected verification machinery.
 2. Map the observation space: what the model can see, at what fidelity, and how fresh it is.
 3. Map the action space: available tools, permissions, side effects, and reversibility.
 4. Start with the smallest complete control structure:
@@ -19,7 +19,7 @@ Treat the agent as `model + context + tools`; treat the harness as the system th
 5. Keep the request prefix stable. Append observations and actions as a structured trajectory.
 6. Put each guarantee in the deepest practical layer:
    - Context for guidance.
-   - Execution gates for permissions and irreversible actions.
+   - Execution gates for permissions, protected acceptance checks, and irreversible actions.
    - Data-layer constraints for invariants the agent must never bypass.
 7. Define the loop as observe, decide, act, verify, and repair. Let external evidence decide completion.
 8. Add recovery by failure class: retry transient failures, change strategy after repeated equivalent failures, and stop at an explicit budget.
@@ -29,6 +29,7 @@ Treat the agent as `model + context + tools`; treat the harness as the system th
 
 - Once the model is fixed, improve observations, tools, and feedback before adding handcrafted exceptions. The Bitter Lesson favors general capabilities and search over brittle domain logic.
 - Evolve complexity from a working simple system, following Gall's Law.
+- Apply Goodhart's Law: before accepting success, check whether the agent could produce the same evidence without delivering the requested outcome.
 - Prefer foundational tools that compose. Add dedicated tools where permissions, auditability, or strict business rules require them.
 - Preserve raw evidence outside compressed context.
 - Make changes as minimal, attributable, reversible diffs.

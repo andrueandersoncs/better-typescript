@@ -13,17 +13,18 @@ The exact software claim, candidate artifact or runtime surface, authoritative e
 
 1. State the exact claim and the observation that would prove it.
 2. Select the narrowest authoritative evidence source, then include surrounding checks needed to catch integration breakage.
-3. Obtain fresh evidence for the exact claim:
+3. Inspect changes to the verification itself against the original requirement. Look for weakened assertions, skipped tests, altered test configuration, or mocks replacing behavior the claim requires observing. Confirm changed checks still detect the claimed failure; a green result from weakened checks does not prove the claim.
+4. Obtain fresh evidence for the exact claim:
    - for an artifact claim, inspect the revision-scoped artifact when that inspection is authoritative;
    - for a behavioral claim, run the command or scenario fresh and read the complete relevant output, exit status, failure count, and produced artifact.
-4. For behavioral claims, verify the changed surface itself:
+5. For behavioral claims, verify the changed surface itself:
    - web UI: run it, exercise the path, inspect console/network/accessibility, and compare the rendered result;
    - CLI/TUI: launch the program and exercise input/output/state;
    - service/API: call the real boundary and inspect response plus side effects;
    - migration/release: inspect the deployed or transformed state.
-5. A regression claim requires evidence that the guard detects the broken behavior and passes with the fix.
-6. Compare results with the claim. Report **failure** only for an observed contradiction. Report **unverified/incomplete** when an observation is missing, naming the missing observation and limiting the claim.
-7. Preserve durable constraints or regression guards only when they defend a plausible future break.
+6. A regression claim requires evidence that the guard detects the broken behavior and passes with the fix.
+7. Compare results with the claim. Report **failure** only for an observed contradiction. Report **unverified/incomplete** when an observation is missing, naming the missing observation and limiting the claim.
+8. Preserve durable constraints or regression guards only when they defend a plausible future break.
 
 
 ## Report-only procedures
