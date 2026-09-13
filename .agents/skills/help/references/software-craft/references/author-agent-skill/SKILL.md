@@ -11,11 +11,11 @@ Create a skill only when a recurring task needs guidance the model would not rel
 
 1. Define the recurring outcome, intended callers, and evidence of completion. Keep project-private procedure in project instructions.
 2. Inspect existing skills and choose one owner for overlapping behavior. Consolidate instead of adding another competing trigger.
-3. Write a short, discriminating description that says what the skill does and when it applies.
+3. Write a short description whose opening identifies the task that needs this skill. Keep workflow steps and keyword inventories in the body. Avoid triggers such as every edit or every completion claim that compete with ordinary work.
 4. Keep behavioral cases beside the source skill when its contract needs them. Use fresh fixtures and observable outcomes, not checks of instruction wording. For compilation, split development and acceptance by task family before candidate work using the shared comparison method.
 5. Keep `SKILL.md` to shared decisions and constraints. Link mode-specific procedures, examples, schemas, scripts, and assets only where they become relevant.
-6. Describe outcomes and decision criteria. Use exact sequences or numerical rules only when deviation causes a concrete failure.
-7. Preserve the user's scope, permissions, repository conventions, and portable source facts.
+6. Describe outcomes and decision criteria. Retain exact sequences or numerical rules only when deviation causes a concrete failure. Revisit workarounds for older models against the models that will use the skill.
+7. Preserve the user's scope, existing authorization, repository conventions, and portable source facts. Define completion through the requested result and relevant verification; ask for approval only at a real unresolved decision boundary.
 8. Validate frontmatter, links, and host discovery. Exercise changed routing and behavior in fresh context; choose cases that expose a plausible mistake, and tighten only wording linked to an observed failure.
 9. Keep the skill as source unless measured required behavior and deployment cost justify a lower-cost candidate. Only then use [compile-agent-skill](../../../agent-systems/references/compile-agent-skill/SKILL.md); it compares the frozen source through sealed acceptance and does not replace ordinary authoring.
 

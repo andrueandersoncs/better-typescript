@@ -1,6 +1,6 @@
 ---
 name: seo-audit
-description: Audit a site or defined URLs for evidence-backed SEO problems, technical accessibility, indexability, content visibility, or internal-link issues. Use for an SEO health check, crawl/indexing diagnosis, migration review, or a focused technical SEO audit.
+description: Audit specified pages for SEO issues in crawling, indexing, content, and internal links.
 metadata:
   internal: true
 ---

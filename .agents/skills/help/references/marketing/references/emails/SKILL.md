@@ -1,6 +1,6 @@
 ---
 name: emails
-description: Design and draft lifecycle email sequences with explicit entry, timing, state, exits, and safe delivery assumptions. Use for onboarding, activation, nurture, retention, renewal, and win-back flows; not for sending or configuring automation.
+description: Design and draft lifecycle email sequences, including entry conditions, timing, and exits.
 metadata:
   internal: true
 ---

@@ -1,6 +1,6 @@
 ---
 name: absurd-code-review
-description: Produce a three-stage code-review report that argues for removal, steelmans retention, and independently adjudicates one winner per aligned part. Use when the user explicitly requests both sides to be steelmanned or asks for this evidence-adjudicated absurd-code-review format.
+description: Produce a removal-versus-retention code review with independent adjudication when that format is explicitly requested.
 compatibility: Requires fresh-subagent delegation and research capability; uses project tests or measurements when they can distinguish the arguments.
 ---
 

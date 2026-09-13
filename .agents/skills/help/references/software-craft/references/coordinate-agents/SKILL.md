@@ -1,6 +1,6 @@
 ---
 name: coordinate-agents
-description: Partition and integrate one requested software result across at least two genuinely independent work units with explicit ownership and handoff contracts. Use when the requested result is an integrated software outcome that can be partitioned this way.
+description: Coordinate independent agent work toward one integrated software result when parallel agent execution is requested.
 ---
 
 # Coordinate Agents

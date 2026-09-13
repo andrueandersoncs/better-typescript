@@ -1,6 +1,6 @@
 ---
 name: prototype-options
-description: Answer a high-value design question with a disposable runnable prototype or divergent UI variants. Use when implementation is cheaper and clearer than debate, especially for state models, interaction design, visual direction, or unfamiliar technical risk.
+description: Build a disposable prototype to answer a specific design or technical question.
 ---
 
 # Prototype Options

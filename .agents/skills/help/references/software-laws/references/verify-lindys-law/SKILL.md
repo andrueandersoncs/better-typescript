@@ -1,6 +1,6 @@
 ---
 name: verify-lindys-law
-description: "Informally assesses whether Lindy's Law is supported in a concrete project or decision using technology age and useful-lifetime history. Use for a concrete-case support assessment."
+description: "Assess whether Lindy's Law is supported by evidence from a concrete project or decision."
 ---
 
 # Informally Verify Lindy's Law

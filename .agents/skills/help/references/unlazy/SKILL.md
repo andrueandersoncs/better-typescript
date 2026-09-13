@@ -1,6 +1,6 @@
 ---
 name: unlazy
-description: Finish substantial or previously incomplete work against an acceptance ledger, meaningful task decomposition, and fresh evidence. Use for explicit unlazy requests or recovery from omitted deliverables and premature completion.
+description: Finish previously incomplete deliverables or apply completion recovery when unlazy is explicitly requested.
 ---
 
 # Unlazy

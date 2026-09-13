@@ -1,6 +1,6 @@
 ---
 name: transfer-knowledge
-description: Move the minimum complete context to another person, agent, or future session in the form they can act on. Use for handoffs, questionnaires, explanation repair, durable teaching, operational instructions, or agent-facing documentation.
+description: Prepare a handoff, questionnaire, explanation, or operational guide for another person, agent, or session.
 ---
 
 # Transfer Knowledge

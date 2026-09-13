@@ -18,7 +18,7 @@ Follow the shared [gather → match → handoff procedure](../skill-routers/refe
 | Code needs a focused review for symmetry between related concepts, including missing counterpart abstractions or inconsistent API shapes. | [`review-symmetry`](references/review-symmetry/SKILL.md) |
 | The requested outcome is agreement on a production Effect Schema domain model through generated examples and behavior-linked properties. | [`effect-schema-brainstorming`](references/effect-schema-brainstorming/SKILL.md) |
 | Existing pages, screenshots, video, or interaction references need capturing and translating into an original builder-ready brief. | [`capture-design-reference`](references/capture-design-reference/SKILL.md) |
-| The requested result is one integrated software outcome that must be partitioned among at least two genuinely independent work units. | [`coordinate-agents`](references/coordinate-agents/SKILL.md) |
+| Parallel agent execution is requested for one software outcome with independent work units. | [`coordinate-agents`](references/coordinate-agents/SKILL.md) |
 | A browser game or game-system change needs a playable, deterministic, cross-input result. | [`build-web-game`](references/build-web-game/SKILL.md) |
 | A Three.js, WebGL, shader, particle, or cinematic-scroll experience needs a purposeful immersive result with a semantic fallback and measured budget. | [`build-immersive-web`](references/build-immersive-web/SKILL.md) |
 | The requested outcome is to name, design, implement, optimize, or assess purposeful web or Expo/React Native interface motion. | [`animate-interface`](references/animate-interface/SKILL.md) |

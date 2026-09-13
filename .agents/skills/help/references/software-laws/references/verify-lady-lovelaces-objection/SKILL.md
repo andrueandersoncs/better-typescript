@@ -1,6 +1,6 @@
 ---
 name: verify-lady-lovelaces-objection
-description: "Informally assesses whether Lady Lovelace's Objection is supported in a concrete project or decision using system-output provenance and mechanism evidence. Use for a concrete-case support assessment."
+description: "Assess whether Lady Lovelace's Objection is supported by evidence from a concrete project or decision."
 ---
 
 # Informally Verify Lady Lovelace's Objection

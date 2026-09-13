@@ -1,6 +1,6 @@
 ---
 name: research-evidence
-description: Answer a software decision with current primary-source evidence, version-aware citations, and explicit uncertainty. Use for framework APIs, standards, dependencies, techniques, comparative claims, or any consequential fact that may be stale.
+description: Research a software decision using current primary sources when external evidence is needed.
 ---
 
 # Research Evidence

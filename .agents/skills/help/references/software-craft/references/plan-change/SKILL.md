@@ -1,6 +1,6 @@
 ---
 name: plan-change
-description: Turn an accepted software outcome or contract into dependency-ordered, vertically sliced, independently verifiable work. Use for multi-file changes, implementation tickets, migrations, uncertain sequencing, or plans another agent must execute.
+description: Create an implementation plan with dependencies and acceptance evidence for an understood software outcome.
 ---
 
 # Plan Change

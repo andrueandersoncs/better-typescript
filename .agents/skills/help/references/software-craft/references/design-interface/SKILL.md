@@ -1,6 +1,6 @@
 ---
 name: design-interface
-description: Design and implement distinctive production web interfaces with coherent art direction, accessible interaction, responsive behavior, and complete UI states. Use for pages, components, design systems, visual polish, library choice, or interface audits.
+description: Design, implement, or audit web pages, components, and design systems, including visual polish.
 ---
 
 # Design Interface

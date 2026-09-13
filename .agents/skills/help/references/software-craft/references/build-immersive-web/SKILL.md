@@ -1,6 +1,6 @@
 ---
 name: build-immersive-web
-description: Build purposeful Three.js, WebGL, shader, particle, or cinematic-scroll experiences with semantic fallbacks and measured budgets. Use for interactive 3D, WebGL landing pages, shader effects, scroll worlds, procedural scenes, or high-impact visual storytelling.
+description: Build interactive 3D, WebGL, shader, or cinematic-scroll web experiences.
 ---
 
 # Build Immersive Web

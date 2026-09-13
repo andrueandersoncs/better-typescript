@@ -1,6 +1,6 @@
 ---
 name: build-web-game
-description: Build and verify production web-game systems as playable vertical slices with explicit authority, deterministic state, mobile controls, asset provenance, and performance budgets. Use for Three.js games, combat, enemies, levels, cameras, inventory, VFX, audio, editors, optimization, or release QA.
+description: Build, change, or verify playable browser games and their gameplay systems.
 ---
 
 # Build Web Game

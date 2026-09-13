@@ -1,6 +1,6 @@
 ---
 name: verify-cunninghams-law
-description: "Informally assesses whether Cunningham's Law is supported in a concrete project or decision using comparable question and correction discussions. Use for a concrete-case support assessment."
+description: "Assess whether Cunningham's Law is supported by evidence from a concrete project or decision."
 ---
 
 # Informally Verify Cunningham's Law

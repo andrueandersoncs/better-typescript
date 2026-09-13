@@ -1,6 +1,6 @@
 ---
 name: ship-change
-description: Move completed software safely through integration, migration, verified package artifacts, package publication, or service deployment. Use for branch completion, releases, production migrations, deprecations, CI/CD, launch, rollback, or merge conflicts.
+description: Complete requested integration, conflict resolution, migration, package release, deployment, or rollback work.
 ---
 
 # Ship Change
@@ -28,7 +28,7 @@ Inspect merge state and history, trace each side to its source intent, preserve 
 
 ## Integration
 
-Present the applicable choice: merge, publish/open review, keep isolated, or explicitly discard. Reverify a merged result. Protect uncommitted work and require deliberate confirmation for destructive cleanup.
+Carry out the requested integration outcome using existing authorization. If the outcome is unspecified, prepare the candidate and ask which delivery state is wanted. Verify the merged result. Protect uncommitted work; destructive cleanup needs explicit authorization.
 
 ## Migration
 

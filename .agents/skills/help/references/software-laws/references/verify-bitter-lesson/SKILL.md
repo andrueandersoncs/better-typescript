@@ -1,6 +1,6 @@
 ---
 name: verify-bitter-lesson
-description: "Informally assesses whether The Bitter Lesson is supported in a concrete project or decision using matched evaluations of general and domain-specific methods. Use for a concrete-case support assessment."
+description: "Assess whether The Bitter Lesson is supported by evidence from a concrete project or decision."
 ---
 
 # Informally Verify The Bitter Lesson

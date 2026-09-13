@@ -1,6 +1,6 @@
 ---
 name: verify-change
-description: Prove a software claim with fresh claim-specific evidence from commands, runtime behavior, or revision-scoped artifact inspection. Use before saying fixed, complete, passing, ready, deployed, or equivalent; before integration; and after delegated work.
+description: Verify a specific software claim when proof or a verification report is the requested outcome.
 ---
 
 # Verify Change

@@ -1,6 +1,6 @@
 ---
 name: help
-description: Gather task context and select one specialist for completion recovery, browser tasks, marketing, writing, planning, product, projects, wikis, Grok Bots, agent systems, skills, software laws, or engineering.
+description: Select a specialist for engineering, agent systems, writing, research, planning, or project work when the workflow is unclear.
 ---
 
 # Help

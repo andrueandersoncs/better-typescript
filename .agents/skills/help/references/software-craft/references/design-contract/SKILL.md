@@ -1,6 +1,6 @@
 ---
 name: design-contract
-description: Design a domain model, module seam, public API, schema, or architecture as a small stable contract. Use before consequential boundary changes, new modules, shared interfaces, data migrations, or architecture refactors.
+description: Define or revise a domain model, module boundary, public API, schema, or architecture contract.
 ---
 
 # Design Contract

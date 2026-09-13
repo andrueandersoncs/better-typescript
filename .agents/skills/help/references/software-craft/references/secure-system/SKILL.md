@@ -1,6 +1,6 @@
 ---
 name: secure-system
-description: Threat-model and harden software that crosses trust, authorization, privacy, dependency, secret, or AI-tool boundaries. Use for authentication, untrusted input, uploads, webhooks, payments, sensitive data, external integrations, dependencies, deployment credentials, or model-driven actions.
+description: Threat-model or harden a software trust boundary when security assessment or remediation is needed.
 ---
 
 # Secure System

@@ -1,6 +1,6 @@
 ---
 name: manage-work-queue
-description: Turn a large, foggy, or issue-driven program into verified states, decision tickets, blockers, and a claimable ready frontier. Use for triage, roadmap decomposition, issue queues, external pull requests, or work too large for one agent session.
+description: Organize a large software program or issue backlog into a durable queue with owners, blockers, and completion evidence.
 ---
 
 # Manage Work Queue

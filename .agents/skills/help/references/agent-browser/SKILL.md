@@ -1,6 +1,6 @@
 ---
 name: agent-browser
-description: Operate websites with the agent-browser CLI using observed element refs and an isolated session. Use for browser actions, forms, rendered-data extraction, and page captures, or as browser support for verification and design research.
+description: Operate websites with agent-browser for browser actions, forms, rendered-data extraction, or page captures.
 metadata:
   internal: true
 ---

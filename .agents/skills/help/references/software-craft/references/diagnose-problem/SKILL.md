@@ -1,6 +1,6 @@
 ---
 name: diagnose-problem
-description: Find and fix the root cause of a reproducible software failure using a tight red-capable feedback loop. Use for bugs, failing tests or builds, regressions, hangs, flaky behavior, integration failures, or unexplained slowness.
+description: Find and fix the cause of a software failure, regression, flaky behavior, or unexplained slowness.
 ---
 
 # Diagnose Problem

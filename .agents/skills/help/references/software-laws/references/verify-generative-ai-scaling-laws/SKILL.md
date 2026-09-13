@@ -1,6 +1,6 @@
 ---
 name: verify-generative-ai-scaling-laws
-description: "Informally assesses whether Generative AI Scaling Laws is supported in a concrete project or decision using model checkpoint scaling data and held-out evaluations. Use for a concrete-case support assessment."
+description: "Assess whether Generative AI Scaling Laws is supported by evidence from a concrete project or decision."
 ---
 
 # Informally Verify Generative AI Scaling Laws

@@ -1,6 +1,6 @@
 ---
 name: map-codebase
-description: Build or refresh an evidence-backed map of an unfamiliar codebase, subsystem, or change surface. Use for onboarding, cross-module work, repeated repository work, architecture discovery, or when selective context is insufficient.
+description: Create or refresh a repository map for onboarding, architectural understanding, or a requested handoff.
 ---
 
 # Map Codebase

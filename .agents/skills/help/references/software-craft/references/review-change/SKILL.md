@@ -1,6 +1,6 @@
 ---
 name: review-change
-description: Independently judge a software change against its intended behavior and long-term code health. Use for pull requests, branches, significant work in progress, architecture changes, security-sensitive changes, or before integration.
+description: Independently assess a code change, branch, or pull request when review is the requested result.
 ---
 
 # Review Change

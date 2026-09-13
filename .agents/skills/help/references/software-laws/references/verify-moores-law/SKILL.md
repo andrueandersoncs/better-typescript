@@ -1,6 +1,6 @@
 ---
 name: verify-moores-law
-description: "Informally assesses whether Moore's Law is supported in a concrete project or decision using semiconductor component-count and cost trends. Use for a concrete-case support assessment."
+description: "Assess whether Moore's Law is supported by evidence from a concrete project or decision."
 ---
 
 # Informally Verify Moore's Law

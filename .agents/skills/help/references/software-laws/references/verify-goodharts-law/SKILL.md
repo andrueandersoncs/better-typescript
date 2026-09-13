@@ -1,6 +1,6 @@
 ---
 name: verify-goodharts-law
-description: "Informally assesses whether Goodhart's Law is supported in a concrete project or decision using targeted metrics and real outcome data. Use for a concrete-case support assessment."
+description: "Assess whether Goodhart's Law is supported by evidence from a concrete project or decision."
 ---
 
 # Informally Verify Goodhart's Law

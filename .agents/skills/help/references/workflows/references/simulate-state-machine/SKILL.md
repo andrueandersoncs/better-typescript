@@ -1,6 +1,6 @@
 ---
 name: simulate-state-machine
-description: Generate a source-grounded, event-driven workflow simulation as a static Mermaid state diagram, with an optional canonical graph-only web app. Use when asked to visualize, explore, teach, simulate, or export a workflow, procedure, algorithm, function, or skill as a state machine without executing it.
+description: Model a workflow as a source-grounded state diagram or graph explorer without executing the workflow.
 compatibility: Produces Mermaid stateDiagram-v2 source and, when explicitly requested, a standalone HTML app for a modern JavaScript-enabled browser.
 ---
 

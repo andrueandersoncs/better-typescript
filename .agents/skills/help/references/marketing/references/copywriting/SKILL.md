@@ -1,6 +1,6 @@
 ---
 name: copywriting
-description: Draft or rewrite conversion-focused website and landing-page copy from verified product facts, visit intent, and a requested action. Use for home, product, feature, pricing, campaign, and about pages; use emails for lifecycle sequences and deslop for prose-only editing.
+description: Draft or rewrite conversion-focused website and landing-page copy from verified product facts.
 metadata:
   internal: true
 ---

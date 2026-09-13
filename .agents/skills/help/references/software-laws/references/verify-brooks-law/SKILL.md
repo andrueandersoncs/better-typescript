@@ -1,6 +1,6 @@
 ---
 name: verify-brooks-law
-description: "Informally assesses whether Brooks's Law is supported in a concrete project or decision using staffing, onboarding, throughput, and schedule history. Use for a concrete-case support assessment."
+description: "Assess whether Brooks's Law is supported by evidence from a concrete project or decision."
 ---
 
 # Informally Verify Brooks's Law

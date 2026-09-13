@@ -1,6 +1,6 @@
 ---
 name: review-symmetry
-description: Review code specifically for opportunities for symmetry in APIs, construction, naming, data shapes, and control flow. Use when related concepts feel inconsistent or a first-class abstraction appears to have a missing counterpart.
+description: Review code for missing counterparts or inconsistent naming, APIs, data shapes, and control flow.
 ---
 
 # Review Symmetry

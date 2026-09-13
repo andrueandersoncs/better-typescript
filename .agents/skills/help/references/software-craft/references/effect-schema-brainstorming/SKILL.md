@@ -1,6 +1,6 @@
 ---
 name: effect-schema-brainstorming
-description: Agree on a production Effect Schema through generated examples and behavior-linked properties. Use when the requested result is a production domain model expressed as Effect Schemas.
+description: Define a production Effect Schema domain model through generated examples and behavior-linked properties.
 compatibility: Requires Effect v4. Uses `effect/testing`; optionally uses `@andrue/cli`.
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: verify-linuss-law
-description: "Informally assesses whether Linus's Law is supported in a concrete project or decision using reviewer participation and bug-resolution history. Use for a concrete-case support assessment."
+description: "Assess whether Linus's Law is supported by evidence from a concrete project or decision."
 ---
 
 # Informally Verify Linus's Law

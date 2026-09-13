@@ -1,6 +1,6 @@
 ---
 name: verify-conways-law
-description: "Informally assesses whether Conway's Law is supported in a concrete project or decision using organization and architecture maps. Use for a concrete-case support assessment."
+description: "Assess whether Conway's Law is supported by evidence from a concrete project or decision."
 ---
 
 # Informally Verify Conway's Law

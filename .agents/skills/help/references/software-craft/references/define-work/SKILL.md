@@ -1,6 +1,6 @@
 ---
 name: define-work
-description: Resolve unclear software intent into an agreed outcome, success test, constraints, and decision boundary. Use for vague requests, new ideas, consequential behavior changes, or disagreements about what should be built.
+description: Resolve unclear software requirements when missing user decisions prevent implementation.
 ---
 
 # Define Work
@@ -26,7 +26,7 @@ The software request, existing product records and repository evidence by refere
    - binding constraints;
    - explicit non-goals;
    - unresolved decisions and cheapest evidence for each.
-7. Obtain explicit agreement for subjective, architectural, or irreversible choices. Proceed directly on clear mechanical work.
+7. Use decisions and authorization already established in the request. Resolve routine implementation choices from repository evidence. Ask only when a missing user decision or authority prevents the next action; complete independent work while waiting.
 
 Use [product-management](../../../product-management/SKILL.md) when the requested deliverable is durable product truth; clarification of a software outcome does not require a new product record.
 

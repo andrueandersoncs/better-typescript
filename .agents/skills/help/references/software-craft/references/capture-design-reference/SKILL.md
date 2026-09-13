@@ -1,6 +1,6 @@
 ---
 name: capture-design-reference
-description: Capture trustworthy visual and interaction references and convert them into an original builder-ready design brief. Use for inspiration research, live-page analysis, full-page screenshots, motion capture, video analysis, asset sourcing, or reference-originality review.
+description: Capture visual and interaction references and turn them into an original implementation brief.
 ---
 
 # Capture Design Reference

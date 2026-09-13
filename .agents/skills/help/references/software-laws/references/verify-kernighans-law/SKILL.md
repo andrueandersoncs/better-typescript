@@ -1,6 +1,6 @@
 ---
 name: verify-kernighans-law
-description: "Informally assesses whether Kernighan's Law is supported in a concrete project or decision using implementation and debugging evidence for comparable code. Use for a concrete-case support assessment."
+description: "Assess whether Kernighan's Law is supported by evidence from a concrete project or decision."
 ---
 
 # Informally Verify Kernighan's Law

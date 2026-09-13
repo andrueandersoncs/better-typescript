@@ -1,6 +1,6 @@
 ---
 name: animate-interface
-description: Find, design, implement, optimize, or review purposeful interface motion for web and Expo/React Native. Use for transitions, gestures, scroll effects, animation audits, motion polish, jank, reduced motion, or animation terminology.
+description: Design, implement, or assess web and React Native animation, gestures, transitions, and motion performance.
 ---
 
 # Animate Interface

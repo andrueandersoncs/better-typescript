@@ -1,6 +1,6 @@
 ---
 name: verify-peter-principle
-description: "Informally assesses whether Peter Principle is supported in a concrete project or decision using role-specific performance and promotion history. Use for a concrete-case support assessment."
+description: "Assess whether Peter Principle is supported by evidence from a concrete project or decision."
 ---
 
 # Informally Verify Peter Principle

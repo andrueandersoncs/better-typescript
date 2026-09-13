@@ -1,6 +1,6 @@
 ---
 name: verify-jevons-paradox
-description: "Informally assesses whether Jevons Paradox is supported in a concrete project or decision using unit-cost and total-consumption measurements. Use for a concrete-case support assessment."
+description: "Assess whether Jevons Paradox is supported by evidence from a concrete project or decision."
 ---
 
 # Informally Verify Jevons Paradox

@@ -1,6 +1,6 @@
 ---
 name: optimize-system
-description: Improve measured software performance by attributing one bottleneck, changing one cause, and remeasuring under comparable conditions. Use when a measured budget or user journey misses its target and profiling has identified the owning cost.
+description: Improve a measured performance bottleneck whose cause is known, then compare against the target.
 ---
 
 # Optimize System

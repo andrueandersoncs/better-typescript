@@ -1,6 +1,6 @@
 ---
 name: verify-law-of-leaky-abstractions
-description: "Informally assesses whether Law of Leaky Abstractions is supported in a concrete project or decision using abstraction usage, incidents, and bypass evidence. Use for a concrete-case support assessment."
+description: "Assess whether Law of Leaky Abstractions is supported by evidence from a concrete project or decision."
 ---
 
 # Informally Verify Law of Leaky Abstractions
