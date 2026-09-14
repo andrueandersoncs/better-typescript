@@ -38,10 +38,16 @@ All five packages use the same version as the Git tag without its `v` prefix. A 
 
 Platform packages include the project license and required third-party notices. The launcher has no runtime dependency other than Node.js and its matching optional package.
 
-Authenticate once with `npm login`. Publish a version from a clean worktree with:
+Authenticate once with `npm login`. From a clean worktree, publish the next patch after the registry's current launcher version:
+
+```sh
+./scripts/publish-npm-release.sh
+```
+
+Pass a version to override the automatic patch:
 
 ```sh
 ./scripts/publish-npm-release.sh 0.2.3
 ```
 
-The command builds all four binaries, runs the full gate against those binaries, packs and smoke-tests the tarballs, then publishes the platform packages before the launcher. Rerunning the same version is safe when the registry contents match exactly.
+The command prints the selected version, builds all four binaries, runs the full gate against those binaries, packs and smoke-tests the tarballs, then publishes the platform packages before the launcher. Rerunning an explicit version is safe when the registry contents match exactly.

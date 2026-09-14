@@ -5,10 +5,24 @@ repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
 version="${1:-}"
-if [[ ! "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
-  printf 'usage: %s <version>\n' "$0" >&2
+version_pattern='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
+if [[ $# -gt 1 ]]; then
+  printf 'usage: %s [version]\n' "$0" >&2
   exit 2
 fi
+if [[ -z "$version" ]]; then
+  current="$(npm view @better-typescript/better-typescript version)"
+  if [[ ! "$current" =~ $version_pattern ]]; then
+    printf 'published package has invalid version: %s\n' "$current" >&2
+    exit 1
+  fi
+  patch=$((10#${BASH_REMATCH[3]} + 1))
+  version="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.$patch"
+elif [[ ! "$version" =~ $version_pattern ]]; then
+  printf 'usage: %s [version]\n' "$0" >&2
+  exit 2
+fi
+printf 'release version %s\n' "$version"
 if [[ -n "$(git status --porcelain)" ]]; then
   printf 'npm release requires a clean Git worktree.\n' >&2
   exit 1
