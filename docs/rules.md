@@ -1,6 +1,6 @@
 # Built-in rules
 
-The fixed catalog contains these 154 rules:
+The fixed catalog contains these 155 rules:
 
 `prefer-effect-schema-constructor` requires Effect Schema classes to use their static `make` method.
 
@@ -68,6 +68,7 @@ See [Engineering principles](./engineering-principles.md) for ownership, validat
 - [`no-manual-effect-error-tag`](./rules/no-manual-effect-error-tag.md)
 - [`no-manual-tag-comparison`](./rules/no-manual-tag-comparison.md)
 - [`no-manual-tagged-construction`](./rules/no-manual-tagged-construction.md)
+- [`no-manual-tagged-union`](./rules/no-manual-tagged-union.md)
 - [`no-manual-type-dispatch`](./rules/no-manual-type-dispatch.md)
 - [`no-module-mocking`](./rules/no-module-mocking.md)
 - [`no-monomorphic-struct-get`](./rules/no-monomorphic-struct-get.md)

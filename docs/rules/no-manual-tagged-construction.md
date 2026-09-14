@@ -4,6 +4,8 @@
 
 Reports object literals with a literal `_tag`. Object patterns passed directly to `Match.when` and `Match.not` are allowed.
 
+This rule owns runtime values. `no-manual-tagged-union` owns manual type-alias unions.
+
 ## When to use it
 
 Use an existing Schema, tagged class or error, or `Data.taggedEnum` constructor.

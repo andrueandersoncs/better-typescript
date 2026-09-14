@@ -44,6 +44,7 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_manual_effect_error_tag"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_manual_tag_comparison"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_manual_tagged_construction"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/no_manual_tagged_union"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_manual_type_dispatch"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_module_mocking"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_monomorphic_struct_get"
@@ -203,6 +204,7 @@ var BuiltinRules = []rule.Rule{
 	no_manual_effect_error_tag.Rule,
 	no_manual_tag_comparison.Rule,
 	no_manual_tagged_construction.Rule,
+	no_manual_tagged_union.Rule,
 	no_manual_type_dispatch.Rule,
 	no_module_mocking.Rule,
 	no_monomorphic_struct_get.Rule,
