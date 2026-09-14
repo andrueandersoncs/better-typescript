@@ -2,6 +2,8 @@
 
 This project includes linter code derived from [tsgolint](https://github.com/oxc-project/tsgolint) at commit `5511fbcdb01add5b4d06d0ccb1ea506e0f4cfaa6`; see `LICENSES/tsgolint-LICENSE`.
 
+This project includes linter rules derived from [anti-slop](https://github.com/dmmulroy/anti-slop) at commit `c44ef22ca116d0ba62a3ff663a0bd13a3f3fa40b`; see `LICENSES/anti-slop-LICENSE`.
+
 Compiler provenance:
 
 - Module: `github.com/andrueandersoncs/typescript-go`

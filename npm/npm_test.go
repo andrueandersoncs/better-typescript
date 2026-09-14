@@ -184,6 +184,7 @@ func checkArchive(t *testing.T, path string, launcher bool) {
 	} else {
 		want = append(want,
 			"package/BINARY-DEPENDENCIES.txt",
+			"package/LICENSES/anti-slop-LICENSE",
 			"package/LICENSES/tsgolint-LICENSE",
 			"package/LICENSES/typescript-go-NOTICE.txt",
 			"package/THIRD-PARTY-NOTICES.md",

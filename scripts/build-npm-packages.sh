@@ -46,6 +46,7 @@ for package in "${packages[@]}"; do
     cp npm/README.platform.md "$destination/README.md"
     cp THIRD-PARTY-NOTICES.md "$destination/THIRD-PARTY-NOTICES.md"
     cp LICENSES/tsgolint-LICENSE "$destination/LICENSES/tsgolint-LICENSE"
+    cp LICENSES/anti-slop-LICENSE "$destination/LICENSES/anti-slop-LICENSE"
     cp LICENSES/typescript-go-LICENSE "$destination/LICENSES/typescript-go-LICENSE"
     cp LICENSES/typescript-go-NOTICE.txt "$destination/LICENSES/typescript-go-NOTICE.txt"
   fi

@@ -24,6 +24,7 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_async_functions"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_blank_lines_between_single_line_declarations"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_callbacks"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/no_chained_type_assertions"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_duplicate_function_names"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_duplicate_if_bodies"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_eager_node_runtime_access"
@@ -39,7 +40,12 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_inline_boolean_expressions"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_inline_closures"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_instanceof"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/no_known_value_widening"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/no_manual_effect_error_tag"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/no_manual_tag_comparison"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/no_manual_tagged_construction"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_manual_type_dispatch"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/no_module_mocking"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_monomorphic_struct_get"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_multiple_boolean_operators"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_mutable_array_methods"
@@ -55,20 +61,27 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_redacted_value_in_logs"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_reentrant_synchronized_ref_update"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_reexports"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/no_reflect_apply"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/no_reflect_get"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/no_runtime_typeof"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_schema_decode_unknown_sync"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_schema_opaque_instance_members"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/no_service_constructor_imports"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/no_shape_in_symbol_names"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_switch_statements"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_throw"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_trivial_effect_fn"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_try_catch"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_type_specific_equivalence_strict"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_undefined"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/no_unsafe_dictionary_type"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_unsafe_effect_apis"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_unsupported_d1_transactions"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_unused"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_value_aliases"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_void_functions"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_weak_map"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/no_widen_then_assert"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/observable_worker_failure"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/parameter_bag"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/pass_through_conversion"
@@ -83,6 +96,7 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_effect_fn"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_effect_function_constant"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_effect_index_access"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_effect_match"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_effect_object"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_effect_property_accessors"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_effect_record_filter_map"
@@ -120,6 +134,7 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/rules/require_predicate_name_consistency"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/require_result_cardinality_name_consistency"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/require_result_shape_name_consistency"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/require_safety_comment_for_type_assertion"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/retry_without_jitter"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/schema_error_class"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/schema_name_suffix"
@@ -168,6 +183,7 @@ var BuiltinRules = []rule.Rule{
 	no_async_functions.NoAsyncFunctionsRule,
 	no_blank_lines_between_single_line_declarations.NoBlankLinesBetweenSingleLineDeclarationsRule,
 	no_callbacks.NoCallbacksRule,
+	no_chained_type_assertions.Rule,
 	no_duplicate_function_names.NoDuplicateFunctionNamesRule,
 	no_duplicate_if_bodies.NoDuplicateIfBodiesRule,
 	no_eager_node_runtime_access.Rule,
@@ -183,7 +199,12 @@ var BuiltinRules = []rule.Rule{
 	no_inline_boolean_expressions.Rule,
 	no_inline_closures.Rule,
 	no_instanceof.Rule,
+	no_known_value_widening.Rule,
+	no_manual_effect_error_tag.Rule,
+	no_manual_tag_comparison.Rule,
+	no_manual_tagged_construction.Rule,
 	no_manual_type_dispatch.Rule,
+	no_module_mocking.Rule,
 	no_monomorphic_struct_get.Rule,
 	no_multiple_boolean_operators.Rule,
 	no_mutable_array_methods.Rule,
@@ -199,20 +220,27 @@ var BuiltinRules = []rule.Rule{
 	no_redacted_value_in_logs.Rule,
 	no_reentrant_synchronized_ref_update.Rule,
 	no_reexports.Rule,
+	no_reflect_apply.Rule,
+	no_reflect_get.Rule,
+	no_runtime_typeof.Rule,
 	no_schema_decode_unknown_sync.Rule,
 	no_schema_opaque_instance_members.Rule,
+	no_service_constructor_imports.Rule,
+	no_shape_in_symbol_names.Rule,
 	no_switch_statements.Rule,
 	no_throw.Rule,
 	no_trivial_effect_fn.Rule,
 	no_try_catch.Rule,
 	no_type_specific_equivalence_strict.Rule,
 	no_undefined.Rule,
+	no_unsafe_dictionary_type.Rule,
 	no_unsafe_effect_apis.Rule,
 	no_unsupported_d1_transactions.Rule,
 	no_unused.Rule,
 	no_value_aliases.Rule,
 	no_void_functions.Rule,
 	no_weak_map.Rule,
+	no_widen_then_assert.Rule,
 	observable_worker_failure.Rule,
 	parameter_bag.Rule,
 	pass_through_conversion.Rule,
@@ -227,6 +255,7 @@ var BuiltinRules = []rule.Rule{
 	prefer_effect_fn.Rule,
 	prefer_effect_function_constant.Rule,
 	prefer_effect_index_access.Rule,
+	prefer_effect_match.Rule,
 	prefer_effect_object.Rule,
 	prefer_effect_property_accessors.Rule,
 	prefer_effect_record_filter_map.Rule,
@@ -264,6 +293,7 @@ var BuiltinRules = []rule.Rule{
 	require_predicate_name_consistency.Rule,
 	require_result_cardinality_name_consistency.Rule,
 	require_result_shape_name_consistency.Rule,
+	require_safety_comment_for_type_assertion.Rule,
 	retry_without_jitter.Rule,
 	schema_error_class.SchemaErrorClassRule,
 	schema_name_suffix.Rule,

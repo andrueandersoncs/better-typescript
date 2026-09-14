@@ -1,0 +1,10 @@
+type Metadata = Record<string, unknown>
+type Other = { [key: string]: any }
+type Safe = Record<string, string>
+type Generic<T extends Record<string, unknown>> = T
+type Identity<T> = T
+type Forward<T> = Identity<T>
+type Forwarded = Record<string, Forward<unknown>>
+type KeySafe = Record<string, keyof { readonly id: string }>
+type ForwardParenthesized<T> = Identity<(T)>
+type ParenthesizedForwarded = Record<string, ForwardParenthesized<unknown>>
