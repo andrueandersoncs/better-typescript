@@ -2,7 +2,7 @@
 
 Disliked TypeScript shapes mined from maintainer-fed snippets. Not the built-in rule catalog.
 
-Status counts: confirmed 0, prospective 9, rejected 3.
+Status counts: confirmed 0, prospective 10, rejected 3.
 
 ## Patterns
 
@@ -15,6 +15,7 @@ Status counts: confirmed 0, prospective 9, rejected 3.
 | [hardcoded-timestamp-string-literal](patterns/hardcoded-timestamp-string-literal.md) | prospective | 007 | none |
 | [inconsistent-sibling-schema-references](patterns/inconsistent-sibling-schema-references.md) | prospective | 012 | none |
 | [renamable-object-property-aliases](patterns/renamable-object-property-aliases.md) | prospective | 010 | none |
+| [repeated-sibling-adapter-wrappers](patterns/repeated-sibling-adapter-wrappers.md) | prospective | 015 | none |
 | [terminal-yield-without-return](patterns/terminal-yield-without-return.md) | prospective | 011 | none |
 | [unknown-effect-service-error](patterns/unknown-effect-service-error.md) | prospective | 004 | none |
 | [hardcoded-literal](patterns/hardcoded-literal.md) | rejected | none | none |
@@ -39,4 +40,5 @@ Status counts: confirmed 0, prospective 9, rejected 3.
 | [012](snippets/012-inconsistent-rpc-schema-references.md) | Inconsistent RPC schema references | [inconsistent-sibling-schema-references](patterns/inconsistent-sibling-schema-references.md) |
 | [013](snippets/013-unbroken-schema-rpc-declarations.md) | Unbroken schema and RPC declarations | none |
 | [014](snippets/014-manual-reference-validation-branches.md) | Manual reference validation branches | none |
+| [015](snippets/015-repeated-application-part-adapters.md) | Repeated application part adapters | [repeated-sibling-adapter-wrappers](patterns/repeated-sibling-adapter-wrappers.md) |
 

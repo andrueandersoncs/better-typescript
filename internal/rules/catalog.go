@@ -108,6 +108,7 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_eta_reduction"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_function_composition"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_function_flip"
+	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_function_for_repeated_shape"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_hash_map"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_hash_set"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_implicit_return"
@@ -268,6 +269,7 @@ var BuiltinRules = []rule.Rule{
 	prefer_eta_reduction.PreferEtaReductionRule,
 	prefer_function_composition.PreferFunctionCompositionRule,
 	prefer_function_flip.PreferFunctionFlipRule,
+	prefer_function_for_repeated_shape.Rule,
 	prefer_hash_map.PreferHashMapRule,
 	prefer_hash_set.PreferHashSetRule,
 	prefer_implicit_return.PreferImplicitReturnRule,
