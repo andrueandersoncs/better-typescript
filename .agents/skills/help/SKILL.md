@@ -26,5 +26,6 @@ Read [the shared routing guide](references/skill-routers/references/canonical-de
 | Technical documentation needs creating, restructuring, or auditing around a reader's learning, task, lookup, or understanding need. | [`technical-documentation`](references/technical-documentation/SKILL.md) |
 | Existing prose needs editing or auditing for AI-writing patterns while preserving its meaning and voice. | [`deslop`](references/deslop/SKILL.md) |
 | Established software laws need explaining, applying to a decision, or assessing against evidence from a concrete case. | [`software-laws`](references/software-laws/SKILL.md) |
+| A Git repository's commit history needs transforming into an evidence-grounded animated story, picture book, or illustrated narrative. | [`software-craft`](references/software-craft/SKILL.md) |
 | A concept, prompt, design direction, name, narrative, or other creative artifact needs developing for novelty and taste. | [`elicit-llm-creativity`](references/elicit-llm-creativity/SKILL.md) |
 | Engineering work on executable software, infrastructure, libraries, services, or single-workflow agent skills needs investigation, scoping, repository mapping, design, planning, a claimable work queue, implementation, review, verification, delivery, coordination, or knowledge transfer. | [`software-craft`](references/software-craft/SKILL.md) |

@@ -9,16 +9,16 @@ description: Implement defined software behavior using repository conventions an
 
 The accepted software behavior or plan, relevant repository evidence, scope constraints, and required runtime or command proof.
 
-## Method
+## Process
 
-1. Read the accepted outcome or plan, relevant source, callers, tests, commands, and repository rules. Resolve material contradictions before editing.
-2. Use an isolated workspace when the harness or repository provides one and the change warrants isolation.
-3. Choose the smallest complete slice. Prefer a public-seam tracer bullet over horizontal layers.
-4. Use existing checks when they cover the change. Add a behavior-level regression test when it protects a plausible failure; establish that it detects the defect. Follow an explicit test-first request.
-5. Verify the changed behavior with focused evidence. Use [verify-change](../verify-change/SKILL.md) when the claim needs a dedicated verification procedure. Once relevant checks pass, repeat or broaden them only for new changes, failures, or unresolved concerns. Keep the repository buildable and remove temporary instrumentation.
-6. Follow existing patterns and dependencies. Introduce a new abstraction only when current repetition or contract pressure proves its value.
-7. Re-read consequential decisions with fresh context before they spread. Resolve findings against the contract rather than accepting them by authority.
-8. Complete every caller migration requested by the accepted scope. Remove obsolete paths, aliases, comments, and dead compatibility code. Retain an intentionally live compatibility path only under [ship-change's migration authority](../ship-change/SKILL.md#migration), with its migration owner, removal condition, and evidence.
+1. Pin the accepted behavior, scope, and completion evidence. Read only the relevant source, callers, tests, commands, and repository rules. Resolve material contradictions before editing.
+2. Identify the real entry point and one focused command or runtime scenario that exercises the behavior. Capture the current result or reproducible failure before changing it when the surface can be run.
+3. Choose the smallest complete vertical slice and its mutation order. Use an isolated workspace when the harness or repository provides one and concurrent or risky work warrants it.
+4. Reuse an existing behavior check when it can expose the change. Add a regression guard only for a plausible future failure; demonstrate that it detects the defect before fixing it. Follow an explicit test-first request.
+5. Implement the owning mechanism using existing patterns and dependencies. Introduce an abstraction only when current repetition or contract pressure proves its value.
+6. Complete every caller migration in the accepted scope. Remove obsolete paths, aliases, comments, and dead compatibility code. Retain a live compatibility path only under [ship-change's migration authority](../ship-change/SKILL.md#migration), with its owner, removal condition, and evidence.
+7. Run the focused command or scenario through the real entry point. On failure, inspect the new evidence, repair the owning cause, and repeat this step before advancing. Then run affected surrounding checks. Use [verify-change](../verify-change/SKILL.md) when the claim needs its dedicated proof; broaden checks only for a new change, failure, or unresolved concern.
+8. Exercise the finished result as its consumer. Re-read consequential decisions before they spread, remove temporary instrumentation, and continue the repair loop until the completion condition holds.
 
 ## Tool recipes
 

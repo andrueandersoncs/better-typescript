@@ -17,7 +17,13 @@ When the selected skill is another router, it continues with the same request an
 The selected owner may invoke another skill for an explicitly bounded supporting subtask. Pass the original request as context, but the assigned subtask defines the helper's scope; do not route the original request again. Return the helper's result to the owner, which remains accountable for the complete requested outcome.
 
 Reuse context already gathered; inspect only what can change the selection. A handoff does not reset authorization or introduce a review stop. Continue through the selected workflow's requested result and relevant verification.
-
 If no pattern fits, handle the request directly when possible; do not force an unrelated skill.
+
+## Execute the selected workflow
+
+The selected skill's inputs, ordered procedure, output, and completion condition form one operating contract. Establish its entry state before producing artifacts. Run dependency-bearing steps in order and take only branches that apply; numbered steps are not optional advice, and an intermediate artifact is not a stopping point.
+
+Evidence gates progress. When a required check or observation fails, repair within scope, repeat the owning step, and rerun downstream work invalidated by the repair. Continue until the completion condition is observed or an external condition blocks all remaining work. A blocked result names the missing condition, completed steps and evidence, and exact resume point.
+
 
 For router authoring, examples, and fresh-context checks, read [writing and checking patterns](writing-patterns.md).

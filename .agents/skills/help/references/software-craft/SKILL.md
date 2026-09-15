@@ -23,6 +23,7 @@ Follow the shared [gather → match → handoff procedure](../skill-routers/refe
 | A Three.js, WebGL, shader, particle, or cinematic-scroll experience needs a purposeful immersive result with a semantic fallback and measured budget. | [`build-immersive-web`](references/build-immersive-web/SKILL.md) |
 | The requested outcome is to name, design, implement, optimize, or assess purposeful web or Expo/React Native interface motion. | [`animate-interface`](references/animate-interface/SKILL.md) |
 | A production web page, component, design system, interface audit, or visual polish needs a coherent, accessible, responsive interface result rather than a dedicated motion, immersive, game, or reference-capture artifact. | [`design-interface`](references/design-interface/SKILL.md) |
+| A Git repository's commit history needs transforming into an evidence-grounded animated story, picture book, or illustrated narrative. | [`animate-git-history`](references/animate-git-history/SKILL.md) |
 | A trust, authorization, privacy, dependency, secret, or AI-tool boundary needs threat modeling and demonstrated controls. | [`secure-system`](references/secure-system/SKILL.md) |
 | The requested result is a selective or durable map of a repository, subsystem, or change surface. | [`map-codebase`](references/map-codebase/SKILL.md) |
 | A current external API, standard, dependency, technique, or comparative fact needs primary-source evidence to answer a software decision. | [`research-evidence`](references/research-evidence/SKILL.md) |
