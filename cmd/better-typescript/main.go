@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -15,6 +16,7 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/analysis"
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
 	"github.com/andrueandersoncs/better-typescript/internal/rules"
+	"github.com/andrueandersoncs/better-typescript/internal/semanticlint"
 )
 
 type stringListFlag []string
@@ -94,6 +96,7 @@ func run() (bool, error) {
 	options, err := parseCLIOptions(os.Args[1:])
 	if errors.Is(err, flag.ErrHelp) {
 		fmt.Fprintln(os.Stdout, "Usage: better-typescript [--files glob] [--rules name]")
+		fmt.Fprintln(os.Stdout, "       better-typescript semantic [options]")
 		fmt.Fprintln(os.Stdout, "Repeat flags or separate values with commas. better-typescript.json supplies per-file rule commands.")
 		return false, nil
 	}
@@ -148,6 +151,23 @@ func run() (bool, error) {
 }
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "semantic" {
+		root, err := os.Getwd()
+		if err == nil {
+			root, err = filepath.Abs(root)
+		}
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+		exitCode, err := semanticlint.Run(context.Background(), root, os.Args[2:], os.Stdout)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "semantic-lint:", err)
+			os.Exit(2)
+		}
+		os.Exit(exitCode)
+	}
+
 	hasErrors, err := run()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

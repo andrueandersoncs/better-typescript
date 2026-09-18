@@ -42,6 +42,17 @@ Repeat either flag or separate its values with commas. A root `better-typescript
 
 Status and operational errors go to stderr. Each stdout line is one NDJSON violation with `ruleName`, `level`, `message`, `filePath`, `line`, and `column`. Exit code `1` means an error-level violation or operational failure occurred. Exit code `0` and empty stdout mean the run is clean.
 
+## Run semantic policies
+
+Use the semantic subcommand only when asked to evaluate engineering policy against the current Git change:
+
+```sh
+export TYPESAFE_API_KEY="..."
+npx better-typescript semantic
+```
+
+Run `npx better-typescript semantic --dry-run` to inspect routing without an API call. Treat `review`, `violation`, and `insufficient_evidence` as actionable. Project policies live under `.better-typescript/rules/`; requirements or rationale can be passed with `--review-context`.
+
 ## Handle results
 
 1. Parse every stdout line.

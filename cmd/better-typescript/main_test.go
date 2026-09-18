@@ -90,9 +90,22 @@ func TestCLIHelpExitsZero(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "Usage: better-typescript [--files glob] [--rules name]\nRepeat flags or separate values with commas. better-typescript.json supplies per-file rule commands.\n"
+	want := "Usage: better-typescript [--files glob] [--rules name]\n       better-typescript semantic [options]\nRepeat flags or separate values with commas. better-typescript.json supplies per-file rule commands.\n"
 	if string(output) != want {
 		t.Fatalf("stdout = %q, want %q", output, want)
+	}
+}
+
+func TestCLISemanticHelpExitsZero(t *testing.T) {
+	binary, _ := buildCLI(t)
+	command := exec.Command(binary, "semantic", "--help")
+
+	output, err := command.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.HasPrefix(output, []byte("Usage: better-typescript semantic [options]\n")) {
+		t.Fatalf("stdout = %q, want semantic usage", output)
 	}
 }
 

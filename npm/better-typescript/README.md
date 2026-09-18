@@ -8,3 +8,5 @@ npx better-typescript
 ```
 
 Run the command from a directory containing `tsconfig.json`. Violations are written as NDJSON to stdout.
+
+Run `npx better-typescript semantic --dry-run` to inspect semantic policy routing. Live semantic lint requires `TYPESAFE_API_KEY`.
