@@ -44,14 +44,14 @@ Status and operational errors go to stderr. Each stdout line is one NDJSON viola
 
 ## Run semantic policies
 
-Use the semantic subcommand only when asked to evaluate engineering policy against a working-tree change or committed Git range:
+Use the semantic subcommand only when asked to evaluate engineering policy against a working-tree change, committed Git range, selected current files, or all eligible current files:
 
 ```sh
 export TYPESAFE_API_KEY="..."
 npx better-typescript semantic
 ```
 
-Run `npx better-typescript semantic --range 'origin/main...HEAD'` for a committed pull-request range. The TypeSafe SDK chooses the default model unless `--model` overrides it. Use `--dry-run` to inspect routing without an API call. Use `--deterministic` to enforce exact repository checks without TypeSafe; it cannot be combined with `--dry-run`. Treat `review`, `violation`, and `insufficient_evidence` as actionable. Project policies live under `.better-typescript/rules/`; requirements or rationale can be passed with `--review-context`.
+Run `npx better-typescript semantic --range 'origin/main...HEAD'` for a committed pull-request range, `--files 'src/**/*.ts'` for selected complete files, or `--all` for every eligible current file. Add `--rules function-naming,readonly` to select policies. `--range`, `--files`, and `--all` are mutually exclusive. The TypeSafe SDK chooses the default model unless `--model` overrides it. Use `--dry-run` to inspect routing without an API call. Use `--deterministic` to enforce exact repository checks without TypeSafe; it cannot be combined with `--dry-run`. Treat `review`, `violation`, and `insufficient_evidence` as actionable. Project policies live under `.better-typescript/rules/`; requirements or rationale can be passed with `--review-context`.
 
 ## Handle results
 

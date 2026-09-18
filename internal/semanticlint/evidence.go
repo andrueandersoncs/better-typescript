@@ -11,13 +11,16 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/andrueandersoncs/better-typescript/internal/fileglob"
 )
 
 type repositorySnapshot struct {
-	changedPaths    []string
-	repositoryPaths []string
-	diff            string
-	revision        string
+	changedPaths      []string
+	repositoryPaths   []string
+	diff              string
+	revision          string
+	fullFileSelection bool
 }
 
 func gitSnapshot(ctx context.Context, root, commitRange string) (repositorySnapshot, error) {
@@ -52,6 +55,54 @@ func gitSnapshot(ctx context.Context, root, commitRange string) (repositorySnaps
 	repositoryPaths := uniquePaths(nullSeparatedPaths(repository))
 	repositoryPaths = deleteMatching(repositoryPaths, deletedSet)
 	return repositorySnapshot{changedPaths: changedPaths, repositoryPaths: repositoryPaths, diff: string(diff)}, nil
+}
+
+func selectCurrentFiles(root string, snapshot repositorySnapshot, filePatterns []string, all bool) (repositorySnapshot, error) {
+	var patterns []fileglob.Pattern
+	for _, value := range filePatterns {
+		if filepath.IsAbs(filepath.FromSlash(value)) {
+			return repositorySnapshot{}, fmt.Errorf("file glob must be repository-relative: %s", value)
+		}
+		value = filepath.ToSlash(filepath.Clean(filepath.FromSlash(value)))
+		if value == ".." || strings.HasPrefix(value, "../") {
+			return repositorySnapshot{}, fmt.Errorf("file glob must stay within the repository: %s", value)
+		}
+		if info, err := os.Stat(filepath.Join(root, filepath.FromSlash(value))); err == nil && info.IsDir() {
+			value = strings.TrimSuffix(value, "/") + "/**"
+		} else if err != nil && !os.IsNotExist(err) {
+			return repositorySnapshot{}, fmt.Errorf("read selected path %s: %w", value, err)
+		}
+		compiled, err := fileglob.CompileAll(value)
+		if err != nil {
+			return repositorySnapshot{}, err
+		}
+		patterns = append(patterns, compiled...)
+	}
+	var selected []string
+	for _, path := range snapshot.repositoryPaths {
+		if !repositoryExtensions[filepath.Ext(path)] {
+			continue
+		}
+		if all || matchesAnyPath(patterns, path) {
+			selected = append(selected, path)
+		}
+	}
+	if !all && len(selected) == 0 {
+		return repositorySnapshot{}, fmt.Errorf("--files matched no eligible repository files")
+	}
+	snapshot.changedPaths = selected
+	snapshot.diff = ""
+	snapshot.fullFileSelection = true
+	return snapshot, nil
+}
+
+func matchesAnyPath(patterns []fileglob.Pattern, path string) bool {
+	for _, pattern := range patterns {
+		if pattern.Match(path) {
+			return true
+		}
+	}
+	return false
 }
 
 func gitRangeSnapshot(ctx context.Context, root, value string) (repositorySnapshot, error) {
@@ -182,7 +233,11 @@ func buildRepositoryEvidence(ctx context.Context, root string, snapshot reposito
 		Paths: snapshot.repositoryPaths, ChangedPaths: snapshot.changedPaths,
 		DeletedPaths: deleted, Files: files,
 	}
-	evidence.DiffFiles = diffFilesFromEvidence(snapshot.diff, snapshot.changedPaths, deleted, files)
+	if snapshot.fullFileSelection {
+		evidence.DiffFiles = fullFileDiffFiles(snapshot.changedPaths, files)
+	} else {
+		evidence.DiffFiles = diffFilesFromEvidence(snapshot.diff, snapshot.changedPaths, deleted, files)
+	}
 	if reviewContextPath != "" {
 		path := reviewContextPath
 		if !filepath.IsAbs(path) {
@@ -253,6 +308,33 @@ func sourceCandidates(source Source) []SourceCandidate {
 		start := index * step
 		end := min(len(lines), start+sourceChunkLineCount)
 		result = append(result, SourceCandidate{Path: source.Path, Language: source.Language, StartLine: start + 1, EndLine: end, Text: strings.Join(lines[start:end], "\n")})
+	}
+	return result
+}
+func fullFileDiffFiles(paths []string, files []Source) []DiffFile {
+	sourceByPath := make(map[string]Source, len(files))
+	for _, source := range files {
+		sourceByPath[source.Path] = source
+	}
+	result := make([]DiffFile, 0, len(paths))
+	for _, path := range paths {
+		source, ok := sourceByPath[path]
+		if !ok {
+			continue
+		}
+		id := fmt.Sprintf("file_%d", len(result)+1)
+		file := DiffFile{ID: id, Path: path, Status: "selected"}
+		for _, candidate := range sourceCandidates(source) {
+			file.Hunks = append(file.Hunks, DiffHunk{
+				ID:           fmt.Sprintf("%s_hunk_%d", id, len(file.Hunks)+1),
+				Path:         path,
+				NewStartLine: candidate.StartLine,
+				NewLineCount: candidate.EndLine - candidate.StartLine + 1,
+				Header:       "Selected file",
+				Patch:        candidate.Text,
+			})
+		}
+		result = append(result, file)
 	}
 	return result
 }

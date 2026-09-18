@@ -1,6 +1,6 @@
 # Semantic lint
 
-`better-typescript semantic` checks natural-language engineering policies against the current Git change or a committed range.
+`better-typescript semantic` checks natural-language engineering policies against a Git change, selected current files, or all eligible current files.
 
 It keeps deterministic work in Go and uses TypeSafe only for semantic judgments. The binary embeds the default policy catalog. Add project policies under `.better-typescript/rules/`.
 
@@ -11,7 +11,7 @@ export TYPESAFE_API_KEY="..."
 npx better-typescript semantic
 ```
 
-Without `--range`, the command reads tracked, staged, untracked, renamed, and deleted paths from the working tree. It then:
+With no target option, the command reads tracked, staged, untracked, renamed, and deleted paths from the working tree. It then:
 
 1. keeps policies whose frontmatter globs match a changed path;
 2. runs exact repository checks in Go;
@@ -33,8 +33,11 @@ Live semantic lint sends selected source and policy text to TypeSafe. Do not run
 --model <name>           TypeSafe model override (default: SDK default)
 --review-context <path>  Requirements, rationale, and measurements
 --rules-dir <path>       Additional Markdown rules
---range <from>..<to>  Analyze a committed Git range instead of the working tree
---deterministic           Run exact repository checks without TypeSafe
+--range <from>..<to>     Analyze a committed Git range
+--files <glob>           Analyze selected current files; repeat or comma-separate
+--all                    Analyze all eligible current files
+--rules <name>           Run selected semantic rules; repeat or comma-separate
+--deterministic          Run exact repository checks without TypeSafe
 --json                   Print machine-readable results
 --dry-run                Print the routing plan without API calls
 --help                   Show help
@@ -43,6 +46,31 @@ Live semantic lint sends selected source and policy text to TypeSafe. Do not run
 `--dry-run` needs no API key and always exits successfully.
 
 `--deterministic` reports and enforces only exact repository checks. It does not require an API key and cannot be combined with `--dry-run`.
+
+## Current files
+
+Use `--files` to analyze complete current files, even when Git reports no changes. Paths are repository-relative globs. Existing directories select their eligible descendants.
+
+```sh
+npx better-typescript semantic --files 'src/**/*.ts'
+npx better-typescript semantic --files src/auth.ts,src/session.ts
+```
+
+Use `--all` to analyze every eligible current file:
+
+```sh
+npx better-typescript semantic --all
+```
+
+The selected files are candidates. Other repository files remain available as supporting context. `--range`, `--files`, and `--all` are mutually exclusive.
+
+Use `--rules` to limit evaluation:
+
+```sh
+npx better-typescript semantic --all --rules function-naming,readonly
+```
+
+Rule names are Markdown basenames without `.md`. If a basename is ambiguous, use its catalog-relative path, such as `readability/abstract-shared-concepts-not-merely-similar-looking-code`.
 
 ## Committed ranges
 

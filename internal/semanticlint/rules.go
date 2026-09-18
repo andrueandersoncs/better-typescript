@@ -95,6 +95,52 @@ func loadRules(root, localDirectory string) ([]Rule, error) {
 	return rules, nil
 }
 
+func selectSemanticRules(rules []Rule, names []string) ([]Rule, error) {
+	if len(names) == 0 {
+		return rules, nil
+	}
+	aliases := make(map[string][]int, len(rules)*2)
+	selectors := make([]string, len(rules))
+	for index, rule := range rules {
+		selector := semanticRuleSelector(rule.Path)
+		selectors[index] = selector
+		aliases[selector] = append(aliases[selector], index)
+		if base := selector[strings.LastIndex(selector, "/")+1:]; base != selector {
+			aliases[base] = append(aliases[base], index)
+		}
+	}
+	selected := make(map[int]bool, len(names))
+	for _, name := range names {
+		name = semanticRuleSelector(name)
+		matches := aliases[name]
+		if len(matches) == 0 {
+			return nil, fmt.Errorf("unknown semantic rule: %s", name)
+		}
+		if len(matches) > 1 {
+			choices := make([]string, len(matches))
+			for index, match := range matches {
+				choices[index] = selectors[match]
+			}
+			sort.Strings(choices)
+			return nil, fmt.Errorf("semantic rule name %q is ambiguous; use one of: %s", name, strings.Join(choices, ", "))
+		}
+		selected[matches[0]] = true
+	}
+	result := make([]Rule, 0, len(selected))
+	for index, rule := range rules {
+		if selected[index] {
+			result = append(result, rule)
+		}
+	}
+	return result, nil
+}
+
+func semanticRuleSelector(value string) string {
+	value = canonicalRulePath(strings.TrimSpace(value))
+	value = strings.TrimPrefix(value, "rules/")
+	return strings.TrimSuffix(value, ".md")
+}
+
 func embeddedRuleSources() ([]ruleSource, error) {
 	var result []ruleSource
 	err := fs.WalkDir(defaultRuleFiles, "defaults", func(name string, entry fs.DirEntry, walkErr error) error {

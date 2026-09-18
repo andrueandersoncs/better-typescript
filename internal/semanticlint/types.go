@@ -45,6 +45,9 @@ type Options struct {
 	ReviewContextPath string
 	RulesDirectory    string
 	CommitRange       string
+	FilePatterns      []string
+	RuleNames         []string
+	AllFiles          bool
 	JSON              bool
 	DryRun            bool
 	DeterministicOnly bool

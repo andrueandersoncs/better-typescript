@@ -174,6 +174,141 @@ func TestRunDryRunPlansChangedFilesWithoutTypeSafe(t *testing.T) {
 		t.Fatalf("dry-run plan missing plan or project rule: %s", output.String())
 	}
 }
+
+func TestRunSelectsCurrentFilesAndRulesWithoutChanges(t *testing.T) {
+	root := newSemanticTestRepository(t)
+
+	var output bytes.Buffer
+	exitCode, err := Run(context.Background(), root, []string{"--files", "src", "--rules", "no-debugger", "--dry-run"}, &output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0", exitCode)
+	}
+	var documents []struct {
+		Kind  string `json:"kind"`
+		Rules []struct {
+			Path string `json:"rulePath"`
+		} `json:"rules"`
+		DiffFiles []struct {
+			Path   string `json:"path"`
+			Status string `json:"status"`
+			Hunks  []struct {
+				Header string `json:"header"`
+			} `json:"hunks"`
+		} `json:"diffFiles"`
+	}
+	if err := json.Unmarshal(output.Bytes(), &documents); err != nil {
+		t.Fatalf("decode dry-run output: %v\n%s", err, output.String())
+	}
+	if len(documents) != 1 || documents[0].Kind != "dry-run-plan" {
+		t.Fatalf("unexpected dry-run documents: %s", output.String())
+	}
+	plan := documents[0]
+	if len(plan.Rules) != 1 || !strings.HasSuffix(plan.Rules[0].Path, "/no-debugger.md") {
+		t.Fatalf("selected rules = %#v", plan.Rules)
+	}
+	if len(plan.DiffFiles) != 1 || plan.DiffFiles[0].Path != "src/main.ts" || plan.DiffFiles[0].Status != "selected" {
+		t.Fatalf("selected files = %#v", plan.DiffFiles)
+	}
+	if len(plan.DiffFiles[0].Hunks) != 1 || plan.DiffFiles[0].Hunks[0].Header != "Selected file" {
+		t.Fatalf("selected file hunks = %#v", plan.DiffFiles[0].Hunks)
+	}
+}
+
+func TestRunAllSelectsEveryEligibleCurrentFile(t *testing.T) {
+	root := newSemanticTestRepository(t)
+
+	var output bytes.Buffer
+	exitCode, err := Run(context.Background(), root, []string{"--all", "--rules", "no-debugger", "--dry-run"}, &output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0", exitCode)
+	}
+	var documents []struct {
+		DiffFiles []struct {
+			Path string `json:"path"`
+		} `json:"diffFiles"`
+	}
+	if err := json.Unmarshal(output.Bytes(), &documents); err != nil {
+		t.Fatalf("decode dry-run output: %v\n%s", err, output.String())
+	}
+	var paths []string
+	for _, file := range documents[0].DiffFiles {
+		paths = append(paths, file.Path)
+	}
+	want := []string{".better-typescript/rules/no-debugger.md", "src/main.ts"}
+	if !slices.Equal(paths, want) {
+		t.Fatalf("selected files = %#v, want %#v", paths, want)
+	}
+}
+
+func TestParseOptionsSupportsRepeatedAndCommaSeparatedSelections(t *testing.T) {
+	options, _, err := parseOptions([]string{
+		"--files", "src/*.ts,test/*.ts",
+		"--files", "scripts/*.ts",
+		"--rules", "readonly,function-naming",
+		"--rules", "avoid-repetition",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(options.FilePatterns, []string{"src/*.ts", "test/*.ts", "scripts/*.ts"}) {
+		t.Fatalf("file patterns = %#v", options.FilePatterns)
+	}
+	if !slices.Equal(options.RuleNames, []string{"readonly", "function-naming", "avoid-repetition"}) {
+		t.Fatalf("rule names = %#v", options.RuleNames)
+	}
+}
+
+func TestParseOptionsRejectsMultipleTargetModes(t *testing.T) {
+	for _, args := range [][]string{
+		{"--all", "--files", "src/**"},
+		{"--all", "--range", "main..HEAD"},
+		{"--files", "src/**", "--range", "main..HEAD"},
+	} {
+		if _, _, err := parseOptions(args); err == nil {
+			t.Errorf("parseOptions(%q) succeeded", args)
+		}
+	}
+}
+
+func TestRunRejectsUnknownFileAndRuleSelections(t *testing.T) {
+	root := newSemanticTestRepository(t)
+	cases := []struct {
+		args    []string
+		message string
+	}{
+		{args: []string{"--files", "missing/**", "--dry-run"}, message: "--files matched no eligible repository files"},
+		{args: []string{"--all", "--rules", "missing", "--dry-run"}, message: "unknown semantic rule: missing"},
+	}
+	for _, test := range cases {
+		var output bytes.Buffer
+		if _, err := Run(context.Background(), root, test.args, &output); err == nil || !strings.Contains(err.Error(), test.message) {
+			t.Errorf("Run(%q) error = %v, want %q", test.args, err, test.message)
+		}
+	}
+}
+
+func newSemanticTestRepository(t *testing.T) string {
+	t.Helper()
+	_, fileName, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("locate testdata")
+	}
+	root := t.TempDir()
+	if err := os.CopyFS(root, os.DirFS(filepath.Join(filepath.Dir(fileName), "testdata", "project"))); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, root, "init", "--quiet")
+	runGit(t, root, "add", ".")
+	runGit(t, root, "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "--quiet", "-m", "initial")
+	return root
+}
+
 func TestDiffEvidenceMatchesReferenceIdentifiersAndHeaders(t *testing.T) {
 	diff := strings.Join([]string{
 		"diff --git a/tracked.ts b/tracked.ts",

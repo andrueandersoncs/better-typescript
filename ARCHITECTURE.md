@@ -2,7 +2,7 @@
 
 The CLI analyzes the project graph rooted in the current directory. It loads `./tsconfig.json` and its recursive project references. Each config gets one `typescript-go` Program and contributes its non-declaration root source files. Optional project-relative globs restrict which files are linted.
 
-The `semantic` subcommand evaluates the current Git change against embedded and project-local Markdown policies. `internal/semanticlint` owns Git evidence, deterministic checks, bounded TypeSafe routing, HTTP retries, classification, and reports. TypeSafe receives selected evidence only; requests are limited to 32,000 bytes and concurrent network calls are bounded.
+The `semantic` subcommand evaluates a Git change, selected current files, or all eligible current files against embedded and project-local Markdown policies. `internal/semanticlint` owns candidate selection, Git evidence, deterministic checks, bounded TypeSafe routing, HTTP retries, classification, and reports. TypeSafe receives selected evidence only; requests are limited to 32,000 bytes and concurrent network calls are bounded.
 
 The root Go module imports generated public compiler adapters from `github.com/andrueandersoncs/typescript-go`. See [`docs/compiler-foundation.md`](docs/compiler-foundation.md) for its pin, provenance, and update workflow.
 

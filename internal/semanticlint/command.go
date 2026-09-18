@@ -19,11 +19,31 @@ Options:
   --review-context <path>  Requirements, rationale, and measurements
   --rules-dir <path>       Additional Markdown rules (default: .better-typescript/rules)
   --range <from>..<to>     Analyze a committed Git range instead of the working tree
+  --files <glob>           Analyze selected current files; repeat or comma-separate
+  --all                    Analyze all eligible current files
+  --rules <name>           Run selected semantic rules; repeat or comma-separate
   --json                   Print machine-readable results
   --dry-run                Print the routing plan without API calls
   --deterministic           Run exact repository checks without TypeSafe
   --help                   Show this help
 `
+
+type stringListFlag []string
+
+func (values *stringListFlag) String() string {
+	return strings.Join(*values, ",")
+}
+
+func (values *stringListFlag) Set(value string) error {
+	for item := range strings.SplitSeq(value, ",") {
+		item = strings.TrimSpace(item)
+		if item == "" {
+			return fmt.Errorf("value must not be empty")
+		}
+		*values = append(*values, item)
+	}
+	return nil
+}
 
 // Run executes the semantic lint subcommand from a repository root.
 func Run(ctx context.Context, root string, args []string, output io.Writer) (int, error) {
@@ -39,6 +59,12 @@ func Run(ctx context.Context, root string, args []string, output io.Writer) (int
 	if err != nil {
 		return 2, err
 	}
+	if options.AllFiles || len(options.FilePatterns) > 0 {
+		snapshot, err = selectCurrentFiles(root, snapshot, options.FilePatterns, options.AllFiles)
+		if err != nil {
+			return 2, err
+		}
+	}
 	if len(snapshot.changedPaths) == 0 {
 		_, err := fmt.Fprintln(output, "No changed files to lint.")
 		return 0, err
@@ -48,6 +74,10 @@ func Run(ctx context.Context, root string, args []string, output io.Writer) (int
 		return 2, err
 	}
 	rules, err := loadRules(root, options.RulesDirectory)
+	if err != nil {
+		return 2, err
+	}
+	rules, err = selectSemanticRules(rules, options.RuleNames)
 	if err != nil {
 		return 2, err
 	}
@@ -115,6 +145,7 @@ func Run(ctx context.Context, root string, args []string, output io.Writer) (int
 
 func parseOptions(args []string) (Options, bool, error) {
 	options := Options{Threshold: defaultThreshold, RulesDirectory: ".better-typescript/rules"}
+	var filePatterns, ruleNames stringListFlag
 	flags := flag.NewFlagSet("semantic", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	flags.Float64Var(&options.Threshold, "threshold", defaultThreshold, "")
@@ -122,6 +153,9 @@ func parseOptions(args []string) (Options, bool, error) {
 	flags.StringVar(&options.ReviewContextPath, "review-context", "", "")
 	flags.StringVar(&options.RulesDirectory, "rules-dir", options.RulesDirectory, "")
 	flags.StringVar(&options.CommitRange, "range", "", "")
+	flags.Var(&filePatterns, "files", "")
+	flags.BoolVar(&options.AllFiles, "all", false, "")
+	flags.Var(&ruleNames, "rules", "")
 	flags.BoolVar(&options.JSON, "json", false, "")
 	flags.BoolVar(&options.DryRun, "dry-run", false, "")
 	flags.BoolVar(&options.DeterministicOnly, "deterministic", false, "")
@@ -132,6 +166,21 @@ func parseOptions(args []string) (Options, bool, error) {
 	}
 	if flags.NArg() != 0 {
 		return Options{}, false, fmt.Errorf("unexpected arguments: %s", strings.Join(flags.Args(), " "))
+	}
+	options.FilePatterns = append([]string(nil), filePatterns...)
+	options.RuleNames = append([]string(nil), ruleNames...)
+	targetModes := 0
+	if strings.TrimSpace(options.CommitRange) != "" {
+		targetModes++
+	}
+	if len(options.FilePatterns) > 0 {
+		targetModes++
+	}
+	if options.AllFiles {
+		targetModes++
+	}
+	if targetModes > 1 {
+		return Options{}, false, fmt.Errorf("--range, --files, and --all cannot be combined")
 	}
 	if math.IsNaN(options.Threshold) || math.IsInf(options.Threshold, 0) {
 		return Options{}, false, fmt.Errorf("threshold must be a finite number")

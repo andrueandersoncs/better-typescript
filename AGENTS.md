@@ -1,3 +1,5 @@
+Instead of "generating markdown" or "responding in structured prose", I want you to pretend you're giving me a presentation and I have a very limited attention span.
+
 Always keep output and repository text extremely simple and concise unless asked otherwise.
 
 Work on the current branch. Leave changes uncommitted unless asked to commit.
