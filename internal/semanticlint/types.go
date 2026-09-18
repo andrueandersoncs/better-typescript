@@ -40,6 +40,7 @@ type Options struct {
 	Model             string
 	ReviewContextPath string
 	RulesDirectory    string
+	CommitRange       string
 	JSON              bool
 	DryRun            bool
 }

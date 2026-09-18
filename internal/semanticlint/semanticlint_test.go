@@ -116,6 +116,65 @@ func TestRunDryRunPlansChangedFilesWithoutTypeSafe(t *testing.T) {
 	}
 }
 
+func TestRunCommitRangeUsesCommittedEndpoint(t *testing.T) {
+	_, fileName, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("locate testdata")
+	}
+	root := t.TempDir()
+	if err := os.CopyFS(root, os.DirFS(filepath.Join(filepath.Dir(fileName), "testdata", "project"))); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, root, "init", "--quiet")
+	runGit(t, root, "add", ".")
+	runGit(t, root, "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "--quiet", "-m", "initial")
+	file := filepath.Join(root, "src", "main.ts")
+	if err := os.WriteFile(file, []byte("export const COMMITTED_RANGE_MARKER = 1;\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, root, "add", ".")
+	runGit(t, root, "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "--quiet", "-m", "change")
+	if err := os.WriteFile(file, []byte("export const WORKTREE_MARKER = 2;\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	snapshot, err := gitSnapshot(context.Background(), root, "HEAD~1...HEAD")
+	if err != nil {
+		t.Fatal(err)
+	}
+	evidence, err := buildRepositoryEvidence(context.Background(), root, snapshot, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var source string
+	for _, candidate := range evidence.Files {
+		if candidate.Path == "src/main.ts" {
+			source = candidate.Text
+			break
+		}
+	}
+	if !strings.Contains(source, "COMMITTED_RANGE_MARKER") || strings.Contains(source, "WORKTREE_MARKER") {
+		t.Fatalf("range evidence did not come from its endpoint commit: %q", source)
+	}
+
+	var output bytes.Buffer
+	exitCode, err := Run(context.Background(), root, []string{"--range", "HEAD~1...HEAD", "--dry-run"}, &output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if exitCode != 0 || !strings.Contains(output.String(), `"path":"src/main.ts"`) {
+		t.Fatalf("range dry run = exit %d, output %s", exitCode, output.String())
+	}
+}
+
+func TestSplitCommitRangeRejectsIncompleteRange(t *testing.T) {
+	for _, value := range []string{"HEAD", "..HEAD", "HEAD..", "HEAD..main..other"} {
+		if _, _, _, err := splitCommitRange(value); err == nil {
+			t.Errorf("splitCommitRange(%q) succeeded", value)
+		}
+	}
+}
+
 func TestTypeSafeClientSendsTypedRequest(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		if request.URL.Path != "/v1/systemone" || request.Header.Get("Authorization") != "Bearer secret" {

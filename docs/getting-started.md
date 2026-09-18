@@ -36,14 +36,14 @@ npx better-typescript
 
 With no flags or configuration, the command checks all project files with all rules.
 
-Run semantic policy checks against the current Git change:
+Run semantic policy checks against the current working-tree change:
 
 ```sh
 export TYPESAFE_API_KEY="..."
 npx better-typescript semantic
 ```
 
-Use `npx better-typescript semantic --dry-run` to inspect the bounded routing plan without an API call. See [Semantic lint](./semantic-lint.md).
+Use `npx better-typescript semantic --range 'origin/main...HEAD'` for a committed pull-request range. Use `--dry-run` to inspect the bounded routing plan without an API call. See [Semantic lint](./semantic-lint.md).
 
 ### Select files
 

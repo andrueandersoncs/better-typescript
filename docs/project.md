@@ -4,7 +4,7 @@
 
 The CLI analyzes the project graph rooted in the current directory. It loads `./tsconfig.json` and its recursive project references. Each config gets one `typescript-go` Program and contributes its non-declaration root source files. Optional project-relative globs restrict which files are linted.
 
-The `semantic` subcommand uses Git as its change seam. It evaluates embedded and project-local Markdown policies with deterministic Go checks plus bounded TypeSafe Choice and Noul judgments. The semantic module owns evidence selection, network retries, classifications, and its report contract.
+The `semantic` subcommand uses Git working-tree changes or an explicit commit range as its change seam. It evaluates embedded and project-local Markdown policies with deterministic Go checks plus bounded TypeSafe Choice and Noul judgments. The semantic module owns evidence selection, network retries, classifications, and its report contract.
 
 The root Go module imports generated public compiler adapters from `github.com/andrueandersoncs/typescript-go`.
 

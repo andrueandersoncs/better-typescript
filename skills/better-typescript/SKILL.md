@@ -44,14 +44,14 @@ Status and operational errors go to stderr. Each stdout line is one NDJSON viola
 
 ## Run semantic policies
 
-Use the semantic subcommand only when asked to evaluate engineering policy against the current Git change:
+Use the semantic subcommand only when asked to evaluate engineering policy against a working-tree change or committed Git range:
 
 ```sh
 export TYPESAFE_API_KEY="..."
 npx better-typescript semantic
 ```
 
-Run `npx better-typescript semantic --dry-run` to inspect routing without an API call. Treat `review`, `violation`, and `insufficient_evidence` as actionable. Project policies live under `.better-typescript/rules/`; requirements or rationale can be passed with `--review-context`.
+Run `npx better-typescript semantic --range 'origin/main...HEAD'` for a committed pull-request range. Run with `--dry-run` to inspect routing without an API call. Treat `review`, `violation`, and `insufficient_evidence` as actionable. Project policies live under `.better-typescript/rules/`; requirements or rationale can be passed with `--review-context`.
 
 ## Handle results
 

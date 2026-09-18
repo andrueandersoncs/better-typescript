@@ -1,6 +1,6 @@
 # Semantic lint
 
-`better-typescript semantic` checks natural-language engineering policies against the current Git change.
+`better-typescript semantic` checks natural-language engineering policies against the current Git change or a committed range.
 
 It keeps deterministic work in Go and uses TypeSafe only for semantic judgments. The binary embeds the default policy catalog. Add project policies under `.better-typescript/rules/`.
 
@@ -11,7 +11,7 @@ export TYPESAFE_API_KEY="..."
 npx better-typescript semantic
 ```
 
-The command reads tracked, staged, untracked, renamed, and deleted paths from Git. It then:
+Without `--range`, the command reads tracked, staged, untracked, renamed, and deleted paths from the working tree. It then:
 
 1. keeps policies whose frontmatter globs match a changed path;
 2. runs exact repository checks in Go;
@@ -31,12 +31,29 @@ Live semantic lint sends selected source and policy text to TypeSafe. Do not run
 --model <name>           TypeSafe model (default: jev-latest)
 --review-context <path>  Requirements, rationale, and measurements
 --rules-dir <path>       Additional Markdown rules
+--range <from>..<to>  Analyze a committed Git range instead of the working tree
 --json                   Print machine-readable results
 --dry-run                Print the routing plan without API calls
 --help                   Show help
 ```
 
 `--dry-run` needs no API key and always exits successfully.
+
+## Committed ranges
+
+Use a two-dot range to compare two commits directly:
+
+```sh
+npx better-typescript semantic --range 'release..HEAD'
+```
+
+Use a three-dot range for a pull request or feature branch:
+
+```sh
+npx better-typescript semantic --range 'origin/main...HEAD'
+```
+
+Three-dot ranges start at Git's merge base. Range mode excludes untracked and working-tree changes. Changed source and repository context are read from the range's end commit, so the result does not depend on the checked-out file contents. Fetch the base ref before using a remote-tracking name in CI.
 
 ## Project policies
 

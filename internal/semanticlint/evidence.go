@@ -17,9 +17,13 @@ type repositorySnapshot struct {
 	changedPaths    []string
 	repositoryPaths []string
 	diff            string
+	revision        string
 }
 
-func gitSnapshot(ctx context.Context, root string) (repositorySnapshot, error) {
+func gitSnapshot(ctx context.Context, root, commitRange string) (repositorySnapshot, error) {
+	if strings.TrimSpace(commitRange) != "" {
+		return gitRangeSnapshot(ctx, root, commitRange)
+	}
 	tracked, err := gitOutput(ctx, root, "diff", "--name-only", "-z", "HEAD", "--")
 	if err != nil {
 		return repositorySnapshot{}, fmt.Errorf("could not read tracked changes: %w", err)
@@ -48,6 +52,61 @@ func gitSnapshot(ctx context.Context, root string) (repositorySnapshot, error) {
 	repositoryPaths := uniquePaths(nullSeparatedPaths(repository))
 	repositoryPaths = deleteMatching(repositoryPaths, deletedSet)
 	return repositorySnapshot{changedPaths: changedPaths, repositoryPaths: repositoryPaths, diff: string(diff)}, nil
+}
+
+func gitRangeSnapshot(ctx context.Context, root, value string) (repositorySnapshot, error) {
+	left, separator, right, err := splitCommitRange(value)
+	if err != nil {
+		return repositorySnapshot{}, err
+	}
+	leftCommit, err := resolveCommit(ctx, root, left)
+	if err != nil {
+		return repositorySnapshot{}, fmt.Errorf("resolve range start %q: %w", left, err)
+	}
+	rightCommit, err := resolveCommit(ctx, root, right)
+	if err != nil {
+		return repositorySnapshot{}, fmt.Errorf("resolve range end %q: %w", right, err)
+	}
+	normalizedRange := leftCommit + separator + rightCommit
+	changed, err := gitOutput(ctx, root, "diff", "--name-only", "-z", normalizedRange, "--")
+	if err != nil {
+		return repositorySnapshot{}, fmt.Errorf("could not read range changes: %w", err)
+	}
+	repository, err := gitOutput(ctx, root, "ls-tree", "-r", "--name-only", "-z", rightCommit)
+	if err != nil {
+		return repositorySnapshot{}, fmt.Errorf("could not read range repository files: %w", err)
+	}
+	diff, err := gitOutput(ctx, root, "diff", "--no-ext-diff", "--unified=3", normalizedRange, "--")
+	if err != nil {
+		return repositorySnapshot{}, fmt.Errorf("could not read range diff: %w", err)
+	}
+	return repositorySnapshot{
+		changedPaths:    uniquePaths(nullSeparatedPaths(changed)),
+		repositoryPaths: uniquePaths(nullSeparatedPaths(repository)),
+		diff:            string(diff),
+		revision:        rightCommit,
+	}, nil
+}
+
+func splitCommitRange(value string) (string, string, string, error) {
+	value = strings.TrimSpace(value)
+	separator := ".."
+	if strings.Contains(value, "...") {
+		separator = "..."
+	}
+	parts := strings.SplitN(value, separator, 2)
+	if len(parts) != 2 || strings.TrimSpace(parts[0]) == "" || strings.TrimSpace(parts[1]) == "" || strings.Contains(parts[0], "..") || strings.Contains(parts[1], "..") {
+		return "", "", "", fmt.Errorf("commit range must have the form <from>..<to> or <from>...<to>")
+	}
+	return strings.TrimSpace(parts[0]), separator, strings.TrimSpace(parts[1]), nil
+}
+
+func resolveCommit(ctx context.Context, root, revision string) (string, error) {
+	output, err := gitOutput(ctx, root, "rev-parse", "--verify", "--end-of-options", revision+"^{commit}")
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(output)), nil
 }
 
 func gitOutput(ctx context.Context, root string, args ...string) ([]byte, error) {
@@ -98,14 +157,14 @@ func deleteMatching(paths []string, deleted map[string]bool) []string {
 	return result
 }
 
-func buildRepositoryEvidence(root string, snapshot repositorySnapshot, reviewContextPath string) (RepositoryEvidence, error) {
+func buildRepositoryEvidence(ctx context.Context, root string, snapshot repositorySnapshot, reviewContextPath string) (RepositoryEvidence, error) {
 	paths := make([]string, 0, len(snapshot.repositoryPaths))
 	for _, path := range snapshot.repositoryPaths {
 		if repositoryExtensions[filepath.Ext(path)] {
 			paths = append(paths, path)
 		}
 	}
-	files, err := readSources(root, paths)
+	files, err := readSources(ctx, root, snapshot.revision, paths)
 	if err != nil {
 		return RepositoryEvidence{}, err
 	}
@@ -138,7 +197,7 @@ func buildRepositoryEvidence(root string, snapshot repositorySnapshot, reviewCon
 	return evidence, nil
 }
 
-func readSources(root string, paths []string) ([]Source, error) {
+func readSources(ctx context.Context, root, revision string, paths []string) ([]Source, error) {
 	result := make([]Source, len(paths))
 	jobs := make(chan int)
 	var firstErr error
@@ -150,7 +209,7 @@ func readSources(root string, paths []string) ([]Source, error) {
 		go func() {
 			defer workers.Done()
 			for index := range jobs {
-				content, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(paths[index])))
+				content, err := readSource(ctx, root, revision, paths[index])
 				if err != nil {
 					mu.Lock()
 					if firstErr == nil {
@@ -176,6 +235,13 @@ func readSources(root string, paths []string) ([]Source, error) {
 		return nil, firstErr
 	}
 	return result, nil
+}
+
+func readSource(ctx context.Context, root, revision, path string) ([]byte, error) {
+	if revision == "" {
+		return os.ReadFile(filepath.Join(root, filepath.FromSlash(path)))
+	}
+	return gitOutput(ctx, root, "show", revision+":"+path)
 }
 
 func sourceCandidates(source Source) []SourceCandidate {

@@ -18,6 +18,7 @@ Options:
   --model <name>           TypeSafe model (default: jev-latest)
   --review-context <path>  Requirements, rationale, and measurements
   --rules-dir <path>       Additional Markdown rules (default: .better-typescript/rules)
+  --range <from>..<to>     Analyze a committed Git range instead of the working tree
   --json                   Print machine-readable results
   --dry-run                Print the routing plan without API calls
   --help                   Show this help
@@ -33,7 +34,7 @@ func Run(ctx context.Context, root string, args []string, output io.Writer) (int
 		_, err := io.WriteString(output, usage)
 		return 0, err
 	}
-	snapshot, err := gitSnapshot(ctx, root)
+	snapshot, err := gitSnapshot(ctx, root, options.CommitRange)
 	if err != nil {
 		return 2, err
 	}
@@ -41,7 +42,7 @@ func Run(ctx context.Context, root string, args []string, output io.Writer) (int
 		_, err := fmt.Fprintln(output, "No changed files to lint.")
 		return 0, err
 	}
-	evidence, err := buildRepositoryEvidence(root, snapshot, options.ReviewContextPath)
+	evidence, err := buildRepositoryEvidence(ctx, root, snapshot, options.ReviewContextPath)
 	if err != nil {
 		return 2, err
 	}
@@ -123,6 +124,7 @@ func parseOptions(args []string) (Options, bool, error) {
 	flags.StringVar(&options.Model, "model", defaultModel, "")
 	flags.StringVar(&options.ReviewContextPath, "review-context", "", "")
 	flags.StringVar(&options.RulesDirectory, "rules-dir", options.RulesDirectory, "")
+	flags.StringVar(&options.CommitRange, "range", "", "")
 	flags.BoolVar(&options.JSON, "json", false, "")
 	flags.BoolVar(&options.DryRun, "dry-run", false, "")
 	help := false
