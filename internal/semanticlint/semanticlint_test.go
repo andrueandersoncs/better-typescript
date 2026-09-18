@@ -179,7 +179,7 @@ func TestRunSelectsCurrentFilesAndRulesWithoutChanges(t *testing.T) {
 	root := newSemanticTestRepository(t)
 
 	var output bytes.Buffer
-	exitCode, err := Run(context.Background(), root, []string{"--files", "src", "--rules", "no-debugger", "--dry-run"}, &output)
+	exitCode, err := Run(context.Background(), root, []string{"--files", "src/main.ts", "--rules", "no-debugger", "--dry-run"}, &output)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -217,6 +217,53 @@ func TestRunSelectsCurrentFilesAndRulesWithoutChanges(t *testing.T) {
 	}
 }
 
+func TestRunRoutesEmbeddedCompositionalityPolicies(t *testing.T) {
+	root := newSemanticTestRepository(t)
+
+	var output bytes.Buffer
+	exitCode, err := Run(context.Background(), root, []string{
+		"--files", "src/compositionality.ts",
+		"--rules", "keep-library-imports-inert,give-request-bodies-and-streams-one-consumption-owner",
+		"--dry-run",
+	}, &output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0", exitCode)
+	}
+	var documents []struct {
+		Kind  string `json:"kind"`
+		Rules []struct {
+			Path string `json:"rulePath"`
+		} `json:"rules"`
+		DiffFiles []struct {
+			Path string `json:"path"`
+		} `json:"diffFiles"`
+	}
+	if err := json.Unmarshal(output.Bytes(), &documents); err != nil {
+		t.Fatalf("decode dry-run output: %v\n%s", err, output.String())
+	}
+	if len(documents) != 1 || documents[0].Kind != "dry-run-plan" {
+		t.Fatalf("unexpected dry-run documents: %s", output.String())
+	}
+	var names []string
+	for _, rule := range documents[0].Rules {
+		names = append(names, strings.TrimSuffix(filepath.Base(rule.Path), ".md"))
+	}
+	slices.Sort(names)
+	wantNames := []string{
+		"give-request-bodies-and-streams-one-consumption-owner",
+		"keep-library-imports-inert",
+	}
+	if !slices.Equal(names, wantNames) {
+		t.Fatalf("selected rules = %#v, want %#v", names, wantNames)
+	}
+	if len(documents[0].DiffFiles) != 1 || documents[0].DiffFiles[0].Path != "src/compositionality.ts" {
+		t.Fatalf("selected files = %#v", documents[0].DiffFiles)
+	}
+}
+
 func TestRunAllSelectsEveryEligibleCurrentFile(t *testing.T) {
 	root := newSemanticTestRepository(t)
 
@@ -240,7 +287,7 @@ func TestRunAllSelectsEveryEligibleCurrentFile(t *testing.T) {
 	for _, file := range documents[0].DiffFiles {
 		paths = append(paths, file.Path)
 	}
-	want := []string{".better-typescript/rules/no-debugger.md", "src/main.ts"}
+	want := []string{".better-typescript/rules/no-debugger.md", "src/compositionality.ts", "src/main.ts"}
 	if !slices.Equal(paths, want) {
 		t.Fatalf("selected files = %#v, want %#v", paths, want)
 	}
@@ -619,6 +666,45 @@ func TestFileDescriptionMatchesReferenceSummary(t *testing.T) {
 	}
 	if strings.Contains(description, "PATCH") {
 		t.Fatalf("description includes patch text: %q", description)
+	}
+}
+
+func TestEmbeddedTestingPoliciesAreSelectable(t *testing.T) {
+	names := []string{
+		"assert-the-intended-effect-failure-channel",
+		"control-test-nondeterminism",
+		"derive-expected-results-independently",
+		"do-not-focus-or-silently-exclude-tests",
+		"do-not-weaken-test-policy-silently",
+		"execute-effects-created-by-tests",
+		"execute-properties-through-the-test-runner",
+		"generate-the-domain-the-property-claims",
+		"isolate-browser-sessions-and-data",
+		"isolate-state-for-each-generated-case",
+		"keep-test-fixtures-type-checked",
+		"keep-test-resources-hermetic",
+		"own-asynchronous-test-work",
+		"prevent-vacuous-property-sampling",
+		"prevent-vacuous-test-success",
+		"require-intentional-snapshot-changes",
+		"state-the-law-property-tests-enforce",
+		"use-stable-user-facing-browser-locators",
+	}
+	rules, err := loadRules(t.TempDir(), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	selected, err := selectSemanticRules(rules, names)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(selected) != len(names) {
+		t.Fatalf("selected testing policies = %d, want %d", len(selected), len(names))
+	}
+	for _, rule := range selected {
+		if !strings.HasPrefix(rule.Path, "rules/testing-enforcement/") || rule.Metadata.Scope != "repository" {
+			t.Fatalf("testing policy has unexpected metadata: %#v", rule)
+		}
 	}
 }
 

@@ -72,6 +72,8 @@ npx better-typescript semantic --all --rules function-naming,readonly
 
 Rule names are Markdown basenames without `.md`. If a basename is ambiguous, use its catalog-relative path, such as `readability/abstract-shared-concepts-not-merely-similar-looking-code`.
 
+The embedded testing policies cover focused or excluded tests, asynchronous ownership, vacuous assertions, independent expectations, typed fixtures, snapshots, nondeterminism, Effect execution and failures, hermetic resources, browser locators and isolation, and property-test execution, laws, domains, sampling, and case isolation. Test configuration changes must not silently weaken repository policy.
+
 ## Committed ranges
 
 Use a two-dot range to compare two commits directly:
