@@ -259,6 +259,7 @@ func sourceCandidates(source Source) []SourceCandidate {
 
 func diffFilesFromEvidence(diff string, changedPaths, deletedPaths []string, files []Source) []DiffFile {
 	parsed := parseDiffFiles(diff)
+	parsedCount := len(parsed)
 	parsedPaths := make(map[string]bool)
 	for _, file := range parsed {
 		parsedPaths[file.Path] = true
@@ -271,14 +272,15 @@ func diffFilesFromEvidence(diff string, changedPaths, deletedPaths []string, fil
 	for _, path := range deletedPaths {
 		deleted[path] = true
 	}
+	var additions []DiffFile
 	for changedIndex, path := range changedPaths {
 		if parsedPaths[path] {
 			continue
 		}
-		id := fmt.Sprintf("file_%d", len(parsed)+changedIndex+1)
+		id := fmt.Sprintf("file_%d", parsedCount+changedIndex+1)
 		source, ok := sourceByPath[path]
 		if !ok {
-			parsed = append(parsed, DiffFile{ID: id, Path: path, Status: "deleted", Hunks: []DiffHunk{}})
+			additions = append(additions, DiffFile{ID: id, Path: path, Status: "deleted", Hunks: []DiffHunk{}})
 			continue
 		}
 		status := "untracked"
@@ -289,15 +291,15 @@ func diffFilesFromEvidence(diff string, changedPaths, deletedPaths []string, fil
 		for index, candidate := range sourceCandidates(source) {
 			hunks = append(hunks, DiffHunk{ID: fmt.Sprintf("%s_hunk_%d", id, index+1), Path: path, NewStartLine: candidate.StartLine, NewLineCount: candidate.EndLine - candidate.StartLine + 1, Header: "Untracked file", Patch: candidate.Text})
 		}
-		parsed = append(parsed, DiffFile{ID: id, Path: path, Status: status, Hunks: hunks})
+		additions = append(additions, DiffFile{ID: id, Path: path, Status: status, Hunks: hunks})
 	}
-	return parsed
+	return append(parsed, additions...)
 }
 
 func parseDiffFiles(diff string) []DiffFile {
 	var result []DiffFile
 	sections := strings.Split(diff, "diff --git ")
-	for _, section := range sections[1:] {
+	for sectionIndex, section := range sections[1:] {
 		lines := strings.Split(section, "\n")
 		oldPath, newPath := "", ""
 		for _, line := range lines {
@@ -315,7 +317,7 @@ func parseDiffFiles(diff string) []DiffFile {
 		if path == "" {
 			continue
 		}
-		id := fmt.Sprintf("file_%d", len(result)+1)
+		id := fmt.Sprintf("file_%d", sectionIndex+1)
 		status := "modified"
 		switch {
 		case oldPath == "":
@@ -386,7 +388,11 @@ func parseHunkHeader(fileID, path string, ordinal int, lines []string) (DiffHunk
 	if !ok {
 		return DiffHunk{}, false
 	}
-	return DiffHunk{ID: fmt.Sprintf("%s_hunk_%d", fileID, ordinal), Path: path, OldStartLine: oldStart, OldLineCount: oldCount, NewStartLine: newStart, NewLineCount: newCount, Header: strings.TrimSpace(parts[1]), Patch: strings.Join(lines, "\n")}, true
+	header := strings.TrimSpace(parts[1])
+	if header == "" {
+		header = lines[0]
+	}
+	return DiffHunk{ID: fmt.Sprintf("%s_hunk_%d", fileID, ordinal), Path: path, OldStartLine: oldStart, OldLineCount: oldCount, NewStartLine: newStart, NewLineCount: newCount, Header: header, Patch: strings.Join(lines, "\n")}, true
 }
 
 func parseLineRange(value string) (int, int, bool) {

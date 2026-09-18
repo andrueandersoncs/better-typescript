@@ -1,6 +1,9 @@
 package semanticlint
 
 import (
+	"bytes"
+	"encoding/json"
+	"sort"
 	"time"
 
 	"github.com/andrueandersoncs/better-typescript/internal/fileglob"
@@ -19,7 +22,6 @@ const (
 	minimumRelevanceProbability = 0.45
 	sourceChunkLineCount        = 80
 	sourceChunkOverlapLineCount = 20
-	maximumConcurrentRequests   = 32
 	defaultHTTPTimeout          = 10 * time.Second
 	maximumHTTPRetries          = 2
 )
@@ -35,6 +37,8 @@ var codeExtensions = map[string]bool{
 	".mjs": true, ".cjs": true,
 }
 
+var codeExtensionOrder = []string{".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"}
+
 type Options struct {
 	Threshold         float64
 	Model             string
@@ -43,6 +47,7 @@ type Options struct {
 	CommitRange       string
 	JSON              bool
 	DryRun            bool
+	DeterministicOnly bool
 }
 
 type Source struct {
@@ -180,15 +185,115 @@ type DryRunHunk struct {
 }
 
 type question struct {
-	Type         string         `json:"type"`
-	Instructions any            `json:"instructions"`
-	Criteria     map[string]any `json:"criteria,omitempty"`
+	Type          string         `json:"type"`
+	Instructions  any            `json:"instructions"`
+	Criteria      map[string]any `json:"criteria,omitempty"`
+	CriteriaOrder []string       `json:"-"`
 }
 
 type evaluationRequest struct {
-	State     any                 `json:"state"`
-	Model     string              `json:"model"`
-	Questions map[string]question `json:"questions"`
+	State         any                 `json:"state"`
+	Model         string              `json:"model,omitempty"`
+	Questions     map[string]question `json:"questions"`
+	QuestionOrder []string            `json:"-"`
+}
+
+func (value question) MarshalJSON() ([]byte, error) {
+	typeAndInstructions, err := marshalOrderedObject(
+		[]string{"type", "instructions"},
+		map[string]any{"type": value.Type, "instructions": value.Instructions},
+	)
+	if err != nil || value.Criteria == nil {
+		return typeAndInstructions, err
+	}
+	criteria, err := marshalOrderedObject(value.CriteriaOrder, value.Criteria)
+	if err != nil {
+		return nil, err
+	}
+	return appendField(typeAndInstructions, "criteria", criteria), nil
+}
+
+func (request evaluationRequest) MarshalJSON() ([]byte, error) {
+	fields := map[string]any{"state": request.State, "questions": orderedQuestions{values: request.Questions, order: request.QuestionOrder}}
+	order := []string{"state", "questions"}
+	if request.Model != "" {
+		fields["model"] = request.Model
+		order = append(order, "model")
+	}
+	return marshalOrderedObject(order, fields)
+}
+
+type orderedQuestions struct {
+	values map[string]question
+	order  []string
+}
+
+func (questions orderedQuestions) MarshalJSON() ([]byte, error) {
+	values := make(map[string]any, len(questions.values))
+	for key, value := range questions.values {
+		values[key] = value
+	}
+	return marshalOrderedObject(questions.order, values)
+}
+
+func marshalOrderedObject(order []string, values map[string]any) ([]byte, error) {
+	keys := append([]string{}, order...)
+	seen := make(map[string]bool, len(keys))
+	for _, key := range keys {
+		seen[key] = true
+	}
+	var remaining []string
+	for key := range values {
+		if !seen[key] {
+			remaining = append(remaining, key)
+		}
+	}
+	sort.Strings(remaining)
+	keys = append(keys, remaining...)
+	var output bytes.Buffer
+	output.WriteByte('{')
+	wroteField := false
+	for _, key := range keys {
+		value, ok := values[key]
+		if !ok {
+			continue
+		}
+		if wroteField {
+			output.WriteByte(',')
+		}
+		encodedKey, _ := json.Marshal(key)
+		encodedValue, err := marshalJSON(value)
+		if err != nil {
+			return nil, err
+		}
+		output.Write(encodedKey)
+		output.WriteByte(':')
+		output.Write(encodedValue)
+		wroteField = true
+	}
+	output.WriteByte('}')
+	return output.Bytes(), nil
+}
+
+func appendField(object []byte, key string, value []byte) []byte {
+	result := make([]byte, 0, len(object)+len(key)+len(value)+4)
+	result = append(result, object[:len(object)-1]...)
+	result = append(result, ',')
+	encodedKey, _ := json.Marshal(key)
+	result = append(result, encodedKey...)
+	result = append(result, ':')
+	result = append(result, value...)
+	return append(result, '}')
+}
+
+func marshalJSON(value any) ([]byte, error) {
+	var output bytes.Buffer
+	encoder := json.NewEncoder(&output)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(value); err != nil {
+		return nil, err
+	}
+	return bytes.TrimSuffix(output.Bytes(), []byte("\n")), nil
 }
 
 type answer struct {

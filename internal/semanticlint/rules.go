@@ -6,11 +6,12 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/andrueandersoncs/better-typescript/internal/fileglob"
+	"go.yaml.in/yaml/v3"
 )
 
 //go:embed defaults
@@ -20,6 +21,8 @@ type ruleSource struct {
 	path   string
 	source string
 }
+
+var ruleFrontmatterPattern = regexp.MustCompile(`(?s)^---\r?\n(.*?)\r?\n---(?:\r?\n|$)`)
 
 var deterministicChecks = map[string]string{
 	"rules/filenames/use-distinct-filenames.md":                                  "distinct-filenames",
@@ -157,19 +160,15 @@ func parseRule(path, source string) (Rule, error) {
 	if source == "" {
 		return Rule{}, fmt.Errorf("rule file is empty: %s", path)
 	}
-	if !strings.HasPrefix(source, "---\n") {
+	match := ruleFrontmatterPattern.FindStringSubmatchIndex(source)
+	if match == nil {
 		return Rule{}, fmt.Errorf("rule file has no frontmatter: %s", path)
 	}
-	end := strings.Index(source[4:], "\n---")
-	if end < 0 {
-		return Rule{}, fmt.Errorf("rule file has invalid frontmatter: %s", path)
-	}
-	frontmatterEnd := 4 + end
-	globs, err := parseGlobFrontmatter(source[4:frontmatterEnd])
+	globs, err := parseGlobFrontmatter(source[match[2]:match[3]])
 	if err != nil {
 		return Rule{}, fmt.Errorf("%w: %s", err, path)
 	}
-	definition := strings.TrimSpace(source[frontmatterEnd+4:])
+	definition := strings.TrimSpace(source[match[1]:])
 	if definition == "" {
 		return Rule{}, fmt.Errorf("rule definition is empty: %s", path)
 	}
@@ -192,39 +191,21 @@ func parseRule(path, source string) (Rule, error) {
 }
 
 func parseGlobFrontmatter(frontmatter string) ([]string, error) {
-	lines := strings.Split(frontmatter, "\n")
-	inGlobs := false
-	var globs []string
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "globs:" {
-			inGlobs = true
-			continue
-		}
-		if !inGlobs || !strings.HasPrefix(trimmed, "-") {
-			continue
-		}
-		value := strings.TrimSpace(strings.TrimPrefix(trimmed, "-"))
-		if len(value) >= 2 && ((value[0] == '"' && value[len(value)-1] == '"') || (value[0] == '\'' && value[len(value)-1] == '\'')) {
-			if value[0] == '\'' {
-				value = value[1 : len(value)-1]
-			} else {
-				unquoted, err := strconv.Unquote(value)
-				if err != nil {
-					return nil, fmt.Errorf("rule file has invalid frontmatter")
-				}
-				value = unquoted
-			}
-		}
-		if value == "" {
-			return nil, fmt.Errorf("rule frontmatter requires non-empty globs")
-		}
-		globs = append(globs, value)
+	var metadata struct {
+		Globs []string `yaml:"globs"`
 	}
-	if len(globs) == 0 {
+	if err := yaml.Unmarshal([]byte(frontmatter), &metadata); err != nil {
+		return nil, fmt.Errorf("rule file has invalid frontmatter")
+	}
+	if len(metadata.Globs) == 0 {
 		return nil, fmt.Errorf("rule frontmatter requires non-empty globs")
 	}
-	return globs, nil
+	for _, glob := range metadata.Globs {
+		if glob == "" {
+			return nil, fmt.Errorf("rule frontmatter requires non-empty globs")
+		}
+	}
+	return metadata.Globs, nil
 }
 
 func canonicalRulePath(path string) string {

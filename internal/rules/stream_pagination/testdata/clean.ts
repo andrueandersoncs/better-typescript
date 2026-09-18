@@ -15,3 +15,7 @@ const copied: number[] = []
 for (let offset = 0; offset < bytes.length; offset++) {
   copied.push(bytes[offset])
 }
+
+for (;;) {
+  break
+}

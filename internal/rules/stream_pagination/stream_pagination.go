@@ -64,7 +64,7 @@ func loopCursor(loop *ast.Node) *ast.Node {
 		condition = loop.AsForStatement().Condition
 	}
 	condition = unwrap(condition)
-	if ast.IsIdentifier(condition) {
+	if condition != nil && ast.IsIdentifier(condition) {
 		return condition
 	}
 	return nil

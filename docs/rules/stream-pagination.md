@@ -2,7 +2,7 @@
 
 ## What it does
 
-Reports a manual loop only when it has a bounded local pagination shape: the loop continuation is passed to an awaited or yielded page request, that request's result is accumulated, and the same continuation is updated from that result. Token spelling and an unrelated `paginate` call do not affect the result.
+Reports a manual loop only when it has a bounded local pagination shape: the loop continuation is passed to an awaited or yielded page request, that request's result is accumulated, and the same continuation is updated from that result. Loops without a continuation expression, such as `for (;;)`, are ignored. Token spelling and an unrelated `paginate` call do not affect the result.
 
 ## Conformant
 

@@ -8,6 +8,8 @@ The fixed catalog contains these 156 rules:
 
 `no-pass-through-object-wrappers` permits unary constructor adapters.
 
+`stream-pagination` ignores loops without a continuation expression.
+
 Unary `make`, `create`, `build`, and `construct` functions may use inline generic construction records.
 
 Recursive and generic-inference-guiding annotations are retained. Effect Schema constructors may nest declarative calls. Effect SQL raw statements may use `unsafe`. Predicate naming recognizes checker-inferred boolean return types.

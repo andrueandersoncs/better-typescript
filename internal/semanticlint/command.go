@@ -15,12 +15,13 @@ const usage = `Usage: better-typescript semantic [options]
 
 Options:
   --threshold <number>     Violation probability threshold (default: 0.7)
-  --model <name>           TypeSafe model (default: jev-latest)
+  --model <name>           TypeSafe model override (default: SDK default)
   --review-context <path>  Requirements, rationale, and measurements
   --rules-dir <path>       Additional Markdown rules (default: .better-typescript/rules)
   --range <from>..<to>     Analyze a committed Git range instead of the working tree
   --json                   Print machine-readable results
   --dry-run                Print the routing plan without API calls
+  --deterministic           Run exact repository checks without TypeSafe
   --help                   Show this help
 `
 
@@ -73,6 +74,12 @@ func Run(ctx context.Context, root string, args []string, output io.Writer) (int
 	}
 	var reports []FindingReport
 	static := deterministicFindings(deterministic, evidence)
+	if options.DeterministicOnly {
+		if len(static) > 0 {
+			reports = append(reports, FindingReport{Source: "<repository>", Model: "local", ViolationProbabilityThreshold: options.Threshold, Findings: static})
+		}
+		return writeFindingReports(output, reports, options.JSON)
+	}
 	if evidence.ReviewContext == nil {
 		for _, rule := range review {
 			static = append(static, Finding{RulePath: rule.Path, RuleTitle: rule.Title, Evaluator: "review", Classification: "insufficient_evidence", Message: "Requires " + strings.Join(rule.Metadata.RequiredEvidence, " and ") + ".", Evidence: []Evidence{}})
@@ -97,36 +104,27 @@ func Run(ctx context.Context, root string, args []string, output io.Writer) (int
 		if err != nil {
 			return 2, err
 		}
-		findings, usage, model, err := evaluateSemanticRules(ctx, routed, evidence, options, newBatchedEvaluator(client))
+		findings, usage, model, err := evaluateSemanticRules(ctx, routed, evidence, options, newBatchedEvaluator(client, maximumRequestBytes))
 		if err != nil {
 			return 2, err
 		}
 		reports = append(reports, FindingReport{Source: "<routed-evidence>", Model: model, ViolationProbabilityThreshold: options.Threshold, Findings: findings, Usage: &usage})
 	}
-	if options.JSON {
-		if err := writeJSON(output, reportDocuments(reports), true); err != nil {
-			return 2, err
-		}
-	} else if _, err := io.WriteString(output, humanReports(reports)+"\n"); err != nil {
-		return 2, err
-	}
-	if hasActionableFindings(reports) {
-		return 1, nil
-	}
-	return 0, nil
+	return writeFindingReports(output, reports, options.JSON)
 }
 
 func parseOptions(args []string) (Options, bool, error) {
-	options := Options{Threshold: defaultThreshold, Model: defaultModel, RulesDirectory: ".better-typescript/rules"}
+	options := Options{Threshold: defaultThreshold, RulesDirectory: ".better-typescript/rules"}
 	flags := flag.NewFlagSet("semantic", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	flags.Float64Var(&options.Threshold, "threshold", defaultThreshold, "")
-	flags.StringVar(&options.Model, "model", defaultModel, "")
+	flags.StringVar(&options.Model, "model", "", "")
 	flags.StringVar(&options.ReviewContextPath, "review-context", "", "")
 	flags.StringVar(&options.RulesDirectory, "rules-dir", options.RulesDirectory, "")
 	flags.StringVar(&options.CommitRange, "range", "", "")
 	flags.BoolVar(&options.JSON, "json", false, "")
 	flags.BoolVar(&options.DryRun, "dry-run", false, "")
+	flags.BoolVar(&options.DeterministicOnly, "deterministic", false, "")
 	help := false
 	flags.BoolVar(&help, "help", false, "")
 	if err := flags.Parse(args); err != nil {
@@ -144,14 +142,14 @@ func parseOptions(args []string) (Options, bool, error) {
 	if options.Threshold > 1 {
 		return Options{}, false, fmt.Errorf("threshold must not exceed 1")
 	}
-	if strings.TrimSpace(options.Model) == "" {
-		return Options{}, false, fmt.Errorf("model must not be empty")
+	if options.DeterministicOnly && options.DryRun {
+		return Options{}, false, fmt.Errorf("--deterministic and --dry-run cannot be combined")
 	}
 	return options, help, nil
 }
 
 func dryRunPlan(rules []Rule, evidence RepositoryEvidence) DryRunPlan {
-	plan := DryRunPlan{Kind: "dry-run-plan", Layers: []string{"domain-choice", "path-choice", "hunk-choice", "context-expansion", "relevance-nouls", "rule-evaluation"}, Limits: map[string]any{"maximumChoiceOptions": maximumChoiceOptions, "beamWidth": beamWidth, "maximumConcurrentRequests": maximumConcurrentRequests, "maximumExpandedCandidates": maximumExpandedCandidates, "maximumSelectedEvidence": maximumSelectedEvidence, "minimumRelevanceProbability": minimumRelevanceProbability, "maximumEvidenceSnippetBytes": maximumEvidenceSnippetBytes}}
+	plan := DryRunPlan{Kind: "dry-run-plan", Layers: []string{"domain-choice", "path-choice", "hunk-choice", "context-expansion", "relevance-nouls", "rule-evaluation"}, Limits: map[string]any{"maximumChoiceOptions": maximumChoiceOptions, "beamWidth": beamWidth, "maximumExpandedCandidates": maximumExpandedCandidates, "maximumSelectedEvidence": maximumSelectedEvidence, "minimumRelevanceProbability": minimumRelevanceProbability, "maximumEvidenceSnippetBytes": maximumEvidenceSnippetBytes}}
 	for _, rule := range rules {
 		plan.Rules = append(plan.Rules, DryRunRule{RulePath: rule.Path, Evaluator: rule.Metadata.Evaluator, Scope: rule.Metadata.Scope})
 	}
@@ -175,6 +173,20 @@ func reportDocuments(reports []FindingReport) []any {
 		result[index] = report
 	}
 	return result
+}
+
+func writeFindingReports(output io.Writer, reports []FindingReport, jsonOutput bool) (int, error) {
+	if jsonOutput {
+		if err := writeJSON(output, reportDocuments(reports), true); err != nil {
+			return 2, err
+		}
+	} else if _, err := io.WriteString(output, humanReports(reports)+"\n"); err != nil {
+		return 2, err
+	}
+	if hasActionableFindings(reports) {
+		return 1, nil
+	}
+	return 0, nil
 }
 
 func writeJSON(output io.Writer, value any, indent bool) error {

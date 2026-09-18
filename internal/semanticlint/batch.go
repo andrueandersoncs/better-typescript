@@ -31,14 +31,18 @@ type requestBatch struct {
 }
 
 type batchedEvaluator struct {
-	delegate evaluator
-	mu       sync.Mutex
-	pending  []*pendingEvaluation
-	timer    *time.Timer
+	delegate            evaluator
+	maximumRequestBytes int
+	mu                  sync.Mutex
+	pending             []*pendingEvaluation
+	timer               *time.Timer
 }
 
-func newBatchedEvaluator(delegate evaluator) evaluator {
-	return &batchedEvaluator{delegate: delegate}
+func newBatchedEvaluator(delegate evaluator, maximumRequestBytes int) evaluator {
+	return &batchedEvaluator{
+		delegate:            delegate,
+		maximumRequestBytes: maximumRequestBytes,
+	}
 }
 
 func (batcher *batchedEvaluator) Evaluate(ctx context.Context, request evaluationRequest) (evaluationResponse, error) {
@@ -76,9 +80,9 @@ func (batcher *batchedEvaluator) flush() {
 	}
 	var workers sync.WaitGroup
 	for _, key := range order {
-		batches, oversized := buildRequestBatches(groups[key])
+		batches, oversized := buildRequestBatches(groups[key], batcher.maximumRequestBytes)
 		for _, item := range oversized {
-			item.result <- evaluationResult{err: fmt.Errorf("TypeSafe request exceeds %d bytes", maximumRequestBytes)}
+			item.result <- evaluationResult{err: fmt.Errorf("TypeSafe request exceeds %d bytes.", batcher.maximumRequestBytes)}
 		}
 		for _, batch := range batches {
 			workers.Add(1)
@@ -91,7 +95,7 @@ func (batcher *batchedEvaluator) flush() {
 	workers.Wait()
 }
 
-func buildRequestBatches(group []*pendingEvaluation) ([]requestBatch, []*pendingEvaluation) {
+func buildRequestBatches(group []*pendingEvaluation, maximumRequestBytes int) ([]requestBatch, []*pendingEvaluation) {
 	var batches []requestBatch
 	var oversized []*pendingEvaluation
 	var current []*pendingEvaluation
@@ -128,28 +132,42 @@ func makeRequestBatch(pending []*pendingEvaluation) requestBatch {
 		return requestBatch{request: first.request, members: []batchMember{{pending: first, answerIDs: answerIDs}}}
 	}
 	questions := make(map[string]question)
+	var questionOrder []string
 	members := make([]batchMember, len(pending))
 	next := 1
 	for index, item := range pending {
 		answerIDs := make(map[string]string, len(item.request.Questions))
-		ids := make([]string, 0, len(item.request.Questions))
-		for answerID := range item.request.Questions {
-			ids = append(ids, answerID)
-		}
-		sort.Strings(ids)
-		for _, answerID := range ids {
+		for _, answerID := range orderedQuestionIDs(item.request) {
 			batchID := fmt.Sprintf("q%d", next)
 			next++
 			questions[batchID] = item.request.Questions[answerID]
+			questionOrder = append(questionOrder, batchID)
 			answerIDs[answerID] = batchID
 		}
 		members[index] = batchMember{pending: item, answerIDs: answerIDs}
 	}
-	return requestBatch{request: evaluationRequest{State: first.request.State, Model: first.request.Model, Questions: questions}, members: members}
+	return requestBatch{request: evaluationRequest{State: first.request.State, Model: first.request.Model, Questions: questions, QuestionOrder: questionOrder}, members: members}
+}
+
+func orderedQuestionIDs(request evaluationRequest) []string {
+	ids := append([]string{}, request.QuestionOrder...)
+	seen := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		seen[id] = true
+	}
+	var remaining []string
+	for id := range request.Questions {
+		if !seen[id] {
+			remaining = append(remaining, id)
+		}
+	}
+	sort.Strings(remaining)
+	return append(ids, remaining...)
 }
 
 func (batcher *batchedEvaluator) runBatch(batch requestBatch) {
-	response, err := batcher.delegate.Evaluate(batch.members[0].pending.ctx, batch.request)
+	ctx := batch.members[0].pending.ctx
+	response, err := batcher.delegate.Evaluate(ctx, batch.request)
 	if err != nil {
 		for _, member := range batch.members {
 			member.pending.result <- evaluationResult{err: err}

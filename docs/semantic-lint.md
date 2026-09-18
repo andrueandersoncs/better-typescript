@@ -20,7 +20,9 @@ Without `--range`, the command reads tracked, staged, untracked, renamed, and de
 5. filters evidence with independent Noul questions; and
 6. evaluates each applicable policy once against bounded evidence.
 
-No request receives the complete repository or raw diff. Requests are limited to 32,000 bytes. Evidence snippets are limited to 6,000 bytes. Independent questions with byte-identical state are packed into bounded requests.
+No request receives the complete repository or raw diff. Requests are limited to 32,000 bytes. Evidence snippets are limited to 6,000 bytes. Independent questions with byte-identical state are packed into bounded requests. Physical TypeSafe requests have no concurrency limit.
+
+Path routing receives each file status, path, and up to four hunk headers. Patch text remains in the later hunk-routing stage.
 
 Live semantic lint sends selected source and policy text to TypeSafe. Do not run it on repositories whose data cannot be sent to that provider. The normal `better-typescript` command and semantic `--dry-run` make no TypeSafe request.
 
@@ -28,16 +30,19 @@ Live semantic lint sends selected source and policy text to TypeSafe. Do not run
 
 ```text
 --threshold <number>     Violation probability threshold (default: 0.7)
---model <name>           TypeSafe model (default: jev-latest)
+--model <name>           TypeSafe model override (default: SDK default)
 --review-context <path>  Requirements, rationale, and measurements
 --rules-dir <path>       Additional Markdown rules
 --range <from>..<to>  Analyze a committed Git range instead of the working tree
+--deterministic           Run exact repository checks without TypeSafe
 --json                   Print machine-readable results
 --dry-run                Print the routing plan without API calls
 --help                   Show help
 ```
 
 `--dry-run` needs no API key and always exits successfully.
+
+`--deterministic` reports and enforces only exact repository checks. It does not require an API key and cannot be combined with `--dry-run`.
 
 ## Committed ranges
 
@@ -79,7 +84,9 @@ Some policies need requirements, rationale, or measurements that source code can
 npx better-typescript semantic --review-context review-context.txt
 ```
 
-Without that file, applicable review policies report `insufficient_evidence`.
+When routing finds no applicable changed evidence, the policy is `not_applicable`.
+
+Without review context, applicable review policies report `insufficient_evidence`.
 
 ## Results
 

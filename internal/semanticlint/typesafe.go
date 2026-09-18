@@ -22,7 +22,6 @@ type typeSafeClient struct {
 	apiKey  string
 	baseURL string
 	client  *http.Client
-	permits chan struct{}
 }
 
 func newTypeSafeClient() (*typeSafeClient, error) {
@@ -36,23 +35,17 @@ func newTypeSafeClient() (*typeSafeClient, error) {
 	}
 	return &typeSafeClient{
 		apiKey: apiKey, baseURL: baseURL,
-		client: &http.Client{}, permits: make(chan struct{}, maximumConcurrentRequests),
+		client: &http.Client{},
 	}, nil
 }
 
 func (client *typeSafeClient) Evaluate(ctx context.Context, request evaluationRequest) (evaluationResponse, error) {
-	body, err := json.Marshal(request)
+	if request.Model == "" {
+		request.Model = defaultModel
+	}
+	body, err := marshalJSON(request)
 	if err != nil {
 		return evaluationResponse{}, fmt.Errorf("encode TypeSafe request: %w", err)
-	}
-	if len(body) > maximumRequestBytes {
-		return evaluationResponse{}, fmt.Errorf("TypeSafe request exceeds %d bytes", maximumRequestBytes)
-	}
-	select {
-	case client.permits <- struct{}{}:
-		defer func() { <-client.permits }()
-	case <-ctx.Done():
-		return evaluationResponse{}, ctx.Err()
 	}
 	var lastErr error
 	for attempt := 0; attempt <= maximumHTTPRetries; attempt++ {

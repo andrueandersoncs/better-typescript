@@ -51,7 +51,7 @@ export TYPESAFE_API_KEY="..."
 npx better-typescript semantic
 ```
 
-Run `npx better-typescript semantic --range 'origin/main...HEAD'` for a committed pull-request range. Run with `--dry-run` to inspect routing without an API call. Treat `review`, `violation`, and `insufficient_evidence` as actionable. Project policies live under `.better-typescript/rules/`; requirements or rationale can be passed with `--review-context`.
+Run `npx better-typescript semantic --range 'origin/main...HEAD'` for a committed pull-request range. The TypeSafe SDK chooses the default model unless `--model` overrides it. Use `--dry-run` to inspect routing without an API call. Use `--deterministic` to enforce exact repository checks without TypeSafe; it cannot be combined with `--dry-run`. Treat `review`, `violation`, and `insufficient_evidence` as actionable. Project policies live under `.better-typescript/rules/`; requirements or rationale can be passed with `--review-context`.
 
 ## Handle results
 
