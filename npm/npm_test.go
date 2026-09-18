@@ -187,6 +187,7 @@ func checkArchive(t *testing.T, path string, launcher bool) {
 			"package/LICENSES/anti-slop-LICENSE",
 			"package/LICENSES/tsgolint-LICENSE",
 			"package/LICENSES/typescript-go-NOTICE.txt",
+			"package/LICENSES/go-yaml-NOTICE",
 			"package/THIRD-PARTY-NOTICES.md",
 		)
 		for _, line := range strings.Split(dependencyNotice, "\n") {
@@ -231,10 +232,22 @@ func checkDependencyNotice(t *testing.T, packageDirectory string) {
 	if len(entries) != len(info.Deps) {
 		t.Fatalf("dependency notice has %d entries, binary has %d", len(entries), len(info.Deps))
 	}
+	yamlDependency := false
 	for _, dependency := range info.Deps {
-		if !entries[dependency.Path+"@"+dependency.Version] {
-			t.Errorf("dependency notice lacks %s@%s", dependency.Path, dependency.Version)
+		key := dependency.Path + "@" + dependency.Version
+		if !entries[key] {
+			t.Errorf("dependency notice lacks %s", key)
 		}
+		if dependency.Path == "go.yaml.in/yaml/v3" {
+			yamlDependency = true
+			want := "- " + key + ": LICENSES/go-yaml-LICENSE"
+			if !strings.Contains(string(content), want) {
+				t.Errorf("dependency notice lacks %q", want)
+			}
+		}
+	}
+	if !yamlDependency {
+		t.Error("binary lacks go.yaml.in/yaml/v3 dependency")
 	}
 }
 

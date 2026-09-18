@@ -102,8 +102,8 @@ write_dependency_notice() {
   local package="$1"
   local binary="$output/$package/bin/better-typescript"
   local notice="$output/$package/BINARY-DEPENDENCIES.txt"
-  local kind module version license source
-  printf 'Binary Go module dependencies\n\nThe typescript-go notice is retained verbatim. These are the versions selected in this binary.\n\n' >"$notice"
+  local kind module version license source module_directory
+  printf 'Binary Go module dependencies\n\nRequired upstream notices are retained verbatim. These are the versions selected in this binary.\n\n' >"$notice"
   while read -r kind module version _; do
     [[ "$kind" == dep ]] || continue
     case "$module" in
@@ -122,6 +122,12 @@ write_dependency_notice() {
       github.com/zeebo/xxh3)
         license=xxh3-LICENSE
         source="$("${go_command[@]}" list -m -f '{{.Dir}}' "$module@$version")/LICENSE"
+        ;;
+      go.yaml.in/yaml/v3)
+        module_directory="$("${go_command[@]}" list -m -f '{{.Dir}}' "$module@$version")"
+        license=go-yaml-LICENSE
+        source="$module_directory/LICENSE"
+        cp "$module_directory/NOTICE" "$output/$package/LICENSES/go-yaml-NOTICE"
         ;;
       golang.org/x/sync)
         license=golang-x-sync-LICENSE
