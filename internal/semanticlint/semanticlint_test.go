@@ -734,29 +734,6 @@ func TestParseRuleExpandsExtensionGlobs(t *testing.T) {
 	}
 }
 
-func TestDistinctFilenamesIncludesHiddenDirectories(t *testing.T) {
-	repository := RepositoryEvidence{Paths: []string{
-		".agents/skills/first/SKILL.md",
-		".agents/skills/second/SKILL.md",
-		"src/first/model.ts",
-		"src/second/model.ts",
-	}}
-
-	result := distinctFilenames(repository)
-
-	if result.classification != "violation" {
-		t.Fatalf("classification = %q, want violation", result.classification)
-	}
-	paths := make([]string, len(result.evidence))
-	for index, evidence := range result.evidence {
-		paths[index] = evidence.Path
-	}
-	want := []string{".agents/skills/first/SKILL.md", ".agents/skills/second/SKILL.md", "src/first/model.ts", "src/second/model.ts"}
-	if !slices.Equal(paths, want) {
-		t.Fatalf("evidence = %#v, want %#v", paths, want)
-	}
-}
-
 func TestParseRuleAcceptsReferenceYAMLFrontmatter(t *testing.T) {
 	rule, err := parseRule("rules/example.md", "---\r\nglobs: [\"src/**/*.ts\", \"test/**/*.ts\"]\r\nowner: team\r\n---\r\n# Example\r\n\r\nCheck the source.")
 	if err != nil {

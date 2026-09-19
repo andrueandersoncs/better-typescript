@@ -25,7 +25,6 @@ type ruleSource struct {
 var ruleFrontmatterPattern = regexp.MustCompile(`(?s)^---\r?\n(.*?)\r?\n---(?:\r?\n|$)`)
 
 var deterministicChecks = map[string]string{
-	"rules/filenames/use-distinct-filenames.md":                                  "distinct-filenames",
 	"rules/bun-builds/choose-the-install-linker-deliberately.md":                 "bun-install-linker",
 	"rules/bun-builds/declare-dependencies-in-every-consuming-workspace.md":      "declared-workspace-dependencies",
 	"rules/bun-builds/use-one-pinned-bun-toolchain-and-root-lockfile.md":         "pinned-bun-toolchain",

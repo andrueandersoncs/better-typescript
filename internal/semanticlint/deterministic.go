@@ -44,8 +44,6 @@ func deterministicFindings(rules []Rule, repository RepositoryEvidence) []Findin
 
 func deterministicResult(check string, repository RepositoryEvidence) checkResult {
 	switch check {
-	case "distinct-filenames":
-		return distinctFilenames(repository)
 	case "bun-install-linker":
 		return bunInstallLinker(repository)
 	case "declared-workspace-dependencies":
@@ -94,23 +92,6 @@ func packageManifests(repository RepositoryEvidence) []packageManifest {
 		result = append(result, packageManifest{path: file.Path, root: root, value: manifest})
 	}
 	return result
-}
-
-func distinctFilenames(repository RepositoryEvidence) checkResult {
-	byName := make(map[string][]string)
-	for _, value := range repository.Paths {
-		byName[path.Base(value)] = append(byName[path.Base(value)], value)
-	}
-	var duplicates []string
-	for _, paths := range byName {
-		if len(paths) > 1 {
-			duplicates = append(duplicates, paths...)
-		}
-	}
-	if len(duplicates) == 0 {
-		return checkResult{classification: "pass", message: "Repository filenames are distinct.", evidence: []Evidence{}}
-	}
-	return checkResult{classification: "violation", message: "The repository contains duplicate filenames.", evidence: evidenceForPaths(duplicates)}
 }
 
 func bunInstallLinker(repository RepositoryEvidence) checkResult {
