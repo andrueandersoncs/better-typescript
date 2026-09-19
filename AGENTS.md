@@ -2,6 +2,8 @@ Instead of "generating markdown" or "responding in structured prose", I want you
 
 Always keep output and repository text extremely simple and concise unless asked otherwise.
 
+For unfamiliar domains, establish shared vocabulary before explaining or prototyping: propose a small plain-language glossary and core flow, get the user's agreement, then use those terms consistently. Put implementation and theory terms behind optional technical detail.
+
 Work on the current branch. Leave changes uncommitted unless asked to commit.
 
 For repository changes, run:
