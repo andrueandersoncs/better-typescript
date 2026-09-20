@@ -185,3 +185,7 @@ Each ticket must leave the package simpler than it found it and remove the path 
 The route tree and relevance judgments are inspectable before evaluation. `selectedEvidence` is the
 explicit result-shaped boundary and the only input to final-plan construction. No cross-stage plan
 combinator was added: only the route-local `routeChoice[T]` has demonstrated reuse.
+
+The optional capabilities this structure now supports safely—and their required boundaries and
+verification—are documented in
+[Future capabilities enabled by fixed-stage plans](../../docs/jev-and-declarative-programming.md#future-capabilities-enabled-by-fixed-stage-plans).
