@@ -51,6 +51,7 @@ func (client *typeSafeClient) Evaluate(ctx context.Context, request evaluationRe
 	for attempt := 0; attempt <= maximumHTTPRetries; attempt++ {
 		response, retryAfter, retry, err := client.attempt(ctx, body)
 		if err == nil {
+			response.Partition = evaluationHash(request)
 			return response, nil
 		}
 		lastErr = err

@@ -20,7 +20,7 @@ With no target option, the command reads tracked, staged, untracked, renamed, an
 5. filters evidence with independent Noul questions; and
 6. evaluates each applicable policy once against bounded evidence.
 
-No request receives the complete repository or raw diff. Requests are limited to 32,000 bytes. Evidence snippets are limited to 6,000 bytes. Independent questions with byte-identical state are packed into bounded requests. Physical TypeSafe requests have no concurrency limit.
+No request receives the complete repository or raw diff. Requests are limited to 32,000 bytes. Evidence snippets are limited to 6,000 bytes. Independent questions with byte-identical state are packed into bounded requests. Selected-only interpretation does not cap physical concurrency. Opt-in speculative routing caps logical route evaluations at eight.
 
 Path routing receives each file status, path, and up to four hunk headers. Patch text remains in the later hunk-routing stage.
 
@@ -37,13 +37,23 @@ Live semantic lint sends selected source and policy text to TypeSafe. Do not run
 --files <glob>           Analyze selected current files; repeat or comma-separate
 --all                    Analyze all eligible current files
 --rules <name>           Run selected semantic rules; repeat or comma-separate
---deterministic          Run exact repository checks without TypeSafe
---json                   Print machine-readable results
---dry-run                Print the routing plan without API calls
---help                   Show help
+--deterministic           Run exact repository checks without TypeSafe
+--json                    Print machine-readable results
+--dry-run                 Inspect declared plans and costs without API calls
+--trace                   Include a canonical execution trace in JSON results
+--speculative-routing     Evaluate known route branches concurrently
+--help                    Show help
 ```
 
-`--dry-run` needs no API key and always exits successfully.
+`--dry-run` needs no API key. It prints each complete route tree, automatic selections, question declarations, request bytes, declaration hashes, and structural cost bounds. Relevance and final stages remain explicitly unresolved because their declarations require real routing and selected evidence. Versioned pricing is not configured, so token and monetary cost remain unknown.
+
+Every plan is validated before evaluation. Invalid stage names, identities, parent relationships, question types, ordering, limits, or request sizes stop before a TypeSafe call.
+
+Live JSON findings include question provenance: rule, stage, plan node, evidence id and hash, declaration hash, model, physical request, raw probability, threshold, and policy decision. Source snippets are not copied into provenance.
+
+`--trace` adds canonical plan, question, branch, evidence, final, and finding events to JSON output. Event order follows declaration order, not completion time. A trace records a run; it does not make remote model answers deterministic.
+
+`--speculative-routing` is opt-in. It starts known route branches concurrently, discards unselected answers, ignores errors from discarded branches, cancels work that can no longer be selected, and counts successful discarded work in usage. Relevance, selected evidence, and final judgment remain sequential.
 
 `--deterministic` reports and enforces only exact repository checks. It does not require an API key and cannot be combined with `--dry-run`.
 

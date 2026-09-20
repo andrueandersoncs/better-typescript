@@ -1411,7 +1411,7 @@ func TestFinalJudgmentPlanSeparatesChangedAndSupportingSelectedEvidence(t *testi
 
 func TestFinalJudgmentPlanRejectsMissingNoul(t *testing.T) {
 	rule := Rule{ID: "rule_1", Path: "rules/example.md", Definition: "# Example"}
-	selected := selectedEvidence{rule: rule, evidence: []Evidence{{ID: "changed", Kind: "diff-hunk"}}, hasChanged: true}
+	selected := selectedEvidence{rule: rule, evidence: []Evidence{{ID: "changed", Kind: "diff-hunk", RelevanceProbability: 0.9}}, hasChanged: true}
 	plan := buildFinalJudgmentPlan(selected)
 
 	_, err := interpretFinalJudgmentPlan(context.Background(), plan, defaultModel, evaluatorFunc(func(_ context.Context, _ evaluationRequest) (evaluationResponse, error) {

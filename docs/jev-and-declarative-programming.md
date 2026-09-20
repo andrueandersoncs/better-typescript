@@ -539,12 +539,13 @@ Pure code interprets probabilities into policy.
 The fixed stages now exist in `internal/semanticlint`. Their completed design and verification record
 is `.scratch/declarative-semantic-review/spec.md`.
 
-## Future capabilities enabled by fixed-stage plans
+## Implemented capabilities enabled by fixed-stage plans
 
-These capabilities are **not implemented**. The fixed route, relevance, selected-evidence, and final
-stages make them safer to add because declaration is separate from interpretation. Each capability
-still requires its own design, implementation, and verification. None requires a general `Plan[T]`
-or changes the explicit `selectedEvidence` boundary.
+`internal/semanticlint` now implements the seven capabilities below. They use concrete route,
+relevance, selected-evidence, and final stages rather than a general `Plan[T]`. The explicit
+`selectedEvidence` boundary remains unchanged. Focused proof lives in
+`internal/semanticlint/plan_capabilities_test.go` and
+`internal/semanticlint/testdata/fixtures/full-pipeline.json`.
 
 ### Dry-run plan inspection
 

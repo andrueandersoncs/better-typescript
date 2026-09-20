@@ -11,3 +11,4 @@ coverage.out
 node_modules/
 docs/.vitepress/cache/
 docs/.vitepress/dist/
+/recordings/

@@ -53,6 +53,7 @@ type routePath struct {
 }
 
 type routeChoice[T any] struct {
+	nodeID  string
 	stage   string
 	options []routeChoiceOption[T]
 }
@@ -63,16 +64,17 @@ type routeChoiceOption[T any] struct {
 	value       T
 	members     *routeChoice[T]
 }
-
 type routeExecution[T any] struct {
-	selected  []scored[T]
-	decisions []RoutingDecision
-	usage     routingUsage
+	selected   []scored[T]
+	decisions  []RoutingDecision
+	usage      routingUsage
+	provenance []QuestionProvenance
+	visited    []string
 }
-
 type ruleResult struct {
 	finding Finding
 	usage   routingUsage
+	trace   []TraceEvent
 }
 
 type relevancePlan struct {
@@ -91,10 +93,10 @@ type relevanceEvaluation struct {
 	judgments []relevanceJudgment
 	request   evaluationRequest
 }
-
 type interpretedRelevance struct {
-	evidence []Evidence
-	usage    routingUsage
+	evidence   []Evidence
+	usage      routingUsage
+	provenance []QuestionProvenance
 }
 
 type selectedEvidence struct {
@@ -108,10 +110,10 @@ type finalJudgmentPlan struct {
 	questionID string
 	question   question
 }
-
 type interpretedFinalJudgment struct {
 	probability float64
 	usage       routingUsage
+	provenance  []QuestionProvenance
 }
 
 type relation struct {
@@ -177,31 +179,39 @@ var evidenceDomains = map[string]string{
 	"repository_structure": "Changed files whose location or repository role is the evidence.",
 }
 
-func evaluateSemanticRules(ctx context.Context, rules []Rule, evidence RepositoryEvidence, options Options, evaluator evaluator) ([]Finding, Usage, string, error) {
+func evaluateSemanticRules(ctx context.Context, rules []Rule, evidence RepositoryEvidence, options Options, evaluator evaluator) ([]Finding, Usage, string, []TraceEvent, error) {
 	relations := repositoryRelations(evidence)
 	results, err := concurrentMap(ctx, rules, func(ctx context.Context, _ int, rule Rule) (ruleResult, error) {
 		return evaluateSemanticRule(ctx, rule, evidence, relations, options, evaluator)
 	})
 	if err != nil {
-		return nil, Usage{}, "", err
+		return nil, Usage{}, "", nil, err
 	}
 	findings := make([]Finding, len(results))
 	usage := Usage{}
 	model := fallbackModel(options.Model)
+	var trace []TraceEvent
 	for index, result := range results {
 		findings[index] = result.finding
+		trace = append(trace, result.trace...)
 		usage.InputTokens += result.usage.inputTokens
 		usage.OutputTokens += result.usage.outputTokens
 		if result.usage.model != "" {
 			model = result.usage.model
 		}
 	}
-	return findings, usage, model, nil
+	return findings, usage, model, trace, nil
 }
 
 func evaluateSemanticRule(ctx context.Context, rule Rule, repository RepositoryEvidence, relations map[string][]relation, options Options, evaluator evaluator) (ruleResult, error) {
 	routePlan := buildRoutePlan(rule, repository.DiffFiles)
-	route, err := interpretRoutePlan(ctx, routePlan, options.Model, evaluator)
+	var route routeExecution[routedHunk]
+	var err error
+	if options.SpeculativeRouting {
+		route, err = interpretRoutePlanSpeculative(ctx, routePlan, options.Model, evaluator)
+	} else {
+		route, err = interpretRoutePlan(ctx, routePlan, options.Model, evaluator)
+	}
 	if err != nil {
 		return ruleResult{}, err
 	}
@@ -222,10 +232,28 @@ func evaluateSemanticRule(ctx context.Context, rule Rule, repository RepositoryE
 	}
 
 	selected, relevanceDecisions := applyRelevancePolicy(rule, relevance.evidence, options.Model)
+	if err := validateSelectedEvidence(selected, options.Model); err != nil {
+		return ruleResult{}, err
+	}
+	relevance.provenance = annotateRelevanceProvenance(relevance.provenance, selected, route)
+	records := append(append([]QuestionProvenance{}, route.provenance...), relevance.provenance...)
 	decisions := append(route.decisions, relevanceDecisions...)
 	usage := mergeUsage(fallbackModel(options.Model), route.usage, relevance.usage)
 	if !selected.hasChanged {
-		return ruleResult{finding: composeNotApplicableFinding(selected, decisions), usage: usage}, nil
+		finalPlan := buildFinalJudgmentPlan(selected)
+		request := finalJudgmentRequest(finalPlan, options.Model)
+		selectedIDs := make([]string, 0, len(selected.evidence))
+		for _, evidence := range selected.evidence {
+			selectedIDs = append(selectedIDs, evidence.ID)
+		}
+		records = append(records, QuestionProvenance{
+			Key: request.Scope.key(finalPlan.questionID), RuleID: rule.ID, Stage: "final", PlanNodeID: "final",
+			QuestionID: finalPlan.questionID, SelectedEvidenceIDs: selectedIDs, DeclarationHash: evaluationHash(request),
+			Model: fallbackModel(options.Model), Decision: "short_circuited",
+		})
+		finding := composeNotApplicableFinding(selected, decisions)
+		finding.Provenance = records
+		return ruleResult{finding: finding, usage: usage, trace: executionTrace(rule.ID, records, finding.Classification)}, nil
 	}
 
 	finalPlan := buildFinalJudgmentPlan(selected)
@@ -233,8 +261,15 @@ func evaluateSemanticRule(ctx context.Context, rule Rule, repository RepositoryE
 	if err != nil {
 		return ruleResult{}, err
 	}
+	finalJudgment.provenance[0].Threshold = probabilityPointer(options.Threshold)
+	records = append(records, finalJudgment.provenance...)
 	finding := composeFinalFinding(selected, decisions, finalJudgment.probability, options.Threshold)
-	return ruleResult{finding: finding, usage: mergeUsage(options.Model, usage, finalJudgment.usage)}, nil
+	finding.Provenance = records
+	return ruleResult{
+		finding: finding,
+		usage:   mergeUsage(options.Model, usage, finalJudgment.usage),
+		trace:   executionTrace(rule.ID, records, finding.Classification),
+	}, nil
 }
 
 func buildRoutePlan(rule Rule, diffFiles []DiffFile) routePlan {
@@ -270,16 +305,20 @@ func buildRoutePlan(rule Rule, diffFiles []DiffFile) routePlan {
 				description := fmt.Sprintf("%s:%d %s\n%s", hunk.Path, hunk.NewStartLine, hunk.Header, truncateBytes(hunk.Patch, maximumEvidenceSnippetBytes/3))
 				hunkOptions[hunkIndex] = routeChoiceOption[routedHunk]{id: hunk.ID, description: description, value: routedHunk{file: file, hunk: hunk}}
 			}
+			hunkChoice := buildRouteChoice("hunk", hunkOptions)
+			setRouteChoiceNodeID(&hunkChoice, fmt.Sprintf("domain/%s/path/%s/hunk", domain, file.ID))
 			pathOptions[fileIndex] = routeChoiceOption[routePath]{
 				id:          file.ID,
 				description: fileDescription(file),
-				value:       routePath{file: file, hunks: buildRouteChoice("hunk", hunkOptions)},
+				value:       routePath{file: file, hunks: hunkChoice},
 			}
 		}
+		pathChoice := buildRouteChoice("path", pathOptions)
+		setRouteChoiceNodeID(&pathChoice, fmt.Sprintf("domain/%s/path", domain))
 		domainOptions = append(domainOptions, routeChoiceOption[routeDomain]{
 			id:          "domain_" + domain,
 			description: evidenceDomains[domain] + " Changed files: " + strings.Join(paths, ", "),
-			value:       routeDomain{name: domain, paths: buildRouteChoice("path", pathOptions)},
+			value:       routeDomain{name: domain, paths: pathChoice},
 		})
 	}
 	return routePlan{rule: rule, domains: buildRouteChoice("domain", domainOptions)}
@@ -306,7 +345,18 @@ func buildRouteChoice[T any](stage string, candidates []routeChoiceOption[T]) ro
 		}
 		options = buckets
 	}
-	return routeChoice[T]{stage: stage, options: options}
+	choice := routeChoice[T]{stage: stage, options: options}
+	setRouteChoiceNodeID(&choice, stage)
+	return choice
+}
+
+func setRouteChoiceNodeID[T any](choice *routeChoice[T], nodeID string) {
+	choice.nodeID = nodeID
+	for index := range choice.options {
+		if choice.options[index].members != nil {
+			setRouteChoiceNodeID(choice.options[index].members, nodeID+"/"+choice.options[index].id)
+		}
+	}
 }
 
 func (choice routeChoice[T]) candidates() []routeChoiceOption[T] {
@@ -322,6 +372,9 @@ func (choice routeChoice[T]) candidates() []routeChoiceOption[T] {
 }
 
 func interpretRoutePlan(ctx context.Context, plan routePlan, model string, evaluator evaluator) (routeExecution[routedHunk], error) {
+	if err := validateRoutePlan(plan); err != nil {
+		return routeExecution[routedHunk]{}, err
+	}
 	domainRoute, err := interpretRouteChoice(ctx, plan.rule, plan.domains, model, evaluator)
 	if err != nil {
 		return routeExecution[routedHunk]{}, err
@@ -334,12 +387,16 @@ func interpretRoutePlan(ctx context.Context, plan routePlan, model string, evalu
 	}
 	var fileSelected []scored[routePath]
 	decisions := append([]RoutingDecision{}, domainRoute.decisions...)
+	provenance := append([]QuestionProvenance{}, domainRoute.provenance...)
+	visited := append([]string{}, domainRoute.visited...)
 	usages := []routingUsage{domainRoute.usage}
 	for index, route := range fileRoutes {
 		for _, item := range route.selected {
 			fileSelected = append(fileSelected, joined(domainRoute.selected[index], item))
 		}
 		decisions = append(decisions, route.decisions...)
+		provenance = append(provenance, route.provenance...)
+		visited = append(visited, route.visited...)
 		usages = append(usages, route.usage)
 	}
 	fileSelected = best(fileSelected, beamWidth)
@@ -355,9 +412,13 @@ func interpretRoutePlan(ctx context.Context, plan routePlan, model string, evalu
 			hunkSelected = append(hunkSelected, joined(fileSelected[index], item))
 		}
 		decisions = append(decisions, route.decisions...)
+		provenance = append(provenance, route.provenance...)
+		visited = append(visited, route.visited...)
 		usages = append(usages, route.usage)
 	}
-	return routeExecution[routedHunk]{selected: best(hunkSelected, beamWidth), decisions: decisions, usage: mergeUsage(fallbackModel(model), usages...)}, nil
+	result := routeExecution[routedHunk]{selected: best(hunkSelected, beamWidth), decisions: decisions, usage: mergeUsage(fallbackModel(model), usages...), provenance: provenance, visited: visited}
+	result.provenance = appendSkippedRouteProvenance(plan, model, result.visited, result.provenance)
+	return result, nil
 }
 
 func interpretRouteChoice[T any](ctx context.Context, rule Rule, choice routeChoice[T], model string, evaluator evaluator) (routeExecution[T], error) {
@@ -366,14 +427,14 @@ func interpretRouteChoice[T any](ctx context.Context, rule Rule, choice routeCho
 		return routeExecution[T]{}, err
 	}
 	if len(level.selected) == 0 {
-		return routeExecution[T]{decisions: level.decisions, usage: level.usage}, nil
+		return routeExecution[T]{decisions: level.decisions, usage: level.usage, provenance: level.provenance, visited: level.visited}, nil
 	}
 	if level.selected[0].value.members == nil {
 		selected := make([]scored[T], len(level.selected))
 		for index, item := range level.selected {
 			selected[index] = scored[T]{value: item.value.value, logProbability: item.logProbability, decisions: item.decisions}
 		}
-		return routeExecution[T]{selected: selected, decisions: level.decisions, usage: level.usage}, nil
+		return routeExecution[T]{selected: selected, decisions: level.decisions, usage: level.usage, provenance: level.provenance, visited: level.visited}, nil
 	}
 
 	memberRoutes, err := concurrentMap(ctx, level.selected, func(ctx context.Context, _ int, selectedBucket scored[routeChoiceOption[T]]) (routeExecution[T], error) {
@@ -390,12 +451,16 @@ func interpretRouteChoice[T any](ctx context.Context, rule Rule, choice routeCho
 		return routeExecution[T]{}, err
 	}
 	result := routeExecution[T]{
-		decisions: append([]RoutingDecision{}, level.decisions...),
-		usage:     level.usage,
+		decisions:  append([]RoutingDecision{}, level.decisions...),
+		usage:      level.usage,
+		provenance: append([]QuestionProvenance{}, level.provenance...),
+		visited:    append([]string{}, level.visited...),
 	}
 	for _, route := range memberRoutes {
 		result.selected = append(result.selected, route.selected...)
 		result.decisions = append(result.decisions, route.decisions...)
+		result.provenance = append(result.provenance, route.provenance...)
+		result.visited = append(result.visited, route.visited...)
 		result.usage = mergeUsage(fallbackModel(model), result.usage, route.usage)
 	}
 	result.selected = best(result.selected, beamWidth)
@@ -406,33 +471,33 @@ func interpretRouteChoiceLevel[T any](ctx context.Context, rule Rule, choice rou
 	fallback := fallbackModel(model)
 	options := choice.options
 	if len(options) == 0 {
-		return routeExecution[routeChoiceOption[T]]{usage: routingUsage{model: fallback}}, nil
+		return routeExecution[routeChoiceOption[T]]{usage: routingUsage{model: fallback}, visited: []string{choice.nodeID}}, nil
 	}
 	if len(options) == 1 {
+		probability := probabilityPointer(1)
 		return routeExecution[routeChoiceOption[T]]{
 			selected:  []scored[routeChoiceOption[T]]{{value: options[0], decisions: 1}},
 			decisions: []RoutingDecision{{Stage: choice.stage, Candidate: options[0].id, Probability: 1, Selected: true}},
 			usage:     routingUsage{model: fallback},
+			visited:   []string{choice.nodeID},
+			provenance: []QuestionProvenance{{
+				Key:    questionScope{RuleID: rule.ID, Stage: choice.stage, NodeID: choice.nodeID}.key("route"),
+				RuleID: rule.ID, Stage: choice.stage, PlanNodeID: choice.nodeID, QuestionID: "route",
+				CandidateID: options[0].id, Model: fallback, Probability: probability, Decision: "automatic",
+			}},
 		}, nil
 	}
 
-	descriptionBytes := max(128, (maximumRequestBytes-len(rule.Definition)-4096)/(len(options)+1))
-	criteria := make(map[string]any, len(options)+1)
-	candidateIDs := make([]string, len(options))
-	for index, option := range options {
-		criteria[option.id] = truncateBytes(option.description, descriptionBytes)
-		candidateIDs[index] = option.id
-	}
-	criteria["none"] = "None of these candidates supplies relevant evidence."
-	criteriaOrder := append(append([]string{}, candidateIDs...), "none")
-	request := evaluationRequest{
-		State:         choiceState{Stage: choice.stage, CandidateIDs: candidateIDs},
-		Model:         model,
-		Questions:     map[string]question{"route": {Type: "choice", Instructions: routingInstructions(rule, choice.stage), Criteria: criteria, CriteriaOrder: criteriaOrder}},
-		QuestionOrder: []string{"route"},
-	}
-	if requestSize(request) > maximumRequestBytes {
-		return routeExecution[routeChoiceOption[T]]{usage: routingUsage{model: fallback}}, nil
+	request, evaluatable := routeChoiceRequest(rule, choice, model)
+	hash := evaluationHash(request)
+	if !evaluatable {
+		return routeExecution[routeChoiceOption[T]]{
+			usage: routingUsage{model: fallback}, visited: []string{choice.nodeID},
+			provenance: []QuestionProvenance{{
+				Key: request.Scope.key("route"), RuleID: rule.ID, Stage: choice.stage, PlanNodeID: choice.nodeID,
+				QuestionID: "route", DeclarationHash: hash, Model: fallback, Decision: "dropped_size",
+			}},
+		}, nil
 	}
 	response, err := evaluator.Evaluate(ctx, request)
 	if err != nil {
@@ -441,6 +506,9 @@ func interpretRouteChoiceLevel[T any](ctx context.Context, rule Rule, choice rou
 	answer, ok := response.Answers["route"]
 	if !ok || answer.Type != "choice" {
 		return routeExecution[routeChoiceOption[T]]{}, fmt.Errorf("TypeSafe returned no Choice answer for %s", rule.ID)
+	}
+	if err := validateRouteAnswer(rule.ID, choice, answer); err != nil {
+		return routeExecution[routeChoiceOption[T]]{}, err
 	}
 
 	type rankedOption struct {
@@ -473,7 +541,7 @@ func interpretRouteChoiceLevel[T any](ctx context.Context, rule Rule, choice rou
 		selected = selected[:min(len(selected), beamWidth)]
 	}
 	selectedIDs := make(map[string]bool)
-	result := routeExecution[routeChoiceOption[T]]{usage: usageFromResponse(response)}
+	result := routeExecution[routeChoiceOption[T]]{usage: usageFromResponse(response), visited: []string{choice.nodeID}}
 	for _, item := range selected {
 		selectedIDs[item.option.id] = true
 		result.selected = append(result.selected, scored[routeChoiceOption[T]]{value: item.option, logProbability: math.Log(max(item.probability, math.Nextafter(1, 2)-1)), decisions: 1})
@@ -482,6 +550,37 @@ func interpretRouteChoiceLevel[T any](ctx context.Context, rule Rule, choice rou
 		result.decisions = append(result.decisions, RoutingDecision{Stage: choice.stage, Candidate: item.option.id, Probability: item.probability, Selected: selectedIDs[item.option.id]})
 	}
 	result.decisions = append(result.decisions, RoutingDecision{Stage: choice.stage, Candidate: "none", Probability: noneProbability, Selected: answer.Choice == "none"})
+	partition := response.Partition
+	if partition == "" {
+		partition = hash
+	}
+	responseModel := response.Model
+	if responseModel == "" {
+		responseModel = fallback
+	}
+	for _, option := range options {
+		probability := answer.Probabilities[option.id]
+		decision := "rejected"
+		if selectedIDs[option.id] {
+			decision = "selected"
+		}
+		result.provenance = append(result.provenance, QuestionProvenance{
+			Key: request.Scope.key("route"), RuleID: rule.ID, Stage: choice.stage, PlanNodeID: choice.nodeID,
+			QuestionID: "route", CandidateID: option.id, DeclarationHash: hash, Model: responseModel,
+			PhysicalRequest: partition, AnswerType: "choice", Probability: probabilityPointer(probability), Decision: decision,
+			InputTokens: response.Usage.InputTokens, OutputTokens: response.Usage.OutputTokens,
+		})
+	}
+	noneDecision := "rejected"
+	if answer.Choice == "none" {
+		noneDecision = "selected"
+	}
+	result.provenance = append(result.provenance, QuestionProvenance{
+		Key: request.Scope.key("route"), RuleID: rule.ID, Stage: choice.stage, PlanNodeID: choice.nodeID,
+		QuestionID: "route", CandidateID: "none", DeclarationHash: hash, Model: responseModel,
+		PhysicalRequest: partition, AnswerType: "choice", Probability: probabilityPointer(noneProbability), Decision: noneDecision,
+		InputTokens: response.Usage.InputTokens, OutputTokens: response.Usage.OutputTokens,
+	})
 	return result, nil
 }
 
@@ -516,6 +615,9 @@ func buildRelevancePlan(rule Rule, candidates []Evidence) relevancePlan {
 }
 
 func interpretRelevancePlan(ctx context.Context, plan relevancePlan, model string, evaluator evaluator) (interpretedRelevance, error) {
+	if err := validateRelevancePlan(plan); err != nil {
+		return interpretedRelevance{}, err
+	}
 	evaluations := relevanceEvaluations(plan, model)
 	results, err := concurrentMap(ctx, evaluations, func(ctx context.Context, _ int, evaluation relevanceEvaluation) (interpretedRelevance, error) {
 		response, err := evaluator.Evaluate(ctx, evaluation.request)
@@ -523,25 +625,60 @@ func interpretRelevancePlan(ctx context.Context, plan relevancePlan, model strin
 			return interpretedRelevance{}, err
 		}
 		scoredEvidence := make([]Evidence, len(evaluation.judgments))
+		provenance := make([]QuestionProvenance, len(evaluation.judgments))
+		partition := response.Partition
+		if partition == "" {
+			partition = evaluationHash(evaluation.request)
+		}
+		responseModel := response.Model
+		if responseModel == "" {
+			responseModel = fallbackModel(model)
+		}
 		for index, judgment := range evaluation.judgments {
 			answer, ok := response.Answers[judgment.questionID]
-			if !ok || answer.Type != "noul" {
+			if !ok || answer.Type != "noul" || !finiteProbability(answer.Noul) {
 				return interpretedRelevance{}, fmt.Errorf("TypeSafe returned no relevance answer for %s", plan.rule.ID)
 			}
 			candidate := plan.candidates[judgment.candidateIndex]
 			candidate.RelevanceProbability = answer.Noul
 			scoredEvidence[index] = candidate
+			provenance[index] = QuestionProvenance{
+				Key: evaluation.request.Scope.key(judgment.questionID), RuleID: plan.rule.ID, Stage: "relevance",
+				PlanNodeID: "relevance", QuestionID: judgment.questionID, EvidenceID: candidate.ID,
+				EvidenceHash: evidenceHash(candidate), DeclarationHash: evaluationHash(evaluation.request),
+				Model: responseModel, PhysicalRequest: partition, AnswerType: "noul",
+				Probability: probabilityPointer(answer.Noul), Decision: "answered",
+				InputTokens: response.Usage.InputTokens, OutputTokens: response.Usage.OutputTokens,
+			}
 		}
-		return interpretedRelevance{evidence: scoredEvidence, usage: usageFromResponse(response)}, nil
+		return interpretedRelevance{evidence: scoredEvidence, usage: usageFromResponse(response), provenance: provenance}, nil
 	})
 	if err != nil {
 		return interpretedRelevance{}, err
 	}
 	result := interpretedRelevance{usage: routingUsage{model: fallbackModel(model)}}
 	usages := make([]routingUsage, 0, len(results))
+	records := make(map[string]QuestionProvenance)
 	for _, evaluation := range results {
 		result.evidence = append(result.evidence, evaluation.evidence...)
+		for _, record := range evaluation.provenance {
+			records[record.QuestionID] = record
+		}
 		usages = append(usages, evaluation.usage)
+	}
+	for _, judgment := range plan.judgments {
+		if record, ok := records[judgment.questionID]; ok {
+			result.provenance = append(result.provenance, record)
+			continue
+		}
+		candidate := plan.candidates[judgment.candidateIndex]
+		request := buildRelevanceEvaluation(plan, []relevanceJudgment{judgment}, model).request
+		result.provenance = append(result.provenance, QuestionProvenance{
+			Key: request.Scope.key(judgment.questionID), RuleID: plan.rule.ID, Stage: "relevance",
+			PlanNodeID: "relevance", QuestionID: judgment.questionID, EvidenceID: candidate.ID,
+			EvidenceHash: evidenceHash(candidate), DeclarationHash: evaluationHash(request),
+			Model: fallbackModel(model), Decision: "dropped_size",
+		})
 	}
 	result.usage = mergeUsage(fallbackModel(model), usages...)
 	return result, nil
@@ -564,6 +701,7 @@ func relevanceEvaluations(plan relevancePlan, model string) []relevanceEvaluatio
 			remaining = remaining[1:]
 			continue
 		}
+		evaluation.request.Scope.Partition = len(evaluations) + 1
 		evaluations = append(evaluations, evaluation)
 		remaining = remaining[length:]
 	}
@@ -586,6 +724,7 @@ func buildRelevanceEvaluation(plan relevancePlan, judgments []relevanceJudgment,
 			Model:         model,
 			Questions:     questions,
 			QuestionOrder: questionOrder,
+			Scope:         questionScope{RuleID: plan.rule.ID, Stage: "relevance", NodeID: "relevance"},
 		},
 	}
 }
@@ -638,15 +777,38 @@ func buildFinalJudgmentPlan(selected selectedEvidence) finalJudgmentPlan {
 }
 
 func interpretFinalJudgmentPlan(ctx context.Context, plan finalJudgmentPlan, model string, evaluator evaluator) (interpretedFinalJudgment, error) {
-	response, err := evaluator.Evaluate(ctx, finalJudgmentRequest(plan, model))
+	if err := validateFinalJudgmentPlan(plan); err != nil {
+		return interpretedFinalJudgment{}, err
+	}
+	request := finalJudgmentRequest(plan, model)
+	response, err := evaluator.Evaluate(ctx, request)
 	if err != nil {
 		return interpretedFinalJudgment{}, err
 	}
 	answer, ok := response.Answers[plan.questionID]
-	if !ok || answer.Type != "noul" {
+	if !ok || answer.Type != "noul" || !finiteProbability(answer.Noul) {
 		return interpretedFinalJudgment{}, fmt.Errorf("TypeSafe returned no rule answer for %s", plan.questionID)
 	}
-	return interpretedFinalJudgment{probability: answer.Noul, usage: usageFromResponse(response)}, nil
+	selectedIDs := make([]string, 0, len(plan.selected.evidence))
+	for _, item := range plan.selected.evidence {
+		selectedIDs = append(selectedIDs, item.ID)
+	}
+	partition := response.Partition
+	if partition == "" {
+		partition = evaluationHash(request)
+	}
+	responseModel := response.Model
+	if responseModel == "" {
+		responseModel = fallbackModel(model)
+	}
+	provenance := QuestionProvenance{
+		Key: request.Scope.key(plan.questionID), RuleID: plan.selected.rule.ID, Stage: "final",
+		PlanNodeID: "final", QuestionID: plan.questionID, SelectedEvidenceIDs: selectedIDs,
+		DeclarationHash: evaluationHash(request), Model: responseModel, PhysicalRequest: partition,
+		AnswerType: "noul", Probability: probabilityPointer(answer.Noul), Decision: "answered",
+		InputTokens: response.Usage.InputTokens, OutputTokens: response.Usage.OutputTokens,
+	}
+	return interpretedFinalJudgment{probability: answer.Noul, usage: usageFromResponse(response), provenance: []QuestionProvenance{provenance}}, nil
 }
 
 func finalJudgmentRequest(plan finalJudgmentPlan, model string) evaluationRequest {
@@ -664,6 +826,7 @@ func finalJudgmentRequest(plan finalJudgmentPlan, model string) evaluationReques
 		Model:         model,
 		Questions:     map[string]question{plan.questionID: plan.question},
 		QuestionOrder: []string{plan.questionID},
+		Scope:         questionScope{RuleID: plan.selected.rule.ID, Stage: "final", NodeID: "final", Partition: 1},
 	}
 }
 

@@ -23,7 +23,9 @@ Options:
   --all                    Analyze all eligible current files
   --rules <name>           Run selected semantic rules; repeat or comma-separate
   --json                   Print machine-readable results
-  --dry-run                Print the routing plan without API calls
+  --dry-run                Inspect declared plans and costs without API calls
+  --trace                  Include a canonical execution trace in JSON results
+  --speculative-routing    Evaluate known route branches concurrently
   --deterministic           Run exact repository checks without TypeSafe
   --help                   Show this help
 `
@@ -123,7 +125,10 @@ func Run(ctx context.Context, root string, args []string, output io.Writer) (int
 		routed = append(append([]Rule{}, semantic...), review...)
 	}
 	if options.DryRun {
-		plan := dryRunPlan(routed, evidence)
+		plan, err := dryRunPlan(routed, evidence, options.Model)
+		if err != nil {
+			return 2, err
+		}
 		if err := writeJSON(output, append(reportDocuments(reports), plan), false); err != nil {
 			return 2, err
 		}
@@ -134,11 +139,15 @@ func Run(ctx context.Context, root string, args []string, output io.Writer) (int
 		if err != nil {
 			return 2, err
 		}
-		findings, usage, model, err := evaluateSemanticRules(ctx, routed, evidence, options, newBatchedEvaluator(client, maximumRequestBytes))
+		findings, usage, model, trace, err := evaluateSemanticRules(ctx, routed, evidence, options, newBatchedEvaluator(client, maximumRequestBytes))
 		if err != nil {
 			return 2, err
 		}
-		reports = append(reports, FindingReport{Source: "<routed-evidence>", Model: model, ViolationProbabilityThreshold: options.Threshold, Findings: findings, Usage: &usage})
+		report := FindingReport{Source: "<routed-evidence>", Model: model, ViolationProbabilityThreshold: options.Threshold, Findings: findings, Usage: &usage}
+		if options.Trace {
+			report.Trace = trace
+		}
+		reports = append(reports, report)
 	}
 	return writeFindingReports(output, reports, options.JSON)
 }
@@ -158,6 +167,8 @@ func parseOptions(args []string) (Options, bool, error) {
 	flags.Var(&ruleNames, "rules", "")
 	flags.BoolVar(&options.JSON, "json", false, "")
 	flags.BoolVar(&options.DryRun, "dry-run", false, "")
+	flags.BoolVar(&options.Trace, "trace", false, "")
+	flags.BoolVar(&options.SpeculativeRouting, "speculative-routing", false, "")
 	flags.BoolVar(&options.DeterministicOnly, "deterministic", false, "")
 	help := false
 	flags.BoolVar(&help, "help", false, "")
@@ -197,11 +208,23 @@ func parseOptions(args []string) (Options, bool, error) {
 	return options, help, nil
 }
 
-func dryRunPlan(rules []Rule, evidence RepositoryEvidence) DryRunPlan {
-	plan := DryRunPlan{Kind: "dry-run-plan", Layers: []string{"domain-choice", "path-choice", "hunk-choice", "context-expansion", "relevance-nouls", "rule-evaluation"}, Limits: map[string]any{"maximumChoiceOptions": maximumChoiceOptions, "beamWidth": beamWidth, "maximumExpandedCandidates": maximumExpandedCandidates, "maximumSelectedEvidence": maximumSelectedEvidence, "minimumRelevanceProbability": minimumRelevanceProbability, "maximumEvidenceSnippetBytes": maximumEvidenceSnippetBytes}}
+func dryRunPlan(rules []Rule, evidence RepositoryEvidence, model string) (DryRunPlan, error) {
+	plan := DryRunPlan{Kind: "dry-run-plan", Layers: []string{"route", "relevance", "selected-evidence", "final"}, Limits: map[string]any{"maximumChoiceOptions": maximumChoiceOptions, "beamWidth": beamWidth, "maximumExpandedCandidates": maximumExpandedCandidates, "maximumSelectedEvidence": maximumSelectedEvidence, "minimumRelevanceProbability": minimumRelevanceProbability, "maximumEvidenceSnippetBytes": maximumEvidenceSnippetBytes}}
 	for _, rule := range rules {
-		plan.Rules = append(plan.Rules, DryRunRule{RulePath: rule.Path, Evaluator: rule.Metadata.Evaluator, Scope: rule.Metadata.Scope})
+		route := buildRoutePlan(rule, evidence.DiffFiles)
+		if err := validateRoutePlan(route); err != nil {
+			return DryRunPlan{}, err
+		}
+		inspection := inspectRoutePlan(route, model)
+		plan.Rules = append(plan.Rules, DryRunRule{
+			RuleID: rule.ID, RulePath: rule.Path, Evaluator: rule.Metadata.Evaluator, Scope: rule.Metadata.Scope,
+			Model: fallbackModel(model), Route: inspection,
+			Relevance: UnresolvedStage{Status: "unresolved", Reason: "routing answers are required before evidence expansion and relevance declaration"},
+			Final:     UnresolvedStage{Status: "unresolved", Reason: "selected evidence is required before final judgment declaration"},
+		})
+		plan.Cost = addCost(plan.Cost, inspection.Cost)
 	}
+	plan.Cost.PricingStatus = "unknown: no versioned pricing metadata supplied"
 	for _, file := range evidence.DiffFiles {
 		dryFile := DryRunDiffFile{ID: file.ID, Path: file.Path, Status: file.Status, Hunks: []DryRunHunk{}}
 		for _, hunk := range file.Hunks {
@@ -213,7 +236,7 @@ func dryRunPlan(rules []Rule, evidence RepositoryEvidence) DryRunPlan {
 		}
 		plan.DiffFiles = append(plan.DiffFiles, dryFile)
 	}
-	return plan
+	return plan, nil
 }
 
 func reportDocuments(reports []FindingReport) []any {

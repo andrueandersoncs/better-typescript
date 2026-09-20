@@ -174,6 +174,10 @@ func (batcher *batchedEvaluator) runBatch(batch requestBatch) {
 		}
 		return
 	}
+	partition := response.Partition
+	if partition == "" {
+		partition = evaluationHash(batch.request)
+	}
 	for index, member := range batch.members {
 		answers := make(map[string]answer, len(member.answerIDs))
 		for answerID, batchID := range member.answerIDs {
@@ -182,8 +186,9 @@ func (batcher *batchedEvaluator) runBatch(batch requestBatch) {
 			}
 		}
 		member.pending.result <- evaluationResult{response: evaluationResponse{
-			Model:   response.Model,
-			Answers: answers,
+			Model:     response.Model,
+			Answers:   answers,
+			Partition: partition,
 			Usage: Usage{
 				InputTokens:  tokenShare(response.Usage.InputTokens, index, len(batch.members)),
 				OutputTokens: tokenShare(response.Usage.OutputTokens, index, len(batch.members)),

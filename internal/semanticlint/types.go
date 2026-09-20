@@ -40,17 +40,19 @@ var codeExtensions = map[string]bool{
 var codeExtensionOrder = []string{".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"}
 
 type Options struct {
-	Threshold         float64
-	Model             string
-	ReviewContextPath string
-	RulesDirectory    string
-	CommitRange       string
-	FilePatterns      []string
-	RuleNames         []string
-	AllFiles          bool
-	JSON              bool
-	DryRun            bool
-	DeterministicOnly bool
+	Threshold          float64
+	Model              string
+	ReviewContextPath  string
+	RulesDirectory     string
+	CommitRange        string
+	FilePatterns       []string
+	RuleNames          []string
+	AllFiles           bool
+	JSON               bool
+	DryRun             bool
+	DeterministicOnly  bool
+	Trace              bool
+	SpeculativeRouting bool
 }
 
 type Source struct {
@@ -131,14 +133,15 @@ type RoutingDecision struct {
 }
 
 type Finding struct {
-	RulePath             string     `json:"rulePath"`
-	RuleTitle            string     `json:"ruleTitle"`
-	Evaluator            string     `json:"evaluator"`
-	Classification       string     `json:"classification"`
-	Message              string     `json:"message"`
-	ViolationProbability *float64   `json:"violationProbability,omitempty"`
-	Evidence             []Evidence `json:"evidence"`
-	Routing              *Routing   `json:"routing,omitempty"`
+	RulePath             string               `json:"rulePath"`
+	RuleTitle            string               `json:"ruleTitle"`
+	Evaluator            string               `json:"evaluator"`
+	Classification       string               `json:"classification"`
+	Message              string               `json:"message"`
+	ViolationProbability *float64             `json:"violationProbability,omitempty"`
+	Evidence             []Evidence           `json:"evidence"`
+	Routing              *Routing             `json:"routing,omitempty"`
+	Provenance           []QuestionProvenance `json:"provenance,omitempty"`
 }
 
 type Routing struct {
@@ -152,11 +155,12 @@ type Usage struct {
 }
 
 type FindingReport struct {
-	Source                        string    `json:"source"`
-	Model                         string    `json:"model"`
-	ViolationProbabilityThreshold float64   `json:"violationProbabilityThreshold"`
-	Findings                      []Finding `json:"findings"`
-	Usage                         *Usage    `json:"usage,omitempty"`
+	Source                        string       `json:"source"`
+	Model                         string       `json:"model"`
+	ViolationProbabilityThreshold float64      `json:"violationProbabilityThreshold"`
+	Findings                      []Finding    `json:"findings"`
+	Usage                         *Usage       `json:"usage,omitempty"`
+	Trace                         []TraceEvent `json:"trace,omitempty"`
 }
 
 type DryRunPlan struct {
@@ -165,12 +169,18 @@ type DryRunPlan struct {
 	Rules     []DryRunRule     `json:"rules"`
 	DiffFiles []DryRunDiffFile `json:"diffFiles"`
 	Limits    map[string]any   `json:"limits"`
+	Cost      PlanCostEstimate `json:"cost"`
 }
 
 type DryRunRule struct {
-	RulePath  string `json:"rulePath"`
-	Evaluator string `json:"evaluator"`
-	Scope     string `json:"scope"`
+	RuleID    string              `json:"ruleId"`
+	RulePath  string              `json:"rulePath"`
+	Evaluator string              `json:"evaluator"`
+	Scope     string              `json:"scope"`
+	Model     string              `json:"model"`
+	Route     RoutePlanInspection `json:"route"`
+	Relevance UnresolvedStage     `json:"relevance"`
+	Final     UnresolvedStage     `json:"final"`
 }
 
 type DryRunDiffFile struct {
@@ -199,6 +209,7 @@ type evaluationRequest struct {
 	Model         string              `json:"model,omitempty"`
 	Questions     map[string]question `json:"questions"`
 	QuestionOrder []string            `json:"-"`
+	Scope         questionScope       `json:"-"`
 }
 
 func (value question) MarshalJSON() ([]byte, error) {
@@ -308,7 +319,8 @@ type answer struct {
 }
 
 type evaluationResponse struct {
-	Model   string            `json:"model"`
-	Answers map[string]answer `json:"answers"`
-	Usage   Usage             `json:"usage"`
+	Model     string            `json:"model"`
+	Answers   map[string]answer `json:"answers"`
+	Usage     Usage             `json:"usage"`
+	Partition string            `json:"-"`
 }
