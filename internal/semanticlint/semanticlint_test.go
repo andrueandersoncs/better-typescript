@@ -619,6 +619,72 @@ func TestSemanticRoutingWithoutRepositoryEvidenceIsNotApplicable(t *testing.T) {
 	}
 }
 
+func TestNoChangedSelectedEvidenceSkipsFinalJudgment(t *testing.T) {
+	rule, err := parseRule("rules/example.md", "---\nglobs:\n  - \"**/*.ts\"\n---\n# Example\n\nCheck the repository.")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rule.ID = "rule_1"
+	rule.Metadata = RuleMetadata{Evaluator: "semantic", Scope: "repository"}
+	repository := RepositoryEvidence{
+		Paths:        []string{"src/main.ts", "src/peer.ts"},
+		ChangedPaths: []string{"src/main.ts"},
+		Files: []Source{
+			{Path: "src/main.ts", Language: "ts", Text: "export const changed = 1;"},
+			{Path: "src/peer.ts", Language: "ts", Text: "export const convention = 1;"},
+		},
+		DiffFiles: []DiffFile{{
+			ID:     "file_1",
+			Path:   "src/main.ts",
+			Status: "modified",
+			Hunks: []DiffHunk{{
+				ID:           "file_1_hunk_1",
+				Path:         "src/main.ts",
+				NewStartLine: 1,
+				NewLineCount: 1,
+				Patch:        "+export const changed = 1;",
+			}},
+		}},
+	}
+	relevanceCalls := 0
+	evaluator := evaluatorFunc(func(_ context.Context, request evaluationRequest) (evaluationResponse, error) {
+		answers := make(map[string]answer, len(request.Questions))
+		for id, question := range request.Questions {
+			if id == rule.ID {
+				return evaluationResponse{}, fmt.Errorf("final judgment was evaluated")
+			}
+			instructions, ok := question.Instructions.(relevanceInstruction)
+			if !ok {
+				return evaluationResponse{}, fmt.Errorf("unexpected question %#v", question)
+			}
+			probability := 0.1
+			if strings.Contains(instructions.CandidateID, "_peer_") {
+				probability = 0.9
+			}
+			answers[id] = answer{Type: "noul", Noul: probability}
+		}
+		relevanceCalls++
+		return evaluationResponse{Model: "test-model", Answers: answers, Usage: Usage{InputTokens: 3, OutputTokens: 1}}, nil
+	})
+
+	result, err := evaluateSemanticRule(context.Background(), rule, repository, repositoryRelations(repository), Options{Threshold: defaultThreshold, Model: defaultModel}, evaluator)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if relevanceCalls != 1 {
+		t.Fatalf("relevance calls = %d, want 1", relevanceCalls)
+	}
+	if result.finding.Classification != "not_applicable" ||
+		result.finding.Message != "No changed evidence candidate applies to this rule." ||
+		result.finding.Evidence == nil || len(result.finding.Evidence) != 0 ||
+		result.finding.Routing == nil || result.finding.Routing.SelectedEvidenceIDs == nil || len(result.finding.Routing.SelectedEvidenceIDs) != 0 {
+		t.Fatalf("finding = %#v", result.finding)
+	}
+	if result.usage != (routingUsage{model: "test-model", inputTokens: 3, outputTokens: 1}) {
+		t.Fatalf("usage = %#v", result.usage)
+	}
+}
+
 func TestNoneChoiceStopsBeforeRelevanceEvaluation(t *testing.T) {
 	rule, err := parseRule("rules/function-naming.md", "---\nglobs:\n  - \"src/**/*.ts\"\n---\n# Name functions by purpose\n\nUse clear function names.")
 	if err != nil {
@@ -710,16 +776,16 @@ func TestEmbeddedTestingPoliciesAreSelectable(t *testing.T) {
 
 func TestChoiceRoutingBoundsEscapedDescriptions(t *testing.T) {
 	rule := Rule{ID: "rule_1", Path: "rules/example.md", Definition: "# Example\n\nCheck the source.", Metadata: RuleMetadata{Scope: "source"}}
-	options := make([]routeOption[string], maximumChoiceOptions-1)
+	options := make([]routeChoiceOption[string], maximumChoiceOptions-1)
 	for index := range options {
-		options[index] = routeOption[string]{
+		options[index] = routeChoiceOption[string]{
 			id:          fmt.Sprintf("candidate_%d", index),
 			description: strings.Repeat(`"quoted"\path`, maximumEvidenceSnippetBytes),
 			value:       fmt.Sprintf("value_%d", index),
 		}
 	}
 	evaluator := &selectingEvaluator{}
-	if _, _, _, err := askChoice(context.Background(), rule, "path", options, defaultModel, evaluator); err != nil {
+	if _, err := interpretRouteChoice(context.Background(), rule, buildRouteChoice("path", options), defaultModel, evaluator); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -767,18 +833,445 @@ func TestImportSpecifiersMatchReferenceScanner(t *testing.T) {
 	}
 }
 
+func TestBuildRoutePlanDeclaresCompleteRecursiveTree(t *testing.T) {
+	rule, err := parseRule("rules/example.md", "---\nglobs:\n  - \"src/**/*.ts\"\n  - \"tests/**/*.ts\"\n  - \"**/*.json\"\n---\n# Example\n\nCheck changed source.")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	const recursiveCandidateCount = (maximumChoiceOptions-1)*(maximumChoiceOptions-1) + 1
+	diffFiles := make([]DiffFile, 0, recursiveCandidateCount+3)
+	for fileIndex := range recursiveCandidateCount {
+		hunkCount := 1
+		if fileIndex == 0 {
+			hunkCount = recursiveCandidateCount
+		}
+		hunks := make([]DiffHunk, hunkCount)
+		for hunkIndex := range hunkCount {
+			hunks[hunkIndex] = DiffHunk{
+				ID:           fmt.Sprintf("hunk_%03d", hunkIndex),
+				Path:         fmt.Sprintf("src/file_%03d.ts", fileIndex),
+				NewStartLine: hunkIndex + 1,
+				Header:       fmt.Sprintf("header %03d", hunkIndex),
+				Patch:        fmt.Sprintf("+change %03d", hunkIndex),
+			}
+		}
+		diffFiles = append(diffFiles, DiffFile{
+			ID:     fmt.Sprintf("file_%03d", fileIndex),
+			Path:   fmt.Sprintf("src/file_%03d.ts", fileIndex),
+			Status: "modified",
+			Hunks:  hunks,
+		})
+	}
+	diffFiles = append(diffFiles,
+		DiffFile{ID: "test_file", Path: "tests/example.test.ts", Status: "added"},
+		DiffFile{ID: "config_file", Path: "tsconfig.json", Status: "modified"},
+		DiffFile{ID: "documentation_file", Path: "docs/example.md", Status: "modified"},
+	)
+
+	plan := buildRoutePlan(rule, diffFiles)
+
+	if plan.rule.Path != rule.Path {
+		t.Fatalf("plan rule path = %q, want %q", plan.rule.Path, rule.Path)
+	}
+	if plan.domains.stage != "domain" {
+		t.Fatalf("domain stage = %q", plan.domains.stage)
+	}
+	if len(plan.domains.options) != 2 || plan.domains.options[0].id != "domain_source" || plan.domains.options[1].id != "domain_tests" {
+		t.Fatalf("domain options = %#v", plan.domains.options)
+	}
+	source := plan.domains.options[0]
+	if source.members != nil {
+		t.Fatal("source domain was unexpectedly bucketed")
+	}
+	if source.description != evidenceDomains["source"]+" Changed files: "+strings.Join(func() []string {
+		paths := make([]string, recursiveCandidateCount)
+		for index := range paths {
+			paths[index] = fmt.Sprintf("src/file_%03d.ts", index)
+		}
+		return paths
+	}(), ", ") {
+		t.Fatalf("source description = %q", source.description)
+	}
+
+	paths := source.value.paths
+	if paths.stage != "path" || len(paths.options) != 2 {
+		t.Fatalf("path root = %#v", paths)
+	}
+	if paths.options[0].id != "bucket_1_1" || paths.options[1].id != "bucket_1_2" {
+		t.Fatalf("path root bucket ids = %q, %q", paths.options[0].id, paths.options[1].id)
+	}
+	firstPathBucketLevel := paths.options[0].members
+	if firstPathBucketLevel == nil || len(firstPathBucketLevel.options) != maximumChoiceOptions-1 || firstPathBucketLevel.options[0].id != "bucket_0_1" {
+		t.Fatalf("first path bucket level = %#v", firstPathBucketLevel)
+	}
+	firstPathBucket := firstPathBucketLevel.options[0].members
+	if firstPathBucket == nil || len(firstPathBucket.options) != maximumChoiceOptions-1 || firstPathBucket.options[0].id != "file_000" {
+		t.Fatalf("first path leaf bucket = %#v", firstPathBucket)
+	}
+	if paths.options[0].description != strings.Join(func() []string {
+		descriptions := make([]string, len(firstPathBucketLevel.options))
+		for index, option := range firstPathBucketLevel.options {
+			descriptions[index] = option.description
+		}
+		return descriptions
+	}(), "; ") {
+		t.Fatalf("top path bucket description = %q", paths.options[0].description)
+	}
+
+	pathCandidates := paths.candidates()
+	if len(pathCandidates) != recursiveCandidateCount {
+		t.Fatalf("path candidates = %d, want %d", len(pathCandidates), recursiveCandidateCount)
+	}
+	for index, candidate := range pathCandidates {
+		wantID := fmt.Sprintf("file_%03d", index)
+		if candidate.id != wantID || candidate.value.file.ID != wantID {
+			t.Fatalf("path candidate %d = %#v", index, candidate)
+		}
+		hunkCandidates := candidate.value.hunks.candidates()
+		wantHunks := 1
+		if index == 0 {
+			wantHunks = recursiveCandidateCount
+		}
+		if len(hunkCandidates) != wantHunks {
+			t.Fatalf("hunks for %s = %d, want %d", wantID, len(hunkCandidates), wantHunks)
+		}
+		for _, hunk := range hunkCandidates {
+			if hunk.value.file.ID != wantID || hunk.value.hunk.Path != candidate.value.file.Path {
+				t.Fatalf("hunk does not retain its path candidate: %#v", hunk.value)
+			}
+		}
+	}
+	if pathCandidates[0].description != "modified src/file_000.ts; header 000; header 001; header 002; header 003" {
+		t.Fatalf("first path description = %q", pathCandidates[0].description)
+	}
+
+	hunks := pathCandidates[0].value.hunks
+	if hunks.stage != "hunk" || len(hunks.options) != 2 || hunks.options[0].id != "bucket_1_1" {
+		t.Fatalf("hunk root = %#v", hunks)
+	}
+	firstHunkBucketLevel := hunks.options[0].members
+	if firstHunkBucketLevel == nil || firstHunkBucketLevel.options[0].id != "bucket_0_1" {
+		t.Fatalf("first hunk bucket level = %#v", firstHunkBucketLevel)
+	}
+	firstHunkBucket := firstHunkBucketLevel.options[0].members
+	if firstHunkBucket == nil || firstHunkBucket.options[0].id != "hunk_000" {
+		t.Fatalf("first hunk leaf bucket = %#v", firstHunkBucket)
+	}
+	if firstHunkBucket.options[0].description != "src/file_000.ts:1 header 000\n+change 000" {
+		t.Fatalf("first hunk description = %q", firstHunkBucket.options[0].description)
+	}
+
+	testPaths := plan.domains.options[1].value.paths.candidates()
+	if len(testPaths) != 1 || testPaths[0].id != "test_file" {
+		t.Fatalf("test paths = %#v", testPaths)
+	}
+	synthetic := testPaths[0].value.hunks.candidates()
+	if len(synthetic) != 1 || synthetic[0].id != "test_file_hunk_0" {
+		t.Fatalf("synthetic hunks = %#v", synthetic)
+	}
+	wantSynthetic := syntheticHunk(diffFiles[recursiveCandidateCount])
+	if synthetic[0].value.hunk != wantSynthetic {
+		t.Fatalf("synthetic hunk = %#v, want %#v", synthetic[0].value.hunk, wantSynthetic)
+	}
+}
+
+func TestRelevancePlanDeclaresEveryJudgmentBeforeEvaluation(t *testing.T) {
+	rule := Rule{ID: "rule_1", Path: "rules/example.md", Definition: "# Example\n\nCheck the source.", Metadata: RuleMetadata{Scope: "source"}}
+	candidates := []Evidence{
+		{ID: "oversized", Kind: "changed", Path: "src/oversized.ts", StartLine: 1, Snippet: strings.Repeat("x", maximumRequestBytes)},
+		{Kind: "changed", Path: "src/second.ts", StartLine: 2, Snippet: strings.Repeat("y", maximumRequestBytes/2)},
+		{ID: "third", Kind: "supporting", Path: "src/third.ts", StartLine: 3, Snippet: strings.Repeat("z", maximumRequestBytes/2)},
+	}
+	plan := buildRelevancePlan(rule, candidates)
+
+	if plan.rule.ID != rule.ID || plan.rule.Path != rule.Path || plan.rule.Definition != rule.Definition || plan.rule.Metadata.Scope != rule.Metadata.Scope {
+		t.Fatalf("plan rule = %#v, want %#v", plan.rule, rule)
+	}
+	if !slices.Equal(plan.candidates, candidates) {
+		t.Fatalf("plan candidates = %#v, want %#v", plan.candidates, candidates)
+	}
+	wantQuestionIDs := []string{"evidence_1", "evidence_2", "evidence_3"}
+	wantCandidateIDs := []string{"oversized", "src/second.ts:2", "third"}
+	declared := make(map[string]relevanceJudgment, len(plan.judgments))
+	for index, judgment := range plan.judgments {
+		if judgment.candidateIndex != index || judgment.questionID != wantQuestionIDs[index] {
+			t.Fatalf("judgment %d = %#v", index, judgment)
+		}
+		if judgment.question.Type != "noul" || !slices.Equal(judgment.question.CriteriaOrder, []string{"true", "false"}) {
+			t.Fatalf("question %q = %#v", judgment.questionID, judgment.question)
+		}
+		instructions, ok := judgment.question.Instructions.(relevanceInstruction)
+		if !ok ||
+			instructions.Task != "Is this evidence candidate materially relevant to deciding whether the supplied rule is violated?" ||
+			instructions.CandidateID != wantCandidateIDs[index] ||
+			instructions.Rule.Source != rule.Path ||
+			instructions.Rule.Definition != rule.Definition ||
+			instructions.Rule.Scope != rule.Metadata.Scope {
+			t.Fatalf("instructions %q = %#v", judgment.questionID, judgment.question.Instructions)
+		}
+		if judgment.question.Criteria["true"] != "The candidate contains facts needed to apply the rule or compare the change with its surrounding contract or convention." ||
+			judgment.question.Criteria["false"] != "The candidate is incidental, merely nearby, or does not help decide the rule." {
+			t.Fatalf("criteria %q = %#v", judgment.questionID, judgment.question.Criteria)
+		}
+		declared[judgment.questionID] = judgment
+	}
+
+	var evaluatorMu sync.Mutex
+	evaluatorCalls := 0
+	evaluator := evaluatorFunc(func(_ context.Context, request evaluationRequest) (evaluationResponse, error) {
+		evaluatorMu.Lock()
+		defer evaluatorMu.Unlock()
+		if evaluatorCalls == 0 && (len(plan.candidates) != len(candidates) || len(plan.judgments) != len(candidates)) {
+			return evaluationResponse{}, fmt.Errorf("first evaluation began before the complete relevance plan existed")
+		}
+		evaluatorCalls++
+		if len(request.Questions) != len(request.QuestionOrder) {
+			return evaluationResponse{}, fmt.Errorf("physical request contains questions outside its declared order")
+		}
+		for questionID := range request.Questions {
+			if _, ok := declared[questionID]; !ok {
+				return evaluationResponse{}, fmt.Errorf("evaluation requested undeclared question %q", questionID)
+			}
+		}
+		answers := make(map[string]answer, len(request.Questions))
+		for _, questionID := range request.QuestionOrder {
+			judgment, ok := declared[questionID]
+			if !ok {
+				return evaluationResponse{}, fmt.Errorf("evaluation requested undeclared question %q", questionID)
+			}
+			if request.Questions[questionID].Type != judgment.question.Type {
+				return evaluationResponse{}, fmt.Errorf("evaluation changed declared question %q", questionID)
+			}
+			if questionID == "evidence_1" {
+				return evaluationResponse{}, fmt.Errorf("oversized relevance question was evaluated")
+			}
+			probability := map[string]float64{"evidence_2": 0.6, "evidence_3": 0.8}[questionID]
+			answers[questionID] = answer{Type: "noul", Noul: probability}
+		}
+		return evaluationResponse{Model: "test-model", Answers: answers, Usage: Usage{InputTokens: 3, OutputTokens: 1}}, nil
+	})
+
+	interpretation, err := interpretRelevancePlan(context.Background(), plan, defaultModel, evaluator)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if evaluatorCalls != 2 {
+		t.Fatalf("physical evaluations = %d, want 2 partitioned requests", evaluatorCalls)
+	}
+	if len(interpretation.evidence) != 2 ||
+		interpretation.evidence[0].Path != "src/second.ts" || interpretation.evidence[0].RelevanceProbability != 0.6 ||
+		interpretation.evidence[1].Path != "src/third.ts" || interpretation.evidence[1].RelevanceProbability != 0.8 {
+		t.Fatalf("interpreted relevance = %#v", interpretation.evidence)
+	}
+	if interpretation.usage != (routingUsage{model: "test-model", inputTokens: 6, outputTokens: 2}) {
+		t.Fatalf("relevance usage = %#v", interpretation.usage)
+	}
+
+	missingAnswerPlan := buildRelevancePlan(rule, []Evidence{{ID: "missing", Path: "src/missing.ts"}})
+	_, err = interpretRelevancePlan(context.Background(), missingAnswerPlan, defaultModel, evaluatorFunc(func(_ context.Context, _ evaluationRequest) (evaluationResponse, error) {
+		return evaluationResponse{Answers: map[string]answer{}}, nil
+	}))
+	if err == nil || err.Error() != "TypeSafe returned no relevance answer for rule_1" {
+		t.Fatalf("missing relevance answer error = %v", err)
+	}
+}
+
+func TestRelevancePolicyUsesStableRankingThresholdAndLimit(t *testing.T) {
+	rule := Rule{ID: "rule_1", Path: "rules/example.md", Definition: "# Example"}
+	evidence := []Evidence{
+		{ID: "low", Kind: "diff-hunk", RelevanceProbability: 0.44},
+		{ID: "b", Kind: "diff-hunk", RelevanceProbability: 0.7},
+		{ID: "a", Kind: "diff-hunk", RelevanceProbability: 0.8},
+		{ID: "c", Kind: "diff-hunk", RelevanceProbability: 0.7},
+		{ID: "d", Kind: "diff-hunk", RelevanceProbability: 0.6},
+		{ID: "e", Kind: "diff-hunk", RelevanceProbability: 0.5},
+		{ID: "f", Kind: "diff-hunk", RelevanceProbability: minimumRelevanceProbability},
+		{ID: "g", Kind: "diff-hunk", RelevanceProbability: minimumRelevanceProbability},
+	}
+	original := append([]Evidence(nil), evidence...)
+
+	selected, decisions := applyRelevancePolicy(rule, evidence, defaultModel)
+
+	if !slices.Equal(evidence, original) {
+		t.Fatalf("policy mutated its evidence: %#v", evidence)
+	}
+	if selected.rule.ID != rule.ID || !selected.hasChanged {
+		t.Fatalf("selected evidence stage = %#v", selected)
+	}
+	wantOrder := []string{"a", "b", "c", "d", "e", "f", "g", "low"}
+	wantSelected := wantOrder[:maximumSelectedEvidence]
+	if len(selected.evidence) != maximumSelectedEvidence {
+		t.Fatalf("selected evidence = %d, want %d", len(selected.evidence), maximumSelectedEvidence)
+	}
+	for index, candidate := range wantSelected {
+		if selected.evidence[index].ID != candidate {
+			t.Fatalf("selected evidence %d = %q, want %q", index, selected.evidence[index].ID, candidate)
+		}
+	}
+	if len(decisions) != len(wantOrder) {
+		t.Fatalf("relevance decisions = %d, want %d", len(decisions), len(wantOrder))
+	}
+	for index, candidate := range wantOrder {
+		if decisions[index].Candidate != candidate || decisions[index].Selected != (index < maximumSelectedEvidence) {
+			t.Fatalf("relevance decision %d = %#v", index, decisions[index])
+		}
+	}
+}
+
+func TestSelectedEvidenceWithoutChangedCandidateIsNotApplicable(t *testing.T) {
+	rule := Rule{ID: "rule_1", Path: "rules/example.md", Title: "Example", Definition: "# Example", Metadata: RuleMetadata{Evaluator: "semantic"}}
+	scored := make([]Evidence, maximumSelectedEvidence)
+	for index := range scored {
+		scored[index] = Evidence{
+			ID:                   fmt.Sprintf("support_%d", index),
+			Kind:                 "repository-context",
+			Path:                 fmt.Sprintf("support/%d.ts", index),
+			Snippet:              strings.Repeat("x", maximumEvidenceSnippetBytes),
+			RelevanceProbability: 0.9 - float64(index)/10,
+		}
+	}
+	scored[len(scored)-1].ID = "changed"
+	scored[len(scored)-1].Kind = "diff-hunk"
+
+	selected, decisions := applyRelevancePolicy(rule, scored, defaultModel)
+
+	if selected.hasChanged {
+		t.Fatalf("selected evidence unexpectedly contains changed evidence: %#v", selected.evidence)
+	}
+	if len(selected.evidence) == 0 || len(selected.evidence) >= len(scored) {
+		t.Fatalf("request-size fitting selected %d of %d evidence items", len(selected.evidence), len(scored))
+	}
+	for _, item := range selected.evidence {
+		if isChangedEvidence(item) {
+			t.Fatalf("selected evidence includes changed item %#v", item)
+		}
+	}
+	if requestSize(finalJudgmentRequest(buildFinalJudgmentPlan(selected), defaultModel)) > maximumRequestBytes {
+		t.Fatal("selected evidence does not fit the final request")
+	}
+	next := selectedEvidence{rule: rule, evidence: scored[:len(selected.evidence)+1]}
+	if requestSize(finalJudgmentRequest(buildFinalJudgmentPlan(next), defaultModel)) <= maximumRequestBytes {
+		t.Fatal("selected evidence policy did not retain the largest fitting prefix")
+	}
+
+	finding := composeNotApplicableFinding(selected, decisions)
+	if finding.Classification != "not_applicable" ||
+		finding.Message != "No changed evidence candidate applies to this rule." ||
+		finding.Evidence == nil || len(finding.Evidence) != 0 ||
+		finding.Routing == nil || finding.Routing.SelectedEvidenceIDs == nil || len(finding.Routing.SelectedEvidenceIDs) != 0 {
+		t.Fatalf("not-applicable finding = %#v", finding)
+	}
+}
+
+func TestFinalFindingCompositionPreservesClassificationMessagesAndSelectedIDs(t *testing.T) {
+	rule := Rule{Path: "rules/example.md", Title: "Example", Metadata: RuleMetadata{Evaluator: "semantic"}}
+	selected := selectedEvidence{
+		rule: rule,
+		evidence: []Evidence{
+			{ID: "changed", Kind: "diff-hunk"},
+			{ID: "support", Kind: "repository-context"},
+		},
+		hasChanged: true,
+	}
+	decisions := []RoutingDecision{{Stage: "relevance", Candidate: "changed", Probability: 0.9, Selected: true}}
+	tests := []struct {
+		name           string
+		probability    float64
+		classification string
+		message        string
+		evidenceCount  int
+	}{
+		{name: "violation", probability: 0.8, classification: "violation", message: "The candidate needs review against this rule.", evidenceCount: 2},
+		{name: "review", probability: 0.5, classification: "review", message: "The candidate needs review against this rule.", evidenceCount: 2},
+		{name: "pass", probability: 0.4, classification: "pass", message: "No concrete violation was found in this candidate.", evidenceCount: 0},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			finding := composeFinalFinding(selected, decisions, test.probability, defaultThreshold)
+			if finding.RulePath != rule.Path ||
+				finding.RuleTitle != rule.Title ||
+				finding.Evaluator != rule.Metadata.Evaluator ||
+				finding.Classification != test.classification ||
+				finding.Message != test.message ||
+				finding.ViolationProbability == nil || *finding.ViolationProbability != test.probability ||
+				len(finding.Evidence) != test.evidenceCount ||
+				finding.Routing == nil ||
+				!slices.Equal(finding.Routing.Decisions, decisions) ||
+				!slices.Equal(finding.Routing.SelectedEvidenceIDs, []string{"changed", "support"}) {
+				t.Fatalf("finding = %#v", finding)
+			}
+		})
+	}
+}
+
+func TestInterpretRoutePlanSkipsUnselectedDeclaredBranch(t *testing.T) {
+	rule, err := parseRule("rules/example.md", "---\nglobs:\n  - \"**/*.ts\"\n---\n# Example\n\nCheck changed source.")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rule.ID = "rule_1"
+	rule.Metadata.Scope = "source"
+	diffFiles := []DiffFile{
+		{ID: "source_1", Path: "src/first.ts", Status: "modified"},
+		{ID: "source_2", Path: "src/second.ts", Status: "modified"},
+		{ID: "test_1", Path: "tests/first.test.ts", Status: "modified"},
+		{ID: "test_2", Path: "tests/second.test.ts", Status: "modified"},
+	}
+	plan := buildRoutePlan(rule, diffFiles)
+	if len(plan.domains.options) != 2 || len(plan.domains.options[1].value.paths.options) != 2 {
+		t.Fatalf("plan does not declare the unselected tests branch: %#v", plan.domains)
+	}
+
+	var interpretedMu sync.Mutex
+	var interpreted []choiceState
+	evaluator := evaluatorFunc(func(_ context.Context, request evaluationRequest) (evaluationResponse, error) {
+		state := request.State.(choiceState)
+		interpretedMu.Lock()
+		interpreted = append(interpreted, state)
+		interpretedMu.Unlock()
+		selected := state.CandidateIDs[0]
+		if state.Stage == "domain" {
+			selected = "domain_source"
+		}
+		probabilities := make(map[string]float64, len(state.CandidateIDs)+1)
+		for _, candidate := range state.CandidateIDs {
+			probabilities[candidate] = 0
+		}
+		probabilities[selected] = 0.9
+		probabilities["none"] = 0.1
+		return evaluationResponse{
+			Model:   "test-model",
+			Answers: map[string]answer{"route": {Type: "choice", Choice: selected, Probabilities: probabilities}},
+		}, nil
+	})
+	result, err := interpretRoutePlan(context.Background(), plan, defaultModel, evaluator)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.selected) != 1 || result.selected[0].value.file.ID != "source_1" {
+		t.Fatalf("selected = %#v", result.selected)
+	}
+	if len(interpreted) != 2 {
+		t.Fatalf("interpreted choices = %#v, want domain and selected source path only", interpreted)
+	}
+	if !slices.Equal(interpreted[1].CandidateIDs, []string{"source_1", "source_2"}) {
+		t.Fatalf("interpreted unselected branch: %#v", interpreted)
+	}
+}
+
 func TestChoiceRoutingRecursesThroughLargeBucketSets(t *testing.T) {
 	rule := Rule{ID: "rule_1", Path: "rules/example.md", Definition: "# Example\n\nCheck the source.", Metadata: RuleMetadata{Scope: "source"}}
-	options := make([]routeOption[string], (maximumChoiceOptions-1)*(maximumChoiceOptions-1)+1)
+	options := make([]routeChoiceOption[string], (maximumChoiceOptions-1)*(maximumChoiceOptions-1)+1)
 	for index := range options {
-		options[index] = routeOption[string]{
+		options[index] = routeChoiceOption[string]{
 			id:          fmt.Sprintf("candidate_%03d", index),
 			description: fmt.Sprintf("candidate %03d", index),
 			value:       fmt.Sprintf("value_%03d", index),
 		}
 	}
 	evaluator := &routingEvaluator{}
-	result, err := routeOptions(context.Background(), rule, "path", options, "", evaluator, 0)
+	result, err := interpretRouteChoice(context.Background(), rule, buildRouteChoice("path", options), "", evaluator)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -795,16 +1288,16 @@ func TestChoiceRoutingRecursesThroughLargeBucketSets(t *testing.T) {
 
 func TestOversizedChoiceStopsWithoutEvaluation(t *testing.T) {
 	rule := Rule{ID: "rule_1", Path: "rules/example.md", Definition: strings.Repeat("x", maximumRequestBytes), Metadata: RuleMetadata{Scope: "source"}}
-	options := []routeOption[string]{
+	options := []routeChoiceOption[string]{
 		{id: "first", description: "first", value: "first"},
 		{id: "second", description: "second", value: "second"},
 	}
 	evaluator := &recordingEvaluator{}
-	_, answered, _, err := askChoice(context.Background(), rule, "path", options, "", evaluator)
+	result, err := interpretRouteChoice(context.Background(), rule, buildRouteChoice("path", options), "", evaluator)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if answered {
+	if len(result.selected) != 0 {
 		t.Fatal("oversized Choice request was evaluated")
 	}
 	evaluator.mu.Lock()
@@ -858,15 +1351,41 @@ func TestBatchedEvaluatorDoesNotLimitPhysicalConcurrency(t *testing.T) {
 	workers.Wait()
 }
 
-func TestFinalRequestSeparatesChangedAndSupportingEvidence(t *testing.T) {
-	request := finalRequest(
-		Rule{ID: "rule_1", Path: "rules/example.md", Definition: "# Example", Metadata: RuleMetadata{Scope: "repository"}},
+func TestFinalJudgmentPlanSeparatesChangedAndSupportingSelectedEvidence(t *testing.T) {
+	rule := Rule{ID: "rule_1", Path: "rules/example.md", Definition: "# Example", Metadata: RuleMetadata{Scope: "repository"}}
+	selected, _ := applyRelevancePolicy(
+		rule,
 		[]Evidence{
-			{ID: "support", Kind: "repository-context", Path: "package.json", Snippet: "{}"},
-			{ID: "changed", Kind: "diff-hunk", Path: "src/main.ts", Snippet: "+change"},
+			{ID: "support", Kind: "repository-context", Path: "package.json", Snippet: "{}", RelevanceProbability: 0.9},
+			{ID: "changed", Kind: "diff-hunk", Path: "src/main.ts", Snippet: "+change", RelevanceProbability: 0.8},
+			{ID: "unselected", Kind: "diff-hunk", Path: "src/other.ts", Snippet: "+other", RelevanceProbability: 0.44},
 		},
 		"",
 	)
+	if !selected.hasChanged || len(selected.evidence) != 2 {
+		t.Fatalf("selected evidence = %#v", selected)
+	}
+	plan := buildFinalJudgmentPlan(selected)
+	if plan.selected.rule.ID != rule.ID || plan.questionID != rule.ID || plan.question.Type != "noul" {
+		t.Fatalf("final judgment plan = %#v", plan)
+	}
+
+	var request evaluationRequest
+	interpretation, err := interpretFinalJudgmentPlan(context.Background(), plan, "", evaluatorFunc(func(_ context.Context, evaluated evaluationRequest) (evaluationResponse, error) {
+		request = evaluated
+		return evaluationResponse{
+			Model:   "test-model",
+			Answers: map[string]answer{"rule_1": {Type: "noul", Noul: 0.73}},
+			Usage:   Usage{InputTokens: 4, OutputTokens: 1},
+		}, nil
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if interpretation.probability != 0.73 || interpretation.usage != (routingUsage{model: "test-model", inputTokens: 4, outputTokens: 1}) {
+		t.Fatalf("final judgment interpretation = %#v", interpretation)
+	}
+
 	encoded, err := marshalJSON(request)
 	if err != nil {
 		t.Fatal(err)
@@ -877,6 +1396,9 @@ func TestFinalRequestSeparatesChangedAndSupportingEvidence(t *testing.T) {
 	if !bytes.Contains(encoded, []byte(`"supportingEvidence":[{"id":"support"`)) {
 		t.Fatalf("request does not separate supporting evidence: %s", encoded)
 	}
+	if bytes.Contains(encoded, []byte(`"id":"unselected"`)) {
+		t.Fatalf("request contains unselected evidence: %s", encoded)
+	}
 	trueIndex := bytes.Index(encoded, []byte(`"true":"The candidate contains`))
 	falseIndex := bytes.Index(encoded, []byte(`"false":"The supplied evidence`))
 	if trueIndex < 0 || falseIndex < 0 || trueIndex > falseIndex {
@@ -884,6 +1406,19 @@ func TestFinalRequestSeparatesChangedAndSupportingEvidence(t *testing.T) {
 	}
 	if !bytes.Contains(encoded, []byte("Judge only `changedEvidence`.")) {
 		t.Fatalf("request lacks changed-evidence guidance: %s", encoded)
+	}
+}
+
+func TestFinalJudgmentPlanRejectsMissingNoul(t *testing.T) {
+	rule := Rule{ID: "rule_1", Path: "rules/example.md", Definition: "# Example"}
+	selected := selectedEvidence{rule: rule, evidence: []Evidence{{ID: "changed", Kind: "diff-hunk"}}, hasChanged: true}
+	plan := buildFinalJudgmentPlan(selected)
+
+	_, err := interpretFinalJudgmentPlan(context.Background(), plan, defaultModel, evaluatorFunc(func(_ context.Context, _ evaluationRequest) (evaluationResponse, error) {
+		return evaluationResponse{Answers: map[string]answer{}}, nil
+	}))
+	if err == nil || err.Error() != "TypeSafe returned no rule answer for rule_1" {
+		t.Fatalf("missing final Noul error = %v", err)
 	}
 }
 

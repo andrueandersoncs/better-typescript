@@ -37,10 +37,31 @@ type scored[T any] struct {
 	decisions      int
 }
 
-type routeOption[T any] struct {
+type routePlan struct {
+	rule    Rule
+	domains routeChoice[routeDomain]
+}
+
+type routeDomain struct {
+	name  string
+	paths routeChoice[routePath]
+}
+
+type routePath struct {
+	file  DiffFile
+	hunks routeChoice[routedHunk]
+}
+
+type routeChoice[T any] struct {
+	stage   string
+	options []routeChoiceOption[T]
+}
+
+type routeChoiceOption[T any] struct {
 	id          string
 	description string
 	value       T
+	members     *routeChoice[T]
 }
 
 type routeExecution[T any] struct {
@@ -53,9 +74,44 @@ type ruleResult struct {
 	finding Finding
 	usage   routingUsage
 }
-type relevanceBatchResult struct {
+
+type relevancePlan struct {
+	rule       Rule
+	candidates []Evidence
+	judgments  []relevanceJudgment
+}
+
+type relevanceJudgment struct {
+	candidateIndex int
+	questionID     string
+	question       question
+}
+
+type relevanceEvaluation struct {
+	judgments []relevanceJudgment
+	request   evaluationRequest
+}
+
+type interpretedRelevance struct {
 	evidence []Evidence
 	usage    routingUsage
+}
+
+type selectedEvidence struct {
+	rule       Rule
+	evidence   []Evidence
+	hasChanged bool
+}
+
+type finalJudgmentPlan struct {
+	selected   selectedEvidence
+	questionID string
+	question   question
+}
+
+type interpretedFinalJudgment struct {
+	probability float64
+	usage       routingUsage
 }
 
 type relation struct {
@@ -144,59 +200,44 @@ func evaluateSemanticRules(ctx context.Context, rules []Rule, evidence Repositor
 }
 
 func evaluateSemanticRule(ctx context.Context, rule Rule, repository RepositoryEvidence, relations map[string][]relation, options Options, evaluator evaluator) (ruleResult, error) {
-	route, err := routeRuleHunks(ctx, rule, repository.DiffFiles, options.Model, evaluator)
+	routePlan := buildRoutePlan(rule, repository.DiffFiles)
+	route, err := interpretRoutePlan(ctx, routePlan, options.Model, evaluator)
 	if err != nil {
 		return ruleResult{}, err
 	}
+
 	selectedHunks := make([]routedHunk, len(route.selected))
 	for index, item := range route.selected {
 		selectedHunks[index] = item.value
 	}
-	var relevance []Evidence
-	var relevanceDecisions []RoutingDecision
-	relevanceUsage := routingUsage{model: fallbackModel(options.Model)}
-	if len(route.selected) > 0 {
-		expanded := expandEvidence(rule, selectedHunks, repository, relations)
-		relevance, relevanceDecisions, relevanceUsage, err = selectRelevantEvidence(ctx, rule, expanded, options.Model, evaluator)
-		if err != nil {
-			return ruleResult{}, err
-		}
+	var expandedEvidence []Evidence
+	if len(selectedHunks) > 0 {
+		expandedEvidence = expandEvidence(rule, selectedHunks, repository, relations)
 	}
-	selected := fitFinalEvidence(rule, relevance, options.Model)
-	decisions := append(route.decisions, relevanceDecisions...)
-	usage := mergeUsage(fallbackModel(options.Model), route.usage, relevanceUsage)
-	evaluatorName := rule.Metadata.Evaluator
-	if !slices.ContainsFunc(selected, isChangedEvidence) {
-		return ruleResult{finding: Finding{RulePath: rule.Path, RuleTitle: rule.Title, Evaluator: evaluatorName, Classification: "not_applicable", Message: "No changed evidence candidate applies to this rule.", Evidence: []Evidence{}, Routing: &Routing{Decisions: decisions, SelectedEvidenceIDs: []string{}}}, usage: usage}, nil
-	}
-	request := finalRequest(rule, selected, options.Model)
-	response, err := evaluator.Evaluate(ctx, request)
+
+	relevancePlan := buildRelevancePlan(rule, expandedEvidence)
+	relevance, err := interpretRelevancePlan(ctx, relevancePlan, options.Model, evaluator)
 	if err != nil {
 		return ruleResult{}, err
 	}
-	answer, ok := response.Answers[rule.ID]
-	if !ok || answer.Type != "noul" {
-		return ruleResult{}, fmt.Errorf("TypeSafe returned no rule answer for %s", rule.ID)
+
+	selected, relevanceDecisions := applyRelevancePolicy(rule, relevance.evidence, options.Model)
+	decisions := append(route.decisions, relevanceDecisions...)
+	usage := mergeUsage(fallbackModel(options.Model), route.usage, relevance.usage)
+	if !selected.hasChanged {
+		return ruleResult{finding: composeNotApplicableFinding(selected, decisions), usage: usage}, nil
 	}
-	classification := classificationFromProbability(answer.Noul, options.Threshold)
-	message := "The candidate needs review against this rule."
-	findingEvidence := selected
-	if classification == "pass" {
-		message = "No concrete violation was found in this candidate."
-		findingEvidence = []Evidence{}
+
+	finalPlan := buildFinalJudgmentPlan(selected)
+	finalJudgment, err := interpretFinalJudgmentPlan(ctx, finalPlan, options.Model, evaluator)
+	if err != nil {
+		return ruleResult{}, err
 	}
-	probability := answer.Noul
-	selectedIDs := make([]string, 0, len(selected))
-	for _, item := range selected {
-		if item.ID != "" {
-			selectedIDs = append(selectedIDs, item.ID)
-		}
-	}
-	finding := Finding{RulePath: rule.Path, RuleTitle: rule.Title, Evaluator: evaluatorName, Classification: classification, Message: message, ViolationProbability: &probability, Evidence: findingEvidence, Routing: &Routing{Decisions: decisions, SelectedEvidenceIDs: selectedIDs}}
-	return ruleResult{finding: finding, usage: mergeUsage(options.Model, usage, usageFromResponse(response))}, nil
+	finding := composeFinalFinding(selected, decisions, finalJudgment.probability, options.Threshold)
+	return ruleResult{finding: finding, usage: mergeUsage(options.Model, usage, finalJudgment.usage)}, nil
 }
 
-func routeRuleHunks(ctx context.Context, rule Rule, diffFiles []DiffFile, model string, evaluator evaluator) (routeExecution[routedHunk], error) {
+func buildRoutePlan(rule Rule, diffFiles []DiffFile) routePlan {
 	filesByDomain := make(map[string][]DiffFile)
 	var domains []string
 	for _, file := range diffFiles {
@@ -212,31 +253,86 @@ func routeRuleHunks(ctx context.Context, rule Rule, diffFiles []DiffFile, model 
 		}
 		filesByDomain[domain] = append(filesByDomain[domain], file)
 	}
-	domainOptions := make([]routeOption[string], 0, len(domains))
+
+	domainOptions := make([]routeChoiceOption[routeDomain], 0, len(domains))
 	for _, domain := range domains {
 		files := filesByDomain[domain]
 		paths := make([]string, len(files))
-		for index, file := range files {
-			paths[index] = file.Path
+		pathOptions := make([]routeChoiceOption[routePath], len(files))
+		for fileIndex, file := range files {
+			paths[fileIndex] = file.Path
+			hunks := file.Hunks
+			if len(hunks) == 0 {
+				hunks = []DiffHunk{syntheticHunk(file)}
+			}
+			hunkOptions := make([]routeChoiceOption[routedHunk], len(hunks))
+			for hunkIndex, hunk := range hunks {
+				description := fmt.Sprintf("%s:%d %s\n%s", hunk.Path, hunk.NewStartLine, hunk.Header, truncateBytes(hunk.Patch, maximumEvidenceSnippetBytes/3))
+				hunkOptions[hunkIndex] = routeChoiceOption[routedHunk]{id: hunk.ID, description: description, value: routedHunk{file: file, hunk: hunk}}
+			}
+			pathOptions[fileIndex] = routeChoiceOption[routePath]{
+				id:          file.ID,
+				description: fileDescription(file),
+				value:       routePath{file: file, hunks: buildRouteChoice("hunk", hunkOptions)},
+			}
 		}
-		domainOptions = append(domainOptions, routeOption[string]{id: "domain_" + domain, description: evidenceDomains[domain] + " Changed files: " + strings.Join(paths, ", "), value: domain})
+		domainOptions = append(domainOptions, routeChoiceOption[routeDomain]{
+			id:          "domain_" + domain,
+			description: evidenceDomains[domain] + " Changed files: " + strings.Join(paths, ", "),
+			value:       routeDomain{name: domain, paths: buildRouteChoice("path", pathOptions)},
+		})
 	}
-	domainRoute, err := routeOptions(ctx, rule, "domain", domainOptions, model, evaluator, 0)
+	return routePlan{rule: rule, domains: buildRouteChoice("domain", domainOptions)}
+}
+
+func buildRouteChoice[T any](stage string, candidates []routeChoiceOption[T]) routeChoice[T] {
+	options := append([]routeChoiceOption[T]{}, candidates...)
+	candidateLimit := maximumChoiceOptions - 1
+	for depth := 0; len(options) > candidateLimit; depth++ {
+		buckets := make([]routeChoiceOption[T], 0, (len(options)+candidateLimit-1)/candidateLimit)
+		for start := 0; start < len(options); start += candidateLimit {
+			end := min(len(options), start+candidateLimit)
+			members := append([]routeChoiceOption[T]{}, options[start:end]...)
+			descriptions := make([]string, len(members))
+			for index, member := range members {
+				descriptions[index] = member.description
+			}
+			choice := routeChoice[T]{stage: stage, options: members}
+			buckets = append(buckets, routeChoiceOption[T]{
+				id:          fmt.Sprintf("bucket_%d_%d", depth, len(buckets)+1),
+				description: strings.Join(descriptions, "; "),
+				members:     &choice,
+			})
+		}
+		options = buckets
+	}
+	return routeChoice[T]{stage: stage, options: options}
+}
+
+func (choice routeChoice[T]) candidates() []routeChoiceOption[T] {
+	var candidates []routeChoiceOption[T]
+	for _, option := range choice.options {
+		if option.members != nil {
+			candidates = append(candidates, option.members.candidates()...)
+			continue
+		}
+		candidates = append(candidates, option)
+	}
+	return candidates
+}
+
+func interpretRoutePlan(ctx context.Context, plan routePlan, model string, evaluator evaluator) (routeExecution[routedHunk], error) {
+	domainRoute, err := interpretRouteChoice(ctx, plan.rule, plan.domains, model, evaluator)
 	if err != nil {
 		return routeExecution[routedHunk]{}, err
 	}
-	fileRoutes, err := concurrentMap(ctx, domainRoute.selected, func(ctx context.Context, _ int, selectedDomain scored[string]) (routeExecution[DiffFile], error) {
-		files := filesByDomain[selectedDomain.value]
-		options := make([]routeOption[DiffFile], len(files))
-		for index, file := range files {
-			options[index] = routeOption[DiffFile]{id: file.ID, description: fileDescription(file), value: file}
-		}
-		return routeOptions(ctx, rule, "path", options, model, evaluator, 0)
+	fileRoutes, err := concurrentMap(ctx, domainRoute.selected, func(ctx context.Context, _ int, selectedDomain scored[routeDomain]) (routeExecution[routePath], error) {
+		return interpretRouteChoice(ctx, plan.rule, selectedDomain.value.paths, model, evaluator)
 	})
 	if err != nil {
 		return routeExecution[routedHunk]{}, err
 	}
-	var fileSelected []scored[DiffFile]
+	var fileSelected []scored[routePath]
 	decisions := append([]RoutingDecision{}, domainRoute.decisions...)
 	usages := []routingUsage{domainRoute.usage}
 	for index, route := range fileRoutes {
@@ -247,17 +343,8 @@ func routeRuleHunks(ctx context.Context, rule Rule, diffFiles []DiffFile, model 
 		usages = append(usages, route.usage)
 	}
 	fileSelected = best(fileSelected, beamWidth)
-	hunkRoutes, err := concurrentMap(ctx, fileSelected, func(ctx context.Context, _ int, selectedFile scored[DiffFile]) (routeExecution[routedHunk], error) {
-		hunks := selectedFile.value.Hunks
-		if len(hunks) == 0 {
-			hunks = []DiffHunk{syntheticHunk(selectedFile.value)}
-		}
-		options := make([]routeOption[routedHunk], len(hunks))
-		for index, hunk := range hunks {
-			description := fmt.Sprintf("%s:%d %s\n%s", hunk.Path, hunk.NewStartLine, hunk.Header, truncateBytes(hunk.Patch, maximumEvidenceSnippetBytes/3))
-			options[index] = routeOption[routedHunk]{id: hunk.ID, description: description, value: routedHunk{file: selectedFile.value, hunk: hunk}}
-		}
-		return routeOptions(ctx, rule, "hunk", options, model, evaluator, 0)
+	hunkRoutes, err := concurrentMap(ctx, fileSelected, func(ctx context.Context, _ int, selectedFile scored[routePath]) (routeExecution[routedHunk], error) {
+		return interpretRouteChoice(ctx, plan.rule, selectedFile.value.hunks, model, evaluator)
 	})
 	if err != nil {
 		return routeExecution[routedHunk]{}, err
@@ -273,92 +360,91 @@ func routeRuleHunks(ctx context.Context, rule Rule, diffFiles []DiffFile, model 
 	return routeExecution[routedHunk]{selected: best(hunkSelected, beamWidth), decisions: decisions, usage: mergeUsage(fallbackModel(model), usages...)}, nil
 }
 
-func routeOptions[T any](ctx context.Context, rule Rule, stage string, options []routeOption[T], model string, evaluator evaluator, depth int) (routeExecution[T], error) {
-	untyped := make([]routeOption[any], len(options))
-	for index, option := range options {
-		untyped[index] = routeOption[any]{id: option.id, description: option.description, value: option.value}
-	}
-	execution, err := routeOptionsAny(ctx, rule, stage, untyped, model, evaluator, depth)
+func interpretRouteChoice[T any](ctx context.Context, rule Rule, choice routeChoice[T], model string, evaluator evaluator) (routeExecution[T], error) {
+	level, err := interpretRouteChoiceLevel(ctx, rule, choice, model, evaluator)
 	if err != nil {
 		return routeExecution[T]{}, err
 	}
-	selected := make([]scored[T], len(execution.selected))
-	for index, item := range execution.selected {
-		value, ok := item.value.(T)
-		if !ok {
-			return routeExecution[T]{}, fmt.Errorf("semantic routing returned an invalid %s candidate", stage)
-		}
-		selected[index] = scored[T]{value: value, logProbability: item.logProbability, decisions: item.decisions}
+	if len(level.selected) == 0 {
+		return routeExecution[T]{decisions: level.decisions, usage: level.usage}, nil
 	}
-	return routeExecution[T]{selected: selected, decisions: execution.decisions, usage: execution.usage}, nil
+	if level.selected[0].value.members == nil {
+		selected := make([]scored[T], len(level.selected))
+		for index, item := range level.selected {
+			selected[index] = scored[T]{value: item.value.value, logProbability: item.logProbability, decisions: item.decisions}
+		}
+		return routeExecution[T]{selected: selected, decisions: level.decisions, usage: level.usage}, nil
+	}
+
+	memberRoutes, err := concurrentMap(ctx, level.selected, func(ctx context.Context, _ int, selectedBucket scored[routeChoiceOption[T]]) (routeExecution[T], error) {
+		route, err := interpretRouteChoice(ctx, rule, *selectedBucket.value.members, model, evaluator)
+		if err != nil {
+			return routeExecution[T]{}, err
+		}
+		for index, candidate := range route.selected {
+			route.selected[index] = joined(selectedBucket, candidate)
+		}
+		return route, nil
+	})
+	if err != nil {
+		return routeExecution[T]{}, err
+	}
+	result := routeExecution[T]{
+		decisions: append([]RoutingDecision{}, level.decisions...),
+		usage:     level.usage,
+	}
+	for _, route := range memberRoutes {
+		result.selected = append(result.selected, route.selected...)
+		result.decisions = append(result.decisions, route.decisions...)
+		result.usage = mergeUsage(fallbackModel(model), result.usage, route.usage)
+	}
+	result.selected = best(result.selected, beamWidth)
+	return result, nil
 }
 
-func routeOptionsAny(ctx context.Context, rule Rule, stage string, options []routeOption[any], model string, evaluator evaluator, depth int) (routeExecution[any], error) {
+func interpretRouteChoiceLevel[T any](ctx context.Context, rule Rule, choice routeChoice[T], model string, evaluator evaluator) (routeExecution[routeChoiceOption[T]], error) {
 	fallback := fallbackModel(model)
+	options := choice.options
 	if len(options) == 0 {
-		return routeExecution[any]{usage: routingUsage{model: fallback}}, nil
+		return routeExecution[routeChoiceOption[T]]{usage: routingUsage{model: fallback}}, nil
 	}
 	if len(options) == 1 {
-		return routeExecution[any]{selected: []scored[any]{{value: options[0].value, decisions: 1}}, decisions: []RoutingDecision{{Stage: stage, Candidate: options[0].id, Probability: 1, Selected: true}}, usage: routingUsage{model: fallback}}, nil
+		return routeExecution[routeChoiceOption[T]]{
+			selected:  []scored[routeChoiceOption[T]]{{value: options[0], decisions: 1}},
+			decisions: []RoutingDecision{{Stage: choice.stage, Candidate: options[0].id, Probability: 1, Selected: true}},
+			usage:     routingUsage{model: fallback},
+		}, nil
 	}
-	candidateLimit := maximumChoiceOptions - 1
-	if len(options) > candidateLimit {
-		bucketOptions := make([]routeOption[any], 0, (len(options)+candidateLimit-1)/candidateLimit)
-		for start := 0; start < len(options); start += candidateLimit {
-			end := min(len(options), start+candidateLimit)
-			members := options[start:end]
-			descriptions := make([]string, len(members))
-			for index, member := range members {
-				descriptions[index] = member.description
-			}
-			bucketOptions = append(bucketOptions, routeOption[any]{
-				id:          fmt.Sprintf("bucket_%d_%d", depth, len(bucketOptions)+1),
-				description: strings.Join(descriptions, "; "),
-				value:       members,
-			})
-		}
-		bucketRoute, err := routeOptionsAny(ctx, rule, stage, bucketOptions, model, evaluator, depth+1)
-		if err != nil {
-			return routeExecution[any]{}, err
-		}
-		memberRoutes, err := concurrentMap(ctx, bucketRoute.selected, func(ctx context.Context, _ int, selectedBucket scored[any]) (routeExecution[any], error) {
-			members, ok := selectedBucket.value.([]routeOption[any])
-			if !ok {
-				return routeExecution[any]{}, fmt.Errorf("semantic routing returned an invalid %s bucket", stage)
-			}
-			route, err := routeOptionsAny(ctx, rule, stage, members, model, evaluator, depth+1)
-			if err != nil {
-				return routeExecution[any]{}, err
-			}
-			for index, candidate := range route.selected {
-				route.selected[index] = joined(selectedBucket, candidate)
-			}
-			return route, nil
-		})
-		if err != nil {
-			return routeExecution[any]{}, err
-		}
-		result := routeExecution[any]{
-			decisions: append([]RoutingDecision{}, bucketRoute.decisions...),
-			usage:     bucketRoute.usage,
-		}
-		for _, route := range memberRoutes {
-			result.selected = append(result.selected, route.selected...)
-			result.decisions = append(result.decisions, route.decisions...)
-			result.usage = mergeUsage(fallback, result.usage, route.usage)
-		}
-		result.selected = best(result.selected, beamWidth)
-		return result, nil
+
+	descriptionBytes := max(128, (maximumRequestBytes-len(rule.Definition)-4096)/(len(options)+1))
+	criteria := make(map[string]any, len(options)+1)
+	candidateIDs := make([]string, len(options))
+	for index, option := range options {
+		criteria[option.id] = truncateBytes(option.description, descriptionBytes)
+		candidateIDs[index] = option.id
 	}
-	answer, answered, usage, err := askChoice(ctx, rule, stage, options, model, evaluator)
+	criteria["none"] = "None of these candidates supplies relevant evidence."
+	criteriaOrder := append(append([]string{}, candidateIDs...), "none")
+	request := evaluationRequest{
+		State:         choiceState{Stage: choice.stage, CandidateIDs: candidateIDs},
+		Model:         model,
+		Questions:     map[string]question{"route": {Type: "choice", Instructions: routingInstructions(rule, choice.stage), Criteria: criteria, CriteriaOrder: criteriaOrder}},
+		QuestionOrder: []string{"route"},
+	}
+	if requestSize(request) > maximumRequestBytes {
+		return routeExecution[routeChoiceOption[T]]{usage: routingUsage{model: fallback}}, nil
+	}
+	response, err := evaluator.Evaluate(ctx, request)
 	if err != nil {
-		return routeExecution[any]{}, err
+		return routeExecution[routeChoiceOption[T]]{}, err
 	}
-	if !answered {
-		return routeExecution[any]{usage: usage}, nil
+	answer, ok := response.Answers["route"]
+	if !ok || answer.Type != "choice" {
+		return routeExecution[routeChoiceOption[T]]{}, fmt.Errorf("TypeSafe returned no Choice answer for %s", rule.ID)
 	}
+
 	type rankedOption struct {
-		option      routeOption[any]
+		option      routeChoiceOption[T]
 		probability float64
 	}
 	ranked := make([]rankedOption, len(options))
@@ -387,144 +473,186 @@ func routeOptionsAny(ctx context.Context, rule Rule, stage string, options []rou
 		selected = selected[:min(len(selected), beamWidth)]
 	}
 	selectedIDs := make(map[string]bool)
-	result := routeExecution[any]{usage: usage}
+	result := routeExecution[routeChoiceOption[T]]{usage: usageFromResponse(response)}
 	for _, item := range selected {
 		selectedIDs[item.option.id] = true
-		result.selected = append(result.selected, scored[any]{value: item.option.value, logProbability: math.Log(max(item.probability, math.Nextafter(1, 2)-1)), decisions: 1})
+		result.selected = append(result.selected, scored[routeChoiceOption[T]]{value: item.option, logProbability: math.Log(max(item.probability, math.Nextafter(1, 2)-1)), decisions: 1})
 	}
 	for _, item := range ranked {
-		result.decisions = append(result.decisions, RoutingDecision{Stage: stage, Candidate: item.option.id, Probability: item.probability, Selected: selectedIDs[item.option.id]})
+		result.decisions = append(result.decisions, RoutingDecision{Stage: choice.stage, Candidate: item.option.id, Probability: item.probability, Selected: selectedIDs[item.option.id]})
 	}
-	result.decisions = append(result.decisions, RoutingDecision{Stage: stage, Candidate: "none", Probability: noneProbability, Selected: answer.Choice == "none"})
+	result.decisions = append(result.decisions, RoutingDecision{Stage: choice.stage, Candidate: "none", Probability: noneProbability, Selected: answer.Choice == "none"})
 	return result, nil
-}
-
-func askChoice[T any](ctx context.Context, rule Rule, stage string, options []routeOption[T], model string, evaluator evaluator) (answer, bool, routingUsage, error) {
-	descriptionBytes := max(128, (maximumRequestBytes-len(rule.Definition)-4096)/(len(options)+1))
-	criteria := make(map[string]any, len(options)+1)
-	candidateIDs := make([]string, len(options))
-	for index, option := range options {
-		criteria[option.id] = truncateBytes(option.description, descriptionBytes)
-		candidateIDs[index] = option.id
-	}
-	criteria["none"] = "None of these candidates supplies relevant evidence."
-	criteriaOrder := append(append([]string{}, candidateIDs...), "none")
-	request := evaluationRequest{
-		State:         choiceState{Stage: stage, CandidateIDs: candidateIDs},
-		Model:         model,
-		Questions:     map[string]question{"route": {Type: "choice", Instructions: routingInstructions(rule, stage), Criteria: criteria, CriteriaOrder: criteriaOrder}},
-		QuestionOrder: []string{"route"},
-	}
-	fallback := fallbackModel(model)
-	if requestSize(request) > maximumRequestBytes {
-		return answer{}, false, routingUsage{model: fallback}, nil
-	}
-	response, err := evaluator.Evaluate(ctx, request)
-	if err != nil {
-		return answer{}, false, routingUsage{}, err
-	}
-	answer, ok := response.Answers["route"]
-	if !ok || answer.Type != "choice" {
-		return answer, false, routingUsage{}, fmt.Errorf("TypeSafe returned no Choice answer for %s", rule.ID)
-	}
-	return answer, true, usageFromResponse(response), nil
 }
 
 func routingInstructions(rule Rule, stage string) choiceInstruction {
 	return choiceInstruction{Task: "Select the evidence candidate most likely to help decide this rule.", Stage: stage, Rule: ruleQuestionState(rule), Guidance: "Choose none when every candidate is unrelated. The caller retains several probable alternatives."}
 }
 
-func selectRelevantEvidence(ctx context.Context, rule Rule, candidates []Evidence, model string, evaluator evaluator) ([]Evidence, []RoutingDecision, routingUsage, error) {
-	batches := relevanceBatches(rule, candidates, model)
-	results, err := concurrentMap(ctx, batches, func(ctx context.Context, _ int, batch []Evidence) (relevanceBatchResult, error) {
-		request := relevanceRequest(rule, batch, model)
-		response, err := evaluator.Evaluate(ctx, request)
-		if err != nil {
-			return relevanceBatchResult{}, err
+func buildRelevancePlan(rule Rule, candidates []Evidence) relevancePlan {
+	plan := relevancePlan{
+		rule:       rule,
+		candidates: append([]Evidence(nil), candidates...),
+		judgments:  make([]relevanceJudgment, len(candidates)),
+	}
+	ruleState := ruleQuestionState(rule)
+	for index, candidate := range candidates {
+		candidateID := candidate.ID
+		if candidateID == "" {
+			candidateID = fmt.Sprintf("%s:%d", candidate.Path, max(candidate.StartLine, 1))
 		}
-		scoredEvidence := make([]Evidence, len(batch))
-		for index, candidate := range batch {
-			answer, ok := response.Answers[fmt.Sprintf("evidence_%d", index+1)]
+		plan.judgments[index] = relevanceJudgment{
+			candidateIndex: index,
+			questionID:     fmt.Sprintf("evidence_%d", index+1),
+			question: question{
+				Type:          "noul",
+				Instructions:  relevanceInstruction{Task: "Is this evidence candidate materially relevant to deciding whether the supplied rule is violated?", CandidateID: candidateID, Rule: ruleState},
+				Criteria:      map[string]any{"true": "The candidate contains facts needed to apply the rule or compare the change with its surrounding contract or convention.", "false": "The candidate is incidental, merely nearby, or does not help decide the rule."},
+				CriteriaOrder: []string{"true", "false"},
+			},
+		}
+	}
+	return plan
+}
+
+func interpretRelevancePlan(ctx context.Context, plan relevancePlan, model string, evaluator evaluator) (interpretedRelevance, error) {
+	evaluations := relevanceEvaluations(plan, model)
+	results, err := concurrentMap(ctx, evaluations, func(ctx context.Context, _ int, evaluation relevanceEvaluation) (interpretedRelevance, error) {
+		response, err := evaluator.Evaluate(ctx, evaluation.request)
+		if err != nil {
+			return interpretedRelevance{}, err
+		}
+		scoredEvidence := make([]Evidence, len(evaluation.judgments))
+		for index, judgment := range evaluation.judgments {
+			answer, ok := response.Answers[judgment.questionID]
 			if !ok || answer.Type != "noul" {
-				return relevanceBatchResult{}, fmt.Errorf("TypeSafe returned no relevance answer for %s", rule.ID)
+				return interpretedRelevance{}, fmt.Errorf("TypeSafe returned no relevance answer for %s", plan.rule.ID)
 			}
+			candidate := plan.candidates[judgment.candidateIndex]
 			candidate.RelevanceProbability = answer.Noul
 			scoredEvidence[index] = candidate
 		}
-		return relevanceBatchResult{evidence: scoredEvidence, usage: usageFromResponse(response)}, nil
+		return interpretedRelevance{evidence: scoredEvidence, usage: usageFromResponse(response)}, nil
 	})
 	if err != nil {
-		return nil, nil, routingUsage{}, err
+		return interpretedRelevance{}, err
 	}
-	var scoredEvidence []Evidence
-	var usages []routingUsage
-	for _, result := range results {
-		scoredEvidence = append(scoredEvidence, result.evidence...)
-		usages = append(usages, result.usage)
+	result := interpretedRelevance{usage: routingUsage{model: fallbackModel(model)}}
+	usages := make([]routingUsage, 0, len(results))
+	for _, evaluation := range results {
+		result.evidence = append(result.evidence, evaluation.evidence...)
+		usages = append(usages, evaluation.usage)
 	}
-	sort.SliceStable(scoredEvidence, func(i, j int) bool {
-		return scoredEvidence[i].RelevanceProbability > scoredEvidence[j].RelevanceProbability
+	result.usage = mergeUsage(fallbackModel(model), usages...)
+	return result, nil
+}
+
+func relevanceEvaluations(plan relevancePlan, model string) []relevanceEvaluation {
+	var evaluations []relevanceEvaluation
+	remaining := plan.judgments
+	for len(remaining) > 0 {
+		length := len(remaining)
+		var evaluation relevanceEvaluation
+		for length > 0 {
+			evaluation = buildRelevanceEvaluation(plan, remaining[:length], model)
+			if requestSize(evaluation.request) <= maximumRequestBytes {
+				break
+			}
+			length--
+		}
+		if length == 0 {
+			remaining = remaining[1:]
+			continue
+		}
+		evaluations = append(evaluations, evaluation)
+		remaining = remaining[length:]
+	}
+	return evaluations
+}
+
+func buildRelevanceEvaluation(plan relevancePlan, judgments []relevanceJudgment, model string) relevanceEvaluation {
+	candidates := make([]Evidence, len(judgments))
+	questions := make(map[string]question, len(judgments))
+	questionOrder := make([]string, len(judgments))
+	for index, judgment := range judgments {
+		candidates[index] = plan.candidates[judgment.candidateIndex]
+		questions[judgment.questionID] = judgment.question
+		questionOrder[index] = judgment.questionID
+	}
+	return relevanceEvaluation{
+		judgments: judgments,
+		request: evaluationRequest{
+			State:         relevanceState{EvidenceCandidates: evidenceState(candidates)},
+			Model:         model,
+			Questions:     questions,
+			QuestionOrder: questionOrder,
+		},
+	}
+}
+
+func applyRelevancePolicy(rule Rule, evidence []Evidence, model string) (selectedEvidence, []RoutingDecision) {
+	ranked := append([]Evidence(nil), evidence...)
+	sort.SliceStable(ranked, func(i, j int) bool {
+		return ranked[i].RelevanceProbability > ranked[j].RelevanceProbability
 	})
 	selectedIDs := make(map[string]bool)
-	var selected []Evidence
-	for _, item := range scoredEvidence {
-		if item.RelevanceProbability >= minimumRelevanceProbability && len(selected) < maximumSelectedEvidence {
-			selected = append(selected, item)
+	var relevant []Evidence
+	for _, item := range ranked {
+		if item.RelevanceProbability >= minimumRelevanceProbability && len(relevant) < maximumSelectedEvidence {
+			relevant = append(relevant, item)
 			selectedIDs[item.ID] = true
 		}
 	}
-	decisions := make([]RoutingDecision, 0, len(scoredEvidence))
-	for _, item := range scoredEvidence {
+	decisions := make([]RoutingDecision, 0, len(ranked))
+	for _, item := range ranked {
 		candidate := item.ID
 		if candidate == "" {
 			candidate = item.Path
 		}
 		decisions = append(decisions, RoutingDecision{Stage: "relevance", Candidate: candidate, Probability: item.RelevanceProbability, Selected: selectedIDs[item.ID]})
 	}
-	return selected, decisions, mergeUsage(fallbackModel(model), usages...), nil
-}
-
-func relevanceBatches(rule Rule, candidates []Evidence, model string) [][]Evidence {
-	var batches [][]Evidence
-	for len(candidates) > 0 {
-		length := len(candidates)
-		for length > 0 && requestSize(relevanceRequest(rule, candidates[:length], model)) > maximumRequestBytes {
-			length--
+	for length := len(relevant); length > 0; length-- {
+		selected := selectedEvidence{
+			rule:       rule,
+			evidence:   relevant[:length],
+			hasChanged: slices.ContainsFunc(relevant[:length], isChangedEvidence),
 		}
-		if length == 0 {
-			candidates = candidates[1:]
-			continue
+		if requestSize(finalJudgmentRequest(buildFinalJudgmentPlan(selected), model)) <= maximumRequestBytes {
+			return selected, decisions
 		}
-		batches = append(batches, candidates[:length])
-		candidates = candidates[length:]
 	}
-	return batches
+	return selectedEvidence{rule: rule, evidence: []Evidence{}}, decisions
 }
 
-func relevanceRequest(rule Rule, candidates []Evidence, model string) evaluationRequest {
-	questions := make(map[string]question, len(candidates))
-	questionOrder := make([]string, len(candidates))
-	for index, candidate := range candidates {
-		candidateID := candidate.ID
-		if candidateID == "" {
-			candidateID = fmt.Sprintf("%s:%d", candidate.Path, max(candidate.StartLine, 1))
-		}
-		questionID := fmt.Sprintf("evidence_%d", index+1)
-		questionOrder[index] = questionID
-		questions[questionID] = question{
+func buildFinalJudgmentPlan(selected selectedEvidence) finalJudgmentPlan {
+	return finalJudgmentPlan{
+		selected:   selected,
+		questionID: selected.rule.ID,
+		question: question{
 			Type:          "noul",
-			Instructions:  relevanceInstruction{Task: "Is this evidence candidate materially relevant to deciding whether the supplied rule is violated?", CandidateID: candidateID, Rule: ruleQuestionState(rule)},
-			Criteria:      map[string]any{"true": "The candidate contains facts needed to apply the rule or compare the change with its surrounding contract or convention.", "false": "The candidate is incidental, merely nearby, or does not help decide the rule."},
+			Instructions:  finalInstruction{Task: "Does the identified candidate violate the supplied semantic lint rule?", Rule: ruleQuestionState(selected.rule), Guidance: "Judge only `changedEvidence`. `supportingEvidence` may establish a contract or convention, but it is not itself the candidate and must not be reported as a violation. The caller handles applicability and evidence sufficiency before asking this question."},
+			Criteria:      map[string]any{"true": "The candidate contains a concrete violation supported by the supplied evidence.", "false": "The supplied evidence shows no concrete violation in the candidate."},
 			CriteriaOrder: []string{"true", "false"},
-		}
+		},
 	}
-	return evaluationRequest{State: relevanceState{EvidenceCandidates: evidenceState(candidates)}, Model: model, Questions: questions, QuestionOrder: questionOrder}
 }
 
-func finalRequest(rule Rule, evidence []Evidence, model string) evaluationRequest {
+func interpretFinalJudgmentPlan(ctx context.Context, plan finalJudgmentPlan, model string, evaluator evaluator) (interpretedFinalJudgment, error) {
+	response, err := evaluator.Evaluate(ctx, finalJudgmentRequest(plan, model))
+	if err != nil {
+		return interpretedFinalJudgment{}, err
+	}
+	answer, ok := response.Answers[plan.questionID]
+	if !ok || answer.Type != "noul" {
+		return interpretedFinalJudgment{}, fmt.Errorf("TypeSafe returned no rule answer for %s", plan.questionID)
+	}
+	return interpretedFinalJudgment{probability: answer.Noul, usage: usageFromResponse(response)}, nil
+}
+
+func finalJudgmentRequest(plan finalJudgmentPlan, model string) evaluationRequest {
 	var changed []Evidence
 	var supporting []Evidence
-	for _, item := range evidence {
+	for _, item := range plan.selected.evidence {
 		if isChangedEvidence(item) {
 			changed = append(changed, item)
 		} else {
@@ -532,25 +660,49 @@ func finalRequest(rule Rule, evidence []Evidence, model string) evaluationReques
 		}
 	}
 	return evaluationRequest{
-		State: finalState{ChangedEvidence: evidenceState(changed), SupportingEvidence: evidenceState(supporting)},
-		Model: model,
-		Questions: map[string]question{rule.ID: {
-			Type:          "noul",
-			Instructions:  finalInstruction{Task: "Does the identified candidate violate the supplied semantic lint rule?", Rule: ruleQuestionState(rule), Guidance: "Judge only `changedEvidence`. `supportingEvidence` may establish a contract or convention, but it is not itself the candidate and must not be reported as a violation. The caller handles applicability and evidence sufficiency before asking this question."},
-			Criteria:      map[string]any{"true": "The candidate contains a concrete violation supported by the supplied evidence.", "false": "The supplied evidence shows no concrete violation in the candidate."},
-			CriteriaOrder: []string{"true", "false"},
-		}},
-		QuestionOrder: []string{rule.ID},
+		State:         finalState{ChangedEvidence: evidenceState(changed), SupportingEvidence: evidenceState(supporting)},
+		Model:         model,
+		Questions:     map[string]question{plan.questionID: plan.question},
+		QuestionOrder: []string{plan.questionID},
 	}
 }
 
-func fitFinalEvidence(rule Rule, evidence []Evidence, model string) []Evidence {
-	for length := len(evidence); length > 0; length-- {
-		if requestSize(finalRequest(rule, evidence[:length], model)) <= maximumRequestBytes {
-			return evidence[:length]
+func composeNotApplicableFinding(selected selectedEvidence, decisions []RoutingDecision) Finding {
+	return Finding{
+		RulePath:       selected.rule.Path,
+		RuleTitle:      selected.rule.Title,
+		Evaluator:      selected.rule.Metadata.Evaluator,
+		Classification: "not_applicable",
+		Message:        "No changed evidence candidate applies to this rule.",
+		Evidence:       []Evidence{},
+		Routing:        &Routing{Decisions: decisions, SelectedEvidenceIDs: []string{}},
+	}
+}
+
+func composeFinalFinding(selected selectedEvidence, decisions []RoutingDecision, probability, threshold float64) Finding {
+	classification := classificationFromProbability(probability, threshold)
+	message := "The candidate needs review against this rule."
+	findingEvidence := selected.evidence
+	if classification == "pass" {
+		message = "No concrete violation was found in this candidate."
+		findingEvidence = []Evidence{}
+	}
+	selectedIDs := make([]string, 0, len(selected.evidence))
+	for _, item := range selected.evidence {
+		if item.ID != "" {
+			selectedIDs = append(selectedIDs, item.ID)
 		}
 	}
-	return nil
+	return Finding{
+		RulePath:             selected.rule.Path,
+		RuleTitle:            selected.rule.Title,
+		Evaluator:            selected.rule.Metadata.Evaluator,
+		Classification:       classification,
+		Message:              message,
+		ViolationProbability: &probability,
+		Evidence:             findingEvidence,
+		Routing:              &Routing{Decisions: decisions, SelectedEvidenceIDs: selectedIDs},
+	}
 }
 
 func evidenceState(evidence []Evidence) []evidenceStateItem {

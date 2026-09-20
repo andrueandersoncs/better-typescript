@@ -2,7 +2,7 @@
 
 **Specification:** [Declarative semantic review](../spec.md)
 
-Status: ready-for-agent
+Status: resolved
 
 Blocked by: 02
 
@@ -20,17 +20,17 @@ shape the semantic interface.
 
 ## Acceptance criteria
 
-- [ ] A package-private relevance plan contains the rule, candidate evidence, stable question ids,
+- [x] A package-private relevance plan contains the rule, candidate evidence, stable question ids,
       and every independent Noul declaration.
-- [ ] Its constructor performs no evaluator or external I/O.
-- [ ] The interpreter evaluates only questions already present in the plan.
-- [ ] Candidate identity, relevance probabilities, selected-evidence ordering, threshold, and maximum
+- [x] Its constructor performs no evaluator or external I/O.
+- [x] The interpreter evaluates only questions already present in the plan.
+- [x] Candidate identity, relevance probabilities, selected-evidence ordering, threshold, and maximum
       selection preserve current behavior.
-- [ ] Physical request partitioning remains behaviorally compatible and is not exposed as a semantic
+- [x] Physical request partitioning remains behaviorally compatible and is not exposed as a semantic
       dependency.
-- [ ] A narrow test proves all relevance judgments are declared before the first evaluator call.
-- [ ] Superseded mixed declaration/execution code is removed.
-- [ ] `./scripts/check.sh` passes.
+- [x] A narrow test proves all relevance judgments are declared before the first evaluator call.
+- [x] Superseded mixed declaration/execution code is removed.
+- [x] `./scripts/check.sh` passes.
 
 ## Non-goals
 
@@ -38,3 +38,20 @@ shape the semantic interface.
 - Constructing the final policy judgment.
 - Sharing one generic plan type with routing.
 - Optimizing request count, tokens, latency, or price.
+
+## Answer
+
+Implemented `relevancePlan`, `relevanceJudgment`, `buildRelevancePlan`,
+`interpretRelevancePlan`, and `applyRelevancePolicy` in `internal/semanticlint/routing.go`.
+`evaluateSemanticRule` now builds every relevance judgment before interpreting any of them.
+Physical request partitioning remains private to `relevanceEvaluations`.
+
+Behavior is preserved: candidate identity, prompts, probabilities, stable ranking, threshold,
+maximum selection, decisions, usage, oversized-candidate handling, and errors retain their prior
+semantics. The mixed `selectRelevantEvidence`, `relevanceBatches`, and `relevanceRequest` path was
+removed.
+
+Verification:
+
+- `go test ./internal/semanticlint -run '^(TestRelevancePlanDeclaresEveryJudgmentBeforeEvaluation|TestRelevancePolicyUsesStableRankingThresholdAndLimit|TestSemanticRoutingExcludesUnselectedFilesFromFinalJudgment|TestSemanticRoutingWithoutRepositoryEvidenceIsNotApplicable|TestNoneChoiceStopsBeforeRelevanceEvaluation|TestFinalRequestSeparatesChangedAndSupportingEvidence)$' -count=1` — passed.
+- `./scripts/check.sh` — passed.

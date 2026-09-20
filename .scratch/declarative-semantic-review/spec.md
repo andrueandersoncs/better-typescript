@@ -1,6 +1,6 @@
 # Declarative semantic review
 
-Status: ready-for-agent
+Status: resolved
 
 **Continue:** [Future-agent workflow](CONTINUE.md)
 
@@ -65,6 +65,68 @@ it does not hide it in a callback or general `Bind` operation.
 Start with concrete stage interfaces. Consider shared combinators only after all stages exist and
 real duplication is visible.
 
+## Shared-combinator decision
+
+**Decision:** keep the concrete stages. Add no shared plan combinator.
+
+### Evidence inventory
+
+| Stage | Declared data | Interpretation behavior |
+| --- | --- | --- |
+| Route | A complete domain → path → hunk `routeChoice` tree | Evaluate only selected branches, recurse through buckets, rank the beam, and accumulate routing decisions and usage. |
+| Relevance | One independent judgment per evidence candidate | Partition judgments by request size, evaluate every fitting partition concurrently, attach each Noul probability to its candidate, and merge usage. |
+| Selected evidence | Ranked evidence plus `hasChanged` | Apply the relevance threshold, count and request-size limits, and retain the largest fitting prefix. No evaluator is involved. |
+| Final judgment | One question built from `selectedEvidence` | Separate changed from supporting evidence, make one evaluation, validate one Noul answer, and return its probability and usage. |
+
+`routeChoice[T]` is already the smallest proven reuse: domain, path, and hunk routing all use its
+recursive bucketing and choice interpreter. Deleting it would duplicate real Selective behavior at
+those three route levels. It remains route-specific.
+
+Across stages, only request assembly, `evaluator.Evaluate`, answer-type checks, and usage conversion
+look alike. The request states, cardinality, size handling, answer-to-result mapping, and error
+semantics differ. These are evaluator protocol steps, not duplicated plan semantics.
+
+### Applicative conclusion
+
+A minimal shared interface was considered:
+
+```go
+type applicativePlan[T any] interface {
+	requests(model string) []evaluationRequest
+	collect([]evaluationResponse) (T, error)
+}
+```
+
+A generic runner could evaluate the requests concurrently and pass the responses to `collect`.
+Compared with the concrete code, this does not remove either stage's planning or interpretation:
+relevance still owns partitioning and candidate-index mapping, while final judgment still owns its
+single selected-evidence request and answer. It only wraps `evaluator.Evaluate`, exposes physical
+request batching through the plan interface, and makes each caller know the generic runner
+protocol. A generic `Map` or composition function would additionally turn typed stage transitions
+into a callback DSL. The interface therefore increases total knowledge and fails the deletion test.
+
+Per-policy evaluation and relevance judgments remain Applicative in behavior through direct
+`concurrentMap` calls over independent values. Their result types and collection policies are not
+shared.
+
+### Selective conclusion
+
+Selective reuse is proven only inside routing. The complete `routeChoice` tree exists before
+evaluation, and its interpreter skips unselected branches. Relevance evaluates every declared
+judgment; selection is pure; and the final plan cannot exist until `selectedEvidence` exists.
+Treating that last dependency as another Selective branch would require enumerating evidence
+subsets or hiding result-shaped plan construction. No shared Selective interface is justified.
+
+A general Monad or `Bind` is rejected because the only result-shaped dependency is the named
+`selectedEvidence` → final-plan transition, which must remain visible. Callback DSLs, exported
+frameworks, and pass-through evaluator wrappers are also rejected: none has two callers sharing
+planning or interpretation behavior, and each adds indirection without reducing caller knowledge.
+
+The selected-evidence invariant remains explicit: `applyRelevancePolicy` produces
+`selectedEvidence`; that value is the sole input to `buildFinalJudgmentPlan`; only its selected
+changed and supporting evidence enters the final request; and no final judgment is made when it
+contains no changed evidence.
+
 ## Required invariants
 
 - The complete domain, path, hunk, and recursive bucket tree exists before routing evaluation starts.
@@ -109,3 +171,17 @@ Each ticket must leave the package simpler than it found it and remove the path 
 - `docs/semantic-lint.md` describes any user-visible behavior change; no update is required for a
   behavior-preserving internal refactor.
 - `./scripts/check.sh` passes after every ticket.
+
+## Outcome
+
+`evaluateSemanticRule` now composes concrete package-private stages:
+
+1. `buildRoutePlan` → `interpretRoutePlan`
+2. `buildRelevancePlan` → `interpretRelevancePlan`
+3. `applyRelevancePolicy` → `selectedEvidence`
+4. `buildFinalJudgmentPlan` → `interpretFinalJudgmentPlan`
+5. `composeFinalFinding`
+
+The route tree and relevance judgments are inspectable before evaluation. `selectedEvidence` is the
+explicit result-shaped boundary and the only input to final-plan construction. No cross-stage plan
+combinator was added: only the route-local `routeChoice[T]` has demonstrated reuse.

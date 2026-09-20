@@ -2,7 +2,7 @@
 
 **Specification:** [Declarative semantic review](../spec.md)
 
-Status: ready-for-agent
+Status: resolved
 
 Blocked by: 03
 
@@ -18,18 +18,18 @@ The final judgment remains one Noul over the exact selected changed and supporti
 
 ## Acceptance criteria
 
-- [ ] A package-private selected-evidence type distinguishes selected evidence from candidates and
+- [x] A package-private selected-evidence type distinguishes selected evidence from candidates and
       scored evidence.
-- [ ] Pure policy owns relevance thresholding, ranking, maximum selection, and changed-evidence
+- [x] Pure policy owns relevance thresholding, ranking, maximum selection, and changed-evidence
       presence.
-- [ ] Final-plan construction accepts selected evidence directly and cannot run before selection.
-- [ ] `not_applicable` remains the explicit outcome when selected evidence contains no changed
+- [x] Final-plan construction accepts selected evidence directly and cannot run before selection.
+- [x] `not_applicable` remains the explicit outcome when selected evidence contains no changed
       candidate; no final judgment is evaluated.
-- [ ] Final state preserves the changed/supporting split and excludes unselected evidence.
-- [ ] Probability classification and finding messages preserve current behavior.
-- [ ] `evaluateSemanticRule` reads as named stage composition with no hidden result-shaped callback.
-- [ ] The narrow final-request and no-applicable-evidence tests cover the stage seam.
-- [ ] `./scripts/check.sh` passes.
+- [x] Final state preserves the changed/supporting split and excludes unselected evidence.
+- [x] Probability classification and finding messages preserve current behavior.
+- [x] `evaluateSemanticRule` reads as named stage composition with no hidden result-shaped callback.
+- [x] The narrow final-request and no-applicable-evidence tests cover the stage seam.
+- [x] `./scripts/check.sh` passes.
 
 ## Non-goals
 
@@ -37,3 +37,20 @@ The final judgment remains one Noul over the exact selected changed and supporti
 - A general Monad or `Bind` interface.
 - Changing classification thresholds or finding output.
 - Exporting stage types.
+
+## Answer
+
+Implemented `selectedEvidence`, `finalJudgmentPlan`, `interpretedFinalJudgment`,
+`buildFinalJudgmentPlan`, `interpretFinalJudgmentPlan`, and pure finding composition in
+`internal/semanticlint/routing.go`. `evaluateSemanticRule` now crosses the selected-evidence stage
+explicitly before constructing the final plan.
+
+Behavior is preserved: request-size fitting, changed/supporting separation, unselected evidence
+exclusion, `not_applicable` short-circuiting, classification, messages, selected IDs, usage, and
+errors retain their prior semantics. The obsolete `routeRuleHunks`, `finalRequest`, and
+`fitFinalEvidence` paths were removed.
+
+Verification:
+
+- `go test ./internal/semanticlint -run '^(TestRelevancePlanDeclaresEveryJudgmentBeforeEvaluation|TestRelevancePolicyUsesStableRankingThresholdAndLimit|TestSelectedEvidenceWithoutChangedCandidateIsNotApplicable|TestNoChangedSelectedEvidenceSkipsFinalJudgment|TestFinalFindingCompositionPreservesClassificationMessagesAndSelectedIDs|TestFinalJudgmentPlanSeparatesChangedAndSupportingSelectedEvidence|TestFinalJudgmentPlanRejectsMissingNoul|TestSemanticRoutingExcludesUnselectedFilesFromFinalJudgment|TestSemanticRoutingWithoutRepositoryEvidenceIsNotApplicable|TestNoneChoiceStopsBeforeRelevanceEvaluation)$' -count=1` — passed.
+- `./scripts/check.sh` — passed.
