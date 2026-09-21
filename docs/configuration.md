@@ -19,7 +19,7 @@ Add `better-typescript.json` to the project root to select rules by file:
       "mode": "semantic",
       "type": "add_exclusions",
       "files": "generated/**",
-      "rules": ["function-naming", "readonly"]
+      "rules": "*"
     }
   ]
 }
@@ -28,6 +28,8 @@ Add `better-typescript.json` to the project root to select rules by file:
 All rules are on by default. Each command contains a `type`, `files`, and `rules`. Matching `add_exclusions` commands turn the named rules off. Matching `add_inclusions` commands turn the named rules back on. Commands apply in order.
 
 `mode` defaults to `deterministic`, preserving existing configuration. Use `"mode": "semantic"` to modify semantic policies instead. Semantic rule selection does not remove files from supporting evidence. Globs are relative to the project root.
+
+Use `"rules": "*"` by itself to address every rule in the command's mode. For example, a semantic `add_exclusions` wildcard prevents direct semantic review of matching files while retaining them as supporting evidence.
 
 `--files` limits which files are analyzed. An explicit `--rules` value skips configured commands for the invoked mode.
 

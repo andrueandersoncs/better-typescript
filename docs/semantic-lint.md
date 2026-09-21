@@ -74,7 +74,7 @@ Use `--all` to analyze every eligible current file:
 npx better-typescript semantic --all
 ```
 
-The selected files are candidates. Semantic-mode commands in `better-typescript.json` select policies for each file. A file with no active semantic policies is not reviewed directly but remains available as supporting context. `--range`, `--files`, and `--all` are mutually exclusive.
+The selected files are candidates. Semantic-mode commands in `better-typescript.json` select policies for each file. Use an `add_exclusions` command with `"rules": "*"` to prevent direct review of matching files while retaining them as supporting context. `--range`, `--files`, and `--all` are mutually exclusive.
 
 Use `--rules` to limit evaluation:
 

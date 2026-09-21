@@ -5,6 +5,7 @@ import (
 
 	"github.com/andrueandersoncs/better-typescript/internal/analysis"
 	appconfig "github.com/andrueandersoncs/better-typescript/internal/config"
+	builtinrules "github.com/andrueandersoncs/better-typescript/internal/rules"
 )
 
 func loadRuleCommands(configuration appconfig.File) ([]analysis.RuleOverride, error) {
@@ -13,7 +14,11 @@ func loadRuleCommands(configuration appconfig.File) ([]analysis.RuleOverride, er
 		if entry.Mode != appconfig.ModeDeterministic {
 			continue
 		}
-		selectedRules, err := selectRuleNames(entry.Rules)
+		selectedRules := builtinrules.BuiltinRules
+		var err error
+		if len(entry.Rules) != 1 || entry.Rules[0] != "*" {
+			selectedRules, err = selectRuleNames(entry.Rules)
+		}
 		if err != nil {
 			return nil, fmt.Errorf("parse %s: commands[%d]: %w", appconfig.FileName, index, err)
 		}

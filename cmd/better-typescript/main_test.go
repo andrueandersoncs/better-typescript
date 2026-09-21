@@ -204,6 +204,31 @@ func TestCLIIgnoresSemanticRuleCommands(t *testing.T) {
 	}
 }
 
+func TestCLIWildcardExcludesAllDeterministicRules(t *testing.T) {
+	binary, packageDirectory := buildCLI(t)
+	projectDirectory := t.TempDir()
+	if err := os.CopyFS(projectDirectory, os.DirFS(filepath.Join(packageDirectory, "testdata", "project"))); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(projectDirectory, "better-typescript.json"),
+		[]byte(`{"commands":[{"type":"add_exclusions","files":"src/**","rules":"*"}]}`),
+		0o600,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	command := exec.Command(binary)
+	command.Dir = projectDirectory
+	output, err := command.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(output) != 0 {
+		t.Fatalf("stdout = %q, want no violations", output)
+	}
+}
+
 func TestCLISelectsManyRules(t *testing.T) {
 	binary, packageDirectory := buildCLI(t)
 	projectDirectory := filepath.Join(packageDirectory, "testdata", "project")

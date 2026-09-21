@@ -334,7 +334,7 @@ func TestRunAppliesSemanticCommandsWithoutRemovingEvidence(t *testing.T) {
 	root := newSemanticTestRepository(t)
 	if err := os.WriteFile(
 		filepath.Join(root, "better-typescript.json"),
-		[]byte(`{"commands":[{"mode":"semantic","type":"add_exclusions","files":"src/main.ts","rules":["no-debugger"]}]}`),
+		[]byte(`{"commands":[{"mode":"semantic","type":"add_exclusions","files":"src/main.ts","rules":"*"}]}`),
 		0o600,
 	); err != nil {
 		t.Fatal(err)
@@ -374,17 +374,10 @@ func TestRunAppliesSemanticCommandsWithoutRemovingEvidence(t *testing.T) {
 	if len(configured) == 0 {
 		t.Fatal("semantic commands removed rules from unrelated files")
 	}
-	foundNoDebugger := false
 	for _, rule := range configured {
-		if strings.HasSuffix(rule.Path, "/no-debugger.md") {
-			foundNoDebugger = true
-			if rule.matchesDirectPath("src/main.ts") {
-				t.Fatal("no-debugger remained active for src/main.ts")
-			}
+		if rule.matchesDirectPath("src/main.ts") {
+			t.Fatalf("%s remained active for src/main.ts", rule.Path)
 		}
-	}
-	if !foundNoDebugger {
-		t.Fatal("no-debugger was removed from unrelated files")
 	}
 
 	var output bytes.Buffer
@@ -679,7 +672,7 @@ func TestRunCommitRangeUsesCommittedEndpoint(t *testing.T) {
 func TestRunCommitRangeUsesEndpointConfiguration(t *testing.T) {
 	root := newSemanticTestRepository(t)
 	configPath := filepath.Join(root, "better-typescript.json")
-	if err := os.WriteFile(configPath, []byte(`{"commands":[{"mode":"semantic","type":"add_exclusions","files":"src/main.ts","rules":["no-debugger"]}]}`), 0o600); err != nil {
+	if err := os.WriteFile(configPath, []byte(`{"commands":[{"mode":"semantic","type":"add_exclusions","files":"src/main.ts","rules":"*"}]}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	runGit(t, root, "add", ".")
@@ -698,7 +691,7 @@ func TestRunCommitRangeUsesEndpointConfiguration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if exitCode != 0 || strings.Contains(output.String(), "/no-debugger.md") || !strings.Contains(output.String(), `"path":"src/main.ts"`) {
+	if exitCode != 0 || !strings.Contains(output.String(), `"rules":null`) || !strings.Contains(output.String(), `"path":"src/main.ts"`) {
 		t.Fatalf("range result = exit %d, output %q", exitCode, output.String())
 	}
 }

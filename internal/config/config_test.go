@@ -34,6 +34,7 @@ func TestParseRejectsInvalidCommandModes(t *testing.T) {
 		{content: `{"commands":[{"mode":"other","type":"add_inclusions","files":"src/**","rules":[]}]}`, want: "mode must be"},
 		{content: `{"commands":[{"type":"exclude_targets","files":"src/**"}]}`, want: "type must be"},
 		{content: `{"commands":[{"mode":"semantic","type":"add_inclusions","files":"src/**"}]}`, want: "rules is required"},
+		{content: `{"commands":[{"mode":"semantic","type":"add_exclusions","files":"src/**","rules":["*","a"]}]}`, want: "wildcard must be the only rule"},
 		{content: `{"ignores":["src/**"]}`, want: `unknown field "ignores"`},
 	}
 	for _, test := range tests {

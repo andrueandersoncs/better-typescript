@@ -119,6 +119,11 @@ func Parse(content []byte) (File, error) {
 		if entry.Rules == nil {
 			return File{}, fmt.Errorf("parse %s: commands[%d].rules is required", FileName, index)
 		}
+		for _, name := range *entry.Rules {
+			if name == "*" && len(*entry.Rules) != 1 {
+				return File{}, fmt.Errorf("parse %s: commands[%d].rules wildcard must be the only rule", FileName, index)
+			}
+		}
 		result.Commands = append(result.Commands, Command{
 			Mode: mode, Type: entry.Type, Files: entry.Files,
 			Rules: append([]string(nil), (*entry.Rules)...), pattern: compiled,

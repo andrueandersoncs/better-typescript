@@ -148,7 +148,9 @@ func configureSemanticRules(rules []Rule, configuration appconfig.File, changedP
 		}
 		var selected []Rule
 		var err error
-		if len(command.Rules) > 0 {
+		if len(command.Rules) == 1 && command.Rules[0] == "*" {
+			selected = rules
+		} else if len(command.Rules) > 0 {
 			selected, err = selectSemanticRules(rules, command.Rules)
 			if err != nil {
 				return nil, fmt.Errorf("parse %s: commands[%d]: %w", appconfig.FileName, index, err)
