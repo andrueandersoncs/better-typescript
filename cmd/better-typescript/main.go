@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/andrueandersoncs/better-typescript/internal/analysis"
+	appconfig "github.com/andrueandersoncs/better-typescript/internal/config"
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
 	"github.com/andrueandersoncs/better-typescript/internal/rules"
 	"github.com/andrueandersoncs/better-typescript/internal/semanticlint"
@@ -111,6 +112,10 @@ func run() (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("resolve current directory: %w", err)
 	}
+	configuration, err := appconfig.Load(root)
+	if err != nil {
+		return false, err
+	}
 
 	selectedRules, err := selectRules(options.ruleNames)
 	if err != nil {
@@ -118,7 +123,7 @@ func run() (bool, error) {
 	}
 	var overrides []analysis.RuleOverride
 	if len(options.ruleNames) == 0 {
-		overrides, err = loadRuleCommands(root)
+		overrides, err = loadRuleCommands(configuration)
 		if err != nil {
 			return false, err
 		}

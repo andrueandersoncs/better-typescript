@@ -74,7 +74,7 @@ Use `--all` to analyze every eligible current file:
 npx better-typescript semantic --all
 ```
 
-The selected files are candidates. Other repository files remain available as supporting context. `--range`, `--files`, and `--all` are mutually exclusive.
+The selected files are candidates. Semantic-mode commands in `better-typescript.json` select policies for each file. A file with no active semantic policies is not reviewed directly but remains available as supporting context. `--range`, `--files`, and `--all` are mutually exclusive.
 
 Use `--rules` to limit evaluation:
 
@@ -100,7 +100,7 @@ Use a three-dot range for a pull request or feature branch:
 npx better-typescript semantic --range 'origin/main...HEAD'
 ```
 
-Three-dot ranges start at Git's merge base. Range mode excludes untracked and working-tree changes. Changed source and repository context are read from the range's end commit, so the result does not depend on the checked-out file contents. Fetch the base ref before using a remote-tracking name in CI.
+Three-dot ranges start at Git's merge base. Range mode excludes untracked and working-tree changes. Changed source, repository context, and `better-typescript.json` are read from the range's end commit, so the result does not depend on the checked-out file contents. Fetch the base ref before using a remote-tracking name in CI.
 
 ## Project policies
 

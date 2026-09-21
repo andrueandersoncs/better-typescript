@@ -116,13 +116,14 @@ type RuleMetadata struct {
 }
 
 type Rule struct {
-	ID         string
-	Path       string
-	Title      string
-	Definition string
-	Globs      []string
-	Patterns   []fileglob.Pattern
-	Metadata   RuleMetadata
+	ID          string
+	Path        string
+	Title       string
+	Definition  string
+	Globs       []string
+	Patterns    []fileglob.Pattern
+	Metadata    RuleMetadata
+	directPaths map[string]bool
 }
 
 type RoutingDecision struct {

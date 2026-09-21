@@ -276,7 +276,7 @@ func buildRoutePlan(rule Rule, diffFiles []DiffFile) routePlan {
 	filesByDomain := make(map[string][]DiffFile)
 	var domains []string
 	for _, file := range diffFiles {
-		if !rule.matchesPath(file.Path) {
+		if !rule.matchesDirectPath(file.Path) {
 			continue
 		}
 		domain := domainForPath(file.Path)

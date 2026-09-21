@@ -1,13 +1,13 @@
 {
   "commands": [
     {
-      "type": "add_inclusions",
+      "type": "add_exclusions",
       "files": "src/**/*.ts",
-      "rules": ["no-error-type", "no-throw"]
+      "rules": ["no-throw"]
     },
     {
-      "type": "add_exclusions",
-      "files": "src/nested/**/*.ts",
+      "type": "add_inclusions",
+      "files": "src/main.ts",
       "rules": "no-throw"
     },
     {

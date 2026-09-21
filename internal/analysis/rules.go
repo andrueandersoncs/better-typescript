@@ -44,10 +44,27 @@ func (selector ruleSelector) rulesForFile(fileName string) []linter.ConfiguredRu
 		if override.excludeRules {
 			selected = removeRules(selected, override.rules)
 		} else {
-			selected = override.rules
+			selected = addRules(selector.defaultRules, selected, override.rules)
 		}
 	}
 	return selected
+}
+
+func addRules(catalog, selected, included []linter.ConfiguredRule) []linter.ConfiguredRule {
+	enabled := make(map[string]bool, len(selected)+len(included))
+	for _, configured := range selected {
+		enabled[configured.Name] = true
+	}
+	for _, configured := range included {
+		enabled[configured.Name] = true
+	}
+	result := make([]linter.ConfiguredRule, 0, len(enabled))
+	for _, configured := range catalog {
+		if enabled[configured.Name] {
+			result = append(result, configured)
+		}
+	}
+	return result
 }
 
 func removeRules(selected, excluded []linter.ConfiguredRule) []linter.ConfiguredRule {

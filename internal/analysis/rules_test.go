@@ -26,7 +26,7 @@ func TestRuleSelectorAppliesOrderedExclusionOverrides(t *testing.T) {
 	}{
 		{fileName: "/project/outside.ts", want: []string{"a", "b", "c"}},
 		{fileName: "/project/src/file.ts", want: []string{"b", "c"}},
-		{fileName: "/project/src/re-enabled.ts", want: []string{"a"}},
+		{fileName: "/project/src/re-enabled.ts", want: []string{"a", "c"}},
 	}
 	for _, test := range tests {
 		configured := selector.rulesForFile(test.fileName)

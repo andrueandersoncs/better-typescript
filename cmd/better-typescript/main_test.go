@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -167,6 +168,42 @@ func TestCLISelectsGlobFilesAndOneRule(t *testing.T) {
 	}
 }
 
+func TestCLIIgnoresSemanticRuleCommands(t *testing.T) {
+	binary, packageDirectory := buildCLI(t)
+	projectDirectory := t.TempDir()
+	if err := os.CopyFS(projectDirectory, os.DirFS(filepath.Join(packageDirectory, "testdata", "project"))); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(projectDirectory, "better-typescript.json"),
+		[]byte(`{"commands":[
+			{"type":"add_exclusions","files":"src/**","rules":["no-error-type"]},
+			{"mode":"semantic","type":"add_exclusions","files":"src/nested/**","rules":["no-throw"]}
+		]}`),
+		0o600,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	command := exec.Command(binary)
+	command.Dir = projectDirectory
+	violations := decodeViolations(t, outputWithExitCode(t, command, 1))
+	noThrowFiles := map[string]bool{}
+	for _, violation := range violations {
+		if violation.RuleName == "no-error-type" {
+			t.Fatalf("deterministic exclusion was not applied: %#v", violation)
+		}
+		if violation.RuleName == "no-throw" {
+			noThrowFiles[violation.FilePath] = true
+		}
+	}
+	for _, file := range []string{"src/main.ts", "src/nested/selected.ts"} {
+		if !noThrowFiles[file] {
+			t.Fatalf("semantic command affected deterministic rules for %s", file)
+		}
+	}
+}
+
 func TestCLISelectsManyRules(t *testing.T) {
 	binary, packageDirectory := buildCLI(t)
 	projectDirectory := filepath.Join(packageDirectory, "testdata", "project")
@@ -208,21 +245,28 @@ func TestCLIUsesCascadingJSONRuleConfiguration(t *testing.T) {
 	output := outputWithExitCode(t, command, 1)
 
 	violations := decodeViolations(t, output)
-	if len(violations) != 3 {
-		t.Fatalf("got %d violations, want 3", len(violations))
-	}
-	want := map[string]map[string]bool{
-		"src/main.ts": {
-			"no-error-type": true,
-			"no-throw":      true,
-		},
-		"src/nested/selected.ts": {
-			"no-error-type": true,
-		},
-	}
+	seen := make(map[string]map[string]bool)
 	for _, violation := range violations {
-		if !want[violation.FilePath][violation.RuleName] {
-			t.Errorf("violation = %#v, want configured rule for file", violation)
+		if seen[violation.FilePath] == nil {
+			seen[violation.FilePath] = make(map[string]bool)
+		}
+		seen[violation.FilePath][violation.RuleName] = true
+	}
+	tests := []struct {
+		file string
+		rule string
+		want bool
+	}{
+		{file: "src/main.ts", rule: "no-error-type", want: true},
+		{file: "src/main.ts", rule: "no-throw", want: true},
+		{file: "src/nested/selected.ts", rule: "no-error-type", want: true},
+		{file: "src/nested/selected.ts", rule: "no-throw", want: false},
+		{file: "src/nested/disabled.ts", rule: "no-error-type", want: false},
+		{file: "src/nested/disabled.ts", rule: "no-throw", want: false},
+	}
+	for _, test := range tests {
+		if seen[test.file][test.rule] != test.want {
+			t.Errorf("%s on %s = %t, want %t", test.rule, test.file, seen[test.file][test.rule], test.want)
 		}
 	}
 }

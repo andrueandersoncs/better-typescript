@@ -8,7 +8,7 @@ The `semantic` subcommand uses Git working-tree changes or an explicit commit ra
 
 The root Go module imports generated public compiler adapters from `github.com/andrueandersoncs/typescript-go`.
 
-The complete sorted rule catalog is the default. Optional CLI rule names select a sorted catalog subset. Ordered `better-typescript.json` commands use an `add_inclusions` or `add_exclusions` type to replace or remove rules per matching file. For each file, every selected rule creates a listener map keyed by AST kind. The linter combines those listeners and dispatches them during one traversal. Rules report nodes or ranges through `rule.RuleContext`.
+The complete sorted rule catalog is on by default. Optional CLI rule names select a sorted catalog subset. Ordered `better-typescript.json` commands use `add_exclusions` to turn rules off and `add_inclusions` to turn them back on for matching files. Commands default to deterministic rules; semantic-mode commands apply the same selection model to semantic policies without removing files from repository context. For each analyzed file, every selected deterministic rule creates a listener map keyed by AST kind. The linter combines those listeners and dispatches them during one traversal. Rules report nodes or ranges through `rule.RuleContext`.
 
 Analysis converts reports into the stable six-field NDJSON contract. It makes paths relative to the current directory, converts positions to one-based UTF-16 coordinates, sorts all records, and removes exact duplicates. The CLI prints only NDJSON to stdout and status or operational errors to stderr.
 

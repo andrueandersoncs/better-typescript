@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 
+	appconfig "github.com/andrueandersoncs/better-typescript/internal/config"
 	"github.com/andrueandersoncs/better-typescript/internal/fileglob"
 )
 
@@ -21,6 +22,21 @@ type repositorySnapshot struct {
 	diff              string
 	revision          string
 	fullFileSelection bool
+}
+
+func loadConfiguration(ctx context.Context, root string, snapshot repositorySnapshot) (appconfig.File, error) {
+	if snapshot.revision == "" {
+		return appconfig.Load(root)
+	}
+	index := sort.SearchStrings(snapshot.repositoryPaths, appconfig.FileName)
+	if index == len(snapshot.repositoryPaths) || snapshot.repositoryPaths[index] != appconfig.FileName {
+		return appconfig.File{}, nil
+	}
+	content, err := readSource(ctx, root, snapshot.revision, appconfig.FileName)
+	if err != nil {
+		return appconfig.File{}, fmt.Errorf("read %s: %w", appconfig.FileName, err)
+	}
+	return appconfig.Parse(content)
 }
 
 func gitSnapshot(ctx context.Context, root, commitRange string) (repositorySnapshot, error) {
@@ -340,7 +356,16 @@ func fullFileDiffFiles(paths []string, files []Source) []DiffFile {
 }
 
 func diffFilesFromEvidence(diff string, changedPaths, deletedPaths []string, files []Source) []DiffFile {
-	parsed := parseDiffFiles(diff)
+	changed := make(map[string]bool, len(changedPaths))
+	for _, path := range changedPaths {
+		changed[path] = true
+	}
+	var parsed []DiffFile
+	for _, file := range parseDiffFiles(diff) {
+		if changed[file.Path] {
+			parsed = append(parsed, file)
+		}
+	}
 	parsedCount := len(parsed)
 	parsedPaths := make(map[string]bool)
 	for _, file := range parsed {

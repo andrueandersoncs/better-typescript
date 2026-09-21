@@ -6,22 +6,30 @@ Add `better-typescript.json` to the project root to select rules by file:
 {
   "commands": [
     {
-      "type": "add_inclusions",
+      "type": "add_exclusions",
       "files": "src/**/*.ts",
       "rules": ["no-throw", "no-error-type"]
     },
     {
-      "type": "add_exclusions",
-      "files": "src/**/*.test.ts",
+      "type": "add_inclusions",
+      "files": "src/legacy/**/*.ts",
       "rules": "no-throw"
+    },
+    {
+      "mode": "semantic",
+      "type": "add_exclusions",
+      "files": "generated/**",
+      "rules": ["function-naming", "readonly"]
     }
   ]
 }
 ```
 
-All rules are the default. Each command contains a `type`, `files`, and `rules`. `type` must be `add_inclusions` or `add_exclusions`. `rules` accepts one rule name or a list. A matching `add_inclusions` replaces the active rule set. A matching `add_exclusions` removes those rules from the active set. Commands apply in order, so a later `add_inclusions` can include an excluded rule again. Globs are relative to the project root.
+All rules are on by default. Each command contains a `type`, `files`, and `rules`. Matching `add_exclusions` commands turn the named rules off. Matching `add_inclusions` commands turn the named rules back on. Commands apply in order.
 
-`--files` limits which configured files are analyzed. An explicit `--rules` value applies those rules to every selected file and ignores `better-typescript.json`.
+`mode` defaults to `deterministic`, preserving existing configuration. Use `"mode": "semantic"` to modify semantic policies instead. Semantic rule selection does not remove files from supporting evidence. Globs are relative to the project root.
+
+`--files` limits which files are analyzed. An explicit `--rules` value skips configured commands for the invoked mode.
 
 ## Output
 

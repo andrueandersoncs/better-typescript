@@ -61,6 +61,10 @@ func Run(ctx context.Context, root string, args []string, output io.Writer) (int
 	if err != nil {
 		return 2, err
 	}
+	configuration, err := loadConfiguration(ctx, root, snapshot)
+	if err != nil {
+		return 2, err
+	}
 	if options.AllFiles || len(options.FilePatterns) > 0 {
 		snapshot, err = selectCurrentFiles(root, snapshot, options.FilePatterns, options.AllFiles)
 		if err != nil {
@@ -83,16 +87,13 @@ func Run(ctx context.Context, root string, args []string, output io.Writer) (int
 	if err != nil {
 		return 2, err
 	}
-	applicable := make([]Rule, 0, len(rules))
-	for _, rule := range rules {
-		for _, changedPath := range evidence.ChangedPaths {
-			if rule.matchesPath(changedPath) {
-				applicable = append(applicable, rule)
-				break
-			}
-		}
+	if len(options.RuleNames) > 0 {
+		configuration.Commands = nil
 	}
-
+	applicable, err := configureSemanticRules(rules, configuration, evidence.ChangedPaths)
+	if err != nil {
+		return 2, err
+	}
 	var deterministic, review, semantic []Rule
 	for _, rule := range applicable {
 		switch rule.Metadata.Evaluator {

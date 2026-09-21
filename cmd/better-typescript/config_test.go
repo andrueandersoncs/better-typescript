@@ -4,6 +4,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	appconfig "github.com/andrueandersoncs/better-typescript/internal/config"
 )
 
 func TestLoadRuleCommandsRejectsInvalidConfiguration(t *testing.T) {
@@ -25,12 +27,12 @@ func TestLoadRuleCommandsRejectsInvalidConfiguration(t *testing.T) {
 		{
 			name:      "missing type",
 			config:    `{"commands":[{"files":"src/**","rules":"no-throw"}]}`,
-			wantError: `type must be "add_exclusions" or "add_inclusions"`,
+			wantError: "type must be",
 		},
 		{
 			name:      "invalid type",
 			config:    `{"commands":[{"type":"replacement","files":"src/**","rules":"no-throw"}]}`,
-			wantError: `type must be "add_exclusions" or "add_inclusions"`,
+			wantError: "type must be",
 		},
 		{
 			name:      "missing rules",
@@ -50,7 +52,7 @@ func TestLoadRuleCommandsRejectsInvalidConfiguration(t *testing.T) {
 		{
 			name:      "singular type",
 			config:    `{"commands":[{"type":"add_inclusion","files":"src/**","rules":"no-throw"}]}`,
-			wantError: `type must be "add_exclusions" or "add_inclusions"`,
+			wantError: "type must be",
 		},
 		{
 			name:      "legacy overrides field",
@@ -72,10 +74,13 @@ func TestLoadRuleCommandsRejectsInvalidConfiguration(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			root := t.TempDir()
-			if err := os.WriteFile(root+"/"+configFileName, []byte(test.config), 0o600); err != nil {
+			if err := os.WriteFile(root+"/"+appconfig.FileName, []byte(test.config), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			_, err := loadRuleCommands(root)
+			configuration, err := appconfig.Load(root)
+			if err == nil {
+				_, err = loadRuleCommands(configuration)
+			}
 			if err == nil || !strings.Contains(err.Error(), test.wantError) {
 				t.Fatalf("error = %v, want text %q", err, test.wantError)
 			}

@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 
+	appconfig "github.com/andrueandersoncs/better-typescript/internal/config"
 	"github.com/andrueandersoncs/better-typescript/internal/fileglob"
 	"go.yaml.in/yaml/v3"
 )
@@ -132,6 +133,61 @@ func selectSemanticRules(rules []Rule, names []string) ([]Rule, error) {
 		}
 	}
 	return result, nil
+}
+
+type semanticRuleCommand struct {
+	command appconfig.Command
+	rules   map[string]bool
+}
+
+func configureSemanticRules(rules []Rule, configuration appconfig.File, changedPaths []string) ([]Rule, error) {
+	var commands []semanticRuleCommand
+	for index, command := range configuration.Commands {
+		if command.Mode != appconfig.ModeSemantic {
+			continue
+		}
+		var selected []Rule
+		var err error
+		if len(command.Rules) > 0 {
+			selected, err = selectSemanticRules(rules, command.Rules)
+			if err != nil {
+				return nil, fmt.Errorf("parse %s: commands[%d]: %w", appconfig.FileName, index, err)
+			}
+		}
+		names := make(map[string]bool, len(selected))
+		for _, rule := range selected {
+			names[rule.Path] = true
+		}
+		commands = append(commands, semanticRuleCommand{command: command, rules: names})
+	}
+
+	var configured []Rule
+	for _, rule := range rules {
+		directPaths := make(map[string]bool)
+		for _, changedPath := range changedPaths {
+			active := true
+			for _, command := range commands {
+				if !command.command.Matches(changedPath) {
+					continue
+				}
+				if command.command.Type == "add_inclusions" {
+					if command.rules[rule.Path] {
+						active = true
+					}
+				} else if command.rules[rule.Path] {
+					active = false
+				}
+			}
+			if active && rule.matchesPath(changedPath) {
+				directPaths[changedPath] = true
+			}
+		}
+		if len(directPaths) > 0 {
+			rule.directPaths = directPaths
+			configured = append(configured, rule)
+		}
+	}
+	return configured, nil
 }
 
 func semanticRuleSelector(value string) string {
@@ -289,4 +345,11 @@ func (rule Rule) matchesPath(path string) bool {
 		}
 	}
 	return false
+}
+
+func (rule Rule) matchesDirectPath(path string) bool {
+	if !rule.matchesPath(path) {
+		return false
+	}
+	return rule.directPaths == nil || rule.directPaths[path]
 }

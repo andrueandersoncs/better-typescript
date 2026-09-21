@@ -17,6 +17,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	appconfig "github.com/andrueandersoncs/better-typescript/internal/config"
 )
 
 type routingEvaluator struct {
@@ -120,6 +122,41 @@ func (evaluator *noneEvaluator) Evaluate(_ context.Context, request evaluationRe
 		answers[id] = answer{Type: "noul", Noul: 0}
 	}
 	return evaluationResponse{Model: "test-model", Answers: answers}, nil
+}
+
+func TestConfigureSemanticRulesAddsInclusionsToActiveRules(t *testing.T) {
+	var rules []Rule
+	for _, name := range []string{"a", "b"} {
+		rule, err := parseRule("rules/"+name+".md", fmt.Sprintf("---\nglobs:\n  - \"**/*.ts\"\n---\n# %s\n\nPolicy %s.\n", name, name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		rules = append(rules, rule)
+	}
+	configuration, err := appconfig.Parse([]byte(`{"commands":[
+		{"mode":"semantic","type":"add_exclusions","files":"src/**","rules":["a"]},
+		{"mode":"semantic","type":"add_inclusions","files":"src/main.ts","rules":["a"]}
+	]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	configured, err := configureSemanticRules(rules, configuration, []string{"src/main.ts", "src/other.ts"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	byPath := make(map[string]Rule, len(configured))
+	for _, rule := range configured {
+		byPath[rule.Path] = rule
+	}
+	if !byPath["rules/a.md"].matchesDirectPath("src/main.ts") ||
+		byPath["rules/a.md"].matchesDirectPath("src/other.ts") {
+		t.Fatalf("rule a direct paths = %#v", byPath["rules/a.md"].directPaths)
+	}
+	if !byPath["rules/b.md"].matchesDirectPath("src/main.ts") ||
+		!byPath["rules/b.md"].matchesDirectPath("src/other.ts") {
+		t.Fatalf("rule b direct paths = %#v", byPath["rules/b.md"].directPaths)
+	}
 }
 
 func TestRunDryRunPlansChangedFilesWithoutTypeSafe(t *testing.T) {
@@ -293,6 +330,182 @@ func TestRunAllSelectsEveryEligibleCurrentFile(t *testing.T) {
 	}
 }
 
+func TestRunAppliesSemanticCommandsWithoutRemovingEvidence(t *testing.T) {
+	root := newSemanticTestRepository(t)
+	if err := os.WriteFile(
+		filepath.Join(root, "better-typescript.json"),
+		[]byte(`{"commands":[{"mode":"semantic","type":"add_exclusions","files":"src/main.ts","rules":["no-debugger"]}]}`),
+		0o600,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	snapshot, err := gitSnapshot(context.Background(), root, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	configuration, err := loadConfiguration(context.Background(), root, snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	snapshot, err = selectCurrentFiles(root, snapshot, nil, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	evidence, err := buildRepositoryEvidence(context.Background(), root, snapshot, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	foundEvidence := false
+	for _, source := range evidence.Files {
+		foundEvidence = foundEvidence || source.Path == "src/main.ts"
+	}
+	if !foundEvidence {
+		t.Fatal("file without active semantic rules was removed from repository evidence")
+	}
+	rules, err := loadRules(root, ".better-typescript/rules")
+	if err != nil {
+		t.Fatal(err)
+	}
+	configured, err := configureSemanticRules(rules, configuration, evidence.ChangedPaths)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(configured) == 0 {
+		t.Fatal("semantic commands removed rules from unrelated files")
+	}
+	foundNoDebugger := false
+	for _, rule := range configured {
+		if strings.HasSuffix(rule.Path, "/no-debugger.md") {
+			foundNoDebugger = true
+			if rule.matchesDirectPath("src/main.ts") {
+				t.Fatal("no-debugger remained active for src/main.ts")
+			}
+		}
+	}
+	if !foundNoDebugger {
+		t.Fatal("no-debugger was removed from unrelated files")
+	}
+
+	var output bytes.Buffer
+	exitCode, err := Run(context.Background(), root, []string{"--all", "--dry-run"}, &output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0", exitCode)
+	}
+}
+
+func TestRunSelectsSemanticRulesPerFileFromConfiguration(t *testing.T) {
+	root := newSemanticTestRepository(t)
+	if err := os.WriteFile(
+		filepath.Join(root, "better-typescript.json"),
+		[]byte(`{"commands":[
+			{"mode":"semantic","type":"add_exclusions","files":"src/**","rules":["no-debugger"]},
+			{"mode":"semantic","type":"add_inclusions","files":"src/main.ts","rules":["no-debugger"]}
+		]}`),
+		0o600,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	var output bytes.Buffer
+	exitCode, err := Run(context.Background(), root, []string{
+		"--files", "src/main.ts,src/compositionality.ts",
+		"--dry-run",
+	}, &output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if exitCode != 0 {
+		t.Fatalf("exit code = %d, want 0", exitCode)
+	}
+	var documents []struct {
+		Kind  string `json:"kind"`
+		Rules []struct {
+			Path  string `json:"rulePath"`
+			Route struct {
+				Nodes []struct {
+					Candidates []struct {
+						Description string `json:"description"`
+					} `json:"candidates"`
+				} `json:"nodes"`
+			} `json:"route"`
+		} `json:"rules"`
+		DiffFiles []struct {
+			Path string `json:"path"`
+		} `json:"diffFiles"`
+	}
+	if err := json.Unmarshal(output.Bytes(), &documents); err != nil {
+		t.Fatal(err)
+	}
+	planIndex := -1
+	for index, document := range documents {
+		if document.Kind == "dry-run-plan" {
+			planIndex = index
+			break
+		}
+	}
+	if planIndex < 0 {
+		t.Fatalf("dry-run plan missing from %#v", documents)
+	}
+	plan := documents[planIndex]
+	noDebuggerIndex := -1
+	for index, rule := range plan.Rules {
+		if strings.HasSuffix(rule.Path, "/no-debugger.md") {
+			noDebuggerIndex = index
+			break
+		}
+	}
+	if noDebuggerIndex < 0 {
+		t.Fatalf("configured rules omit no-debugger: %#v", plan.Rules)
+	}
+	var routeDescriptions string
+	for _, node := range plan.Rules[noDebuggerIndex].Route.Nodes {
+		for _, candidate := range node.Candidates {
+			routeDescriptions += candidate.Description
+		}
+	}
+	if !strings.Contains(routeDescriptions, "src/main.ts") || strings.Contains(routeDescriptions, "src/compositionality.ts") {
+		t.Fatalf("route candidates = %q", routeDescriptions)
+	}
+	var diffPaths []string
+	for _, file := range plan.DiffFiles {
+		diffPaths = append(diffPaths, file.Path)
+	}
+	if !slices.Equal(diffPaths, []string{"src/compositionality.ts", "src/main.ts"}) {
+		t.Fatalf("selected files = %#v", diffPaths)
+	}
+}
+
+func TestRunValidatesSemanticCommandsUnlessRulesAreExplicit(t *testing.T) {
+	root := newSemanticTestRepository(t)
+	if err := os.WriteFile(
+		filepath.Join(root, "better-typescript.json"),
+		[]byte(`{"commands":[{"mode":"semantic","type":"add_inclusions","files":"src/**","rules":["missing"]}]}`),
+		0o600,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	var output bytes.Buffer
+	_, err := Run(context.Background(), root, []string{"--files", "src/main.ts", "--dry-run"}, &output)
+	if err == nil || !strings.Contains(err.Error(), "unknown semantic rule: missing") {
+		t.Fatalf("error = %v, want unknown semantic rule", err)
+	}
+
+	output.Reset()
+	exitCode, err := Run(context.Background(), root, []string{
+		"--files", "src/main.ts",
+		"--rules", "no-debugger",
+		"--dry-run",
+	}, &output)
+	if err != nil || exitCode != 0 {
+		t.Fatalf("explicit rules = exit %d, error %v", exitCode, err)
+	}
+}
+
 func TestParseOptionsSupportsRepeatedAndCommaSeparatedSelections(t *testing.T) {
 	options, _, err := parseOptions([]string{
 		"--files", "src/*.ts,test/*.ts",
@@ -460,6 +673,33 @@ func TestRunCommitRangeUsesCommittedEndpoint(t *testing.T) {
 	}
 	if exitCode != 0 || !strings.Contains(output.String(), `"path":"src/main.ts"`) {
 		t.Fatalf("range dry run = exit %d, output %s", exitCode, output.String())
+	}
+}
+
+func TestRunCommitRangeUsesEndpointConfiguration(t *testing.T) {
+	root := newSemanticTestRepository(t)
+	configPath := filepath.Join(root, "better-typescript.json")
+	if err := os.WriteFile(configPath, []byte(`{"commands":[{"mode":"semantic","type":"add_exclusions","files":"src/main.ts","rules":["no-debugger"]}]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, root, "add", ".")
+	runGit(t, root, "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "--quiet", "-m", "configure")
+	if err := os.WriteFile(filepath.Join(root, "src", "main.ts"), []byte("export const changed = 1;\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, root, "add", ".")
+	runGit(t, root, "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "--quiet", "-m", "change semantic-excluded file")
+	if err := os.WriteFile(configPath, []byte(`{"commands":[]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	var output bytes.Buffer
+	exitCode, err := Run(context.Background(), root, []string{"--range", "HEAD~1..HEAD", "--dry-run"}, &output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if exitCode != 0 || strings.Contains(output.String(), "/no-debugger.md") || !strings.Contains(output.String(), `"path":"src/main.ts"`) {
+		t.Fatalf("range result = exit %d, output %q", exitCode, output.String())
 	}
 }
 
