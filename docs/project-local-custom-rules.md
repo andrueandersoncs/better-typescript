@@ -47,18 +47,20 @@ This section records source facts. Recommendations start under **Design synthesi
   [internal-directory rule](https://pkg.go.dev/cmd/go#hdr-Internal_Directories). The compiler adapters
   themselves are public and pinned to `github.com/andrueandersoncs/typescript-go v0.1.0`
   ([module pin](../go.mod#L1-L5), [compiler foundation](compiler-foundation.md#L5-L24)).
-- `better-typescript.json` currently permits only ordered file/rule commands and rejects unknown
-  fields ([decoder](../cmd/better-typescript/config.go#L45-L76)). Rule names are resolved against
-  the built-in catalog before analysis. `--rules` also selects from that catalog and skips config
-  commands. Discovery must therefore happen before name validation, or custom rules must already
-  be linked into the runner.
+- `better-typescript.json` permits ordered file/rule commands and rejects unknown fields
+  ([decoder](../internal/config/config.go)). Deterministic and semantic rule names are resolved
+  against their own catalogs before analysis
+  ([deterministic resolver](../cmd/better-typescript/config.go),
+  [semantic resolver](../internal/semanticlint/rules.go)). `--rules` skips configured commands for
+  the invoked mode. Discovery must therefore happen before name validation, or custom rules must
+  already be linked into the runner.
 - A diagnostic currently carries a source range and message inside the linter, but public output
   keeps only the range start, combines description and help, hard-codes `error`, and writes the
   stable six-field NDJSON record
   ([diagnostic types](../internal/rule/rule.go#L40-L50),
   [normalization](../internal/analysis/analysis.go#L135-L164)). There is no production edit,
   suggestion, or `--fix` API. Locations are one-based UTF-16 in output
-  ([public contract](../README.md#L89-L97)).
+  ([public contract](configuration.md#output)).
 - The npm package launches a static platform binary. It does not host a JavaScript rule runtime
   ([distribution design](npm-distribution.md#L17-L19),
   [launcher](../npm/better-typescript/bin/better-typescript.js)).
@@ -220,9 +222,10 @@ Use plugin-qualified IDs: `project/no-console-log`. Reserve unqualified names fo
 empty namespaces, duplicate fully qualified IDs, and attempts to use a reserved namespace. Sort the
 merged registry before selection.
 
-Keep `better-typescript.json` focused on selection. Existing `add_inclusions`, `add_exclusions`, `--files`, and
-`--rules` can work after validation uses the merged registry rather than `BuiltinRules`. Static
-linking avoids the current `--rules`/config discovery cycle because custom rules exist before either
+Keep `better-typescript.json` focused on selection. Existing `add_inclusions`, `add_exclusions`,
+`"rules": "*"`, `--files`, and `--rules` can work after deterministic validation uses the merged
+registry rather than `BuiltinRules`. Semantic mode keeps its separate policy catalog. Static linking
+avoids the current `--rules`/config discovery cycle because custom rules exist before either
 selection path runs.
 
 Do not add implicit directory scanning in the MVP. The import list in the project command is the

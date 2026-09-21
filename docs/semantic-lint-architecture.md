@@ -41,6 +41,8 @@ Git snapshot ──► RepositoryEvidence ──► load and select policies
 
 `command.go: Run` owns this orchestration. It is the best entry point.
 
+`Run` reads `better-typescript.json` from the analyzed snapshot. `configureSemanticRules` applies ordered semantic-mode commands to each policy's direct file candidates. Excluded files remain in `RepositoryEvidence`, so they can still support another file's review. An explicit `--rules` selection skips these commands.
+
 ## Semantic lane
 
 Each applicable policy runs independently. The implementation preserves declaration order when it assembles findings and traces.

@@ -66,6 +66,8 @@ npx better-typescript --rules no-throw,no-error-type
 
 Repeat the flag or separate its values with commas.
 
+Use [`better-typescript.json`](./configuration.md) for ordered per-file inclusions and exclusions in deterministic or semantic mode.
+
 ## Build from source
 
 A source checkout is a normal Go module:
