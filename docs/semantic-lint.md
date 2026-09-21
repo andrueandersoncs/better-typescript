@@ -4,6 +4,8 @@
 
 It keeps deterministic work in Go and uses TypeSafe only for semantic judgments. The binary embeds the default policy catalog. Add project policies under `.better-typescript/rules/`.
 
+See [Semantic lint architecture](./semantic-lint-architecture.md) for the code flow, data transformations, and file map.
+
 ## Run
 
 ```sh

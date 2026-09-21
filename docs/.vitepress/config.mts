@@ -25,6 +25,7 @@ export default defineConfig({
       { text: "Getting Started", link: "/getting-started" },
       { text: "Configuration", link: "/configuration" },
       { text: "Semantic Lint", link: "/semantic-lint" },
+      { text: "Semantic Architecture", link: "/semantic-lint-architecture" },
       { text: "Rules", link: "/rules" },
       { text: "Principles", link: "/engineering-principles" },
       { text: "Project", link: "/project" },
