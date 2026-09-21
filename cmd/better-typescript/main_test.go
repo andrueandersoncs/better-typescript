@@ -104,8 +104,9 @@ func TestCLISemanticHelpExitsZero(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.HasPrefix(output, []byte("Usage: better-typescript semantic [options]\n")) || !bytes.Contains(output, []byte("--range <from>..<to>")) {
-		t.Fatalf("stdout = %q, want semantic usage with commit range", output)
+	if !bytes.HasPrefix(output, []byte("Usage: better-typescript semantic [options]\n")) ||
+		!bytes.Contains(output, []byte("--review-context <path>  Text file with requirements, rationale, or measurements needed by review rules")) {
+		t.Fatalf("stdout = %q, want semantic usage explaining review context", output)
 	}
 }
 

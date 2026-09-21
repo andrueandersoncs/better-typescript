@@ -16,7 +16,7 @@ const usage = `Usage: better-typescript semantic [options]
 Options:
   --threshold <number>     Violation probability threshold (default: 0.7)
   --model <name>           TypeSafe model override (default: SDK default)
-  --review-context <path>  Requirements, rationale, and measurements
+  --review-context <path>  Text file with requirements, rationale, or measurements needed by review rules
   --rules-dir <path>       Additional Markdown rules (default: .better-typescript/rules)
   --range <from>..<to>     Analyze a committed Git range instead of the working tree
   --files <glob>           Analyze selected current files; repeat or comma-separate

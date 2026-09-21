@@ -31,7 +31,7 @@ Live semantic lint sends selected source and policy text to TypeSafe. Do not run
 ```text
 --threshold <number>     Violation probability threshold (default: 0.7)
 --model <name>           TypeSafe model override (default: SDK default)
---review-context <path>  Requirements, rationale, and measurements
+--review-context <path>  Text file with requirements, rationale, or measurements needed by review rules
 --rules-dir <path>       Additional Markdown rules
 --range <from>..<to>     Analyze a committed Git range
 --files <glob>           Analyze selected current files; repeat or comma-separate
