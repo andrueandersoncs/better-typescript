@@ -37,3 +37,5 @@ Avoid complexity at all costs, except where it conflicts with the Golden Rule.
 Maintain simplicity at all costs, except where it conflicts with the Golden Rule.
 
 Follow the campsite rule with every change you make: leave the codebase cleaner than you found it.
+
+Always include a "what to do next" section when you're summarizing/presenting your work.
