@@ -38,7 +38,7 @@ npx better-typescript --files 'src/**/*.ts'
 npx better-typescript --rules no-throw,no-error-type
 ```
 
-Repeat either flag or separate its values with commas. All rules are on by default. A root `better-typescript.json` contains ordered commands: matching `add_exclusions` commands turn named rules off, and matching `add_inclusions` commands turn them back on. `"rules": "*"` addresses every rule in that mode and must appear alone. Commands default to deterministic rules; `"mode": "semantic"` applies the same per-file selection without removing supporting evidence. An explicit `--rules` skips configured commands for the invoked mode.
+Repeat either flag or separate its values with commas. All rules are on by default. A root `better-typescript.json` contains ordered commands: matching `add_exclusions` commands turn named rules off, and matching `add_inclusions` commands turn them back on. `"rules": "*"` addresses every rule in that mode and must appear alone. Commands default to deterministic rules; `"mode": "semantic"` applies the same per-file selection. An explicit `--rules` skips configured commands for the invoked mode.
 
 Status and operational errors go to stderr. Each stdout line is one NDJSON violation with `ruleName`, `level`, `message`, `filePath`, `line`, and `column`. Exit code `1` means an error-level violation or operational failure occurred. Exit code `0` and empty stdout mean the run is clean.
 
@@ -51,7 +51,7 @@ export TYPESAFE_API_KEY="..."
 npx better-typescript semantic
 ```
 
-Run `npx better-typescript semantic --range 'origin/main...HEAD'` for a committed pull-request range, `--files 'src/**/*.ts'` for selected complete files, or `--all` for every eligible current file. Add `--rules function-naming,readonly` to select policies. `--range`, `--files`, and `--all` are mutually exclusive. Range mode uses `better-typescript.json` from the end commit. The TypeSafe SDK chooses the default model unless `--model` overrides it. Use `--dry-run` to inspect complete route declarations and structural cost bounds without an API call. Use `--trace --json` for canonical execution events. `--speculative-routing` opts into bounded concurrent route evaluation while preserving selected results. Use `--deterministic` to enforce exact repository checks without TypeSafe; it cannot be combined with `--dry-run`. Treat `review`, `violation`, and `insufficient_evidence` as actionable. Project policies live under `.better-typescript/rules/`; requirements or rationale can be passed with `--review-context`.
+Run `npx better-typescript semantic --range 'origin/main...HEAD'` for complete changed files from a committed range endpoint, `--files 'src/**/*.ts'` for selected current files, or `--all` for every eligible current file. Add `--rules function-naming,readonly` to select policies. `--range`, `--files`, and `--all` are mutually exclusive. Range mode uses file contents and `better-typescript.json` from the end commit. Each applicable policy becomes one independent TypeSafe Noul question over the complete file. The policy file is inserted verbatim into the question. The TypeSafe provider chooses the default model unless `--model` overrides it. Use `--dry-run` to inspect files, policies, request partitions, and encoded bytes without an API call.
 
 ## Handle results
 

@@ -43,7 +43,7 @@ export TYPESAFE_API_KEY="..."
 npx better-typescript semantic
 ```
 
-Use `--files 'src/**/*.ts'` for complete current files, `--all` for every eligible current file, or `--range 'origin/main...HEAD'` for a committed pull-request range. Add `--rules function-naming,readonly` to select semantic policies. Use `--dry-run` to inspect the bounded routing plan without an API call. See [Semantic lint](./semantic-lint.md).
+Use `--files 'src/**/*.ts'` for complete current files, `--all` for every eligible current file, or `--range 'origin/main...HEAD'` for complete changed files from a committed range endpoint. Add `--rules function-naming,readonly` to select semantic policies. Use `--dry-run` to inspect files, policies, request partitions, and encoded bytes without an API call. See [Semantic lint](./semantic-lint.md).
 
 ### Select files
 

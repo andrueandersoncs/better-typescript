@@ -106,8 +106,9 @@ func TestCLISemanticHelpExitsZero(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !bytes.HasPrefix(output, []byte("Usage: better-typescript semantic [options]\n")) ||
-		!bytes.Contains(output, []byte("--review-context <path>  Text file with requirements, rationale, or measurements needed by review rules")) {
-		t.Fatalf("stdout = %q, want semantic usage explaining review context", output)
+		!bytes.Contains(output, []byte("--dry-run                Inspect files, rules, request partitions, and bytes without API calls")) ||
+		bytes.Contains(output, []byte("--review-context")) {
+		t.Fatalf("stdout = %q, want simplified whole-file semantic usage", output)
 	}
 }
 

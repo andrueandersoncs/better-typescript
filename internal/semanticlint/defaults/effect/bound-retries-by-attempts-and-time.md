@@ -6,4 +6,4 @@ globs:
 
 Every retrying operation must have a finite attempt limit and a finite total elapsed-time budget that includes inherited SDK retries, per-attempt timeouts, backoff, and server-provided delays. Retry only failures classified as transient.
 
-A retried state-changing operation must be idempotent or otherwise safe to repeat. Report only when the changed path can exceed either budget, retries non-transient failures, or repeats a write without demonstrated safety.
+A retried state-changing operation must be idempotent or otherwise safe to repeat. Report only when this file shows a retry path that can exceed either budget, retries non-transient failures, or repeats a write without demonstrated safety.

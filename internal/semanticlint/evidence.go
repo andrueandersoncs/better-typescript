@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -17,11 +16,9 @@ import (
 )
 
 type repositorySnapshot struct {
-	changedPaths      []string
-	repositoryPaths   []string
-	diff              string
-	revision          string
-	fullFileSelection bool
+	changedPaths    []string
+	repositoryPaths []string
+	revision        string
 }
 
 func loadConfiguration(ctx context.Context, root string, snapshot repositorySnapshot) (appconfig.File, error) {
@@ -55,22 +52,10 @@ func gitSnapshot(ctx context.Context, root, commitRange string) (repositorySnaps
 	if err != nil {
 		return repositorySnapshot{}, fmt.Errorf("could not read repository files: %w", err)
 	}
-	deleted, err := gitOutput(ctx, root, "ls-files", "--deleted", "-z")
-	if err != nil {
-		return repositorySnapshot{}, fmt.Errorf("could not read deleted repository files: %w", err)
-	}
-	diff, err := gitOutput(ctx, root, "diff", "--no-ext-diff", "--unified=3", "HEAD", "--")
-	if err != nil {
-		return repositorySnapshot{}, fmt.Errorf("could not read working-tree diff: %w", err)
-	}
-	changedPaths := uniquePaths(append(nullSeparatedPaths(tracked), nullSeparatedPaths(untracked)...))
-	deletedSet := make(map[string]bool)
-	for _, path := range nullSeparatedPaths(deleted) {
-		deletedSet[path] = true
-	}
-	repositoryPaths := uniquePaths(nullSeparatedPaths(repository))
-	repositoryPaths = deleteMatching(repositoryPaths, deletedSet)
-	return repositorySnapshot{changedPaths: changedPaths, repositoryPaths: repositoryPaths, diff: string(diff)}, nil
+	return repositorySnapshot{
+		changedPaths:    uniquePaths(append(nullSeparatedPaths(tracked), nullSeparatedPaths(untracked)...)),
+		repositoryPaths: uniquePaths(nullSeparatedPaths(repository)),
+	}, nil
 }
 
 func selectCurrentFiles(root string, snapshot repositorySnapshot, filePatterns []string, all bool) (repositorySnapshot, error) {
@@ -107,8 +92,6 @@ func selectCurrentFiles(root string, snapshot repositorySnapshot, filePatterns [
 		return repositorySnapshot{}, fmt.Errorf("--files matched no eligible repository files")
 	}
 	snapshot.changedPaths = selected
-	snapshot.diff = ""
-	snapshot.fullFileSelection = true
 	return snapshot, nil
 }
 
@@ -143,14 +126,9 @@ func gitRangeSnapshot(ctx context.Context, root, value string) (repositorySnapsh
 	if err != nil {
 		return repositorySnapshot{}, fmt.Errorf("could not read range repository files: %w", err)
 	}
-	diff, err := gitOutput(ctx, root, "diff", "--no-ext-diff", "--unified=3", normalizedRange, "--")
-	if err != nil {
-		return repositorySnapshot{}, fmt.Errorf("could not read range diff: %w", err)
-	}
 	return repositorySnapshot{
 		changedPaths:    uniquePaths(nullSeparatedPaths(changed)),
 		repositoryPaths: uniquePaths(nullSeparatedPaths(repository)),
-		diff:            string(diff),
 		revision:        rightCommit,
 	}, nil
 }
@@ -214,58 +192,18 @@ func uniquePaths(paths []string) []string {
 	return result
 }
 
-func deleteMatching(paths []string, deleted map[string]bool) []string {
-	result := paths[:0]
-	for _, path := range paths {
-		if !deleted[path] {
-			result = append(result, path)
-		}
-	}
-	return result
-}
-
-func buildRepositoryEvidence(ctx context.Context, root string, snapshot repositorySnapshot, reviewContextPath string) (RepositoryEvidence, error) {
-	paths := make([]string, 0, len(snapshot.repositoryPaths))
+func loadSelectedSources(ctx context.Context, root string, snapshot repositorySnapshot) ([]Source, error) {
+	present := make(map[string]bool, len(snapshot.repositoryPaths))
 	for _, path := range snapshot.repositoryPaths {
-		if repositoryExtensions[filepath.Ext(path)] {
+		present[path] = true
+	}
+	paths := make([]string, 0, len(snapshot.changedPaths))
+	for _, path := range snapshot.changedPaths {
+		if present[path] && repositoryExtensions[filepath.Ext(path)] {
 			paths = append(paths, path)
 		}
 	}
-	files, err := readSources(ctx, root, snapshot.revision, paths)
-	if err != nil {
-		return RepositoryEvidence{}, err
-	}
-	repositorySet := make(map[string]bool, len(snapshot.repositoryPaths))
-	for _, path := range snapshot.repositoryPaths {
-		repositorySet[path] = true
-	}
-	var deleted []string
-	for _, path := range snapshot.changedPaths {
-		if !repositorySet[path] {
-			deleted = append(deleted, path)
-		}
-	}
-	evidence := RepositoryEvidence{
-		Paths: snapshot.repositoryPaths, ChangedPaths: snapshot.changedPaths,
-		DeletedPaths: deleted, Files: files,
-	}
-	if snapshot.fullFileSelection {
-		evidence.DiffFiles = fullFileDiffFiles(snapshot.changedPaths, files)
-	} else {
-		evidence.DiffFiles = diffFilesFromEvidence(snapshot.diff, snapshot.changedPaths, deleted, files)
-	}
-	if reviewContextPath != "" {
-		path := reviewContextPath
-		if !filepath.IsAbs(path) {
-			path = filepath.Join(root, path)
-		}
-		content, err := os.ReadFile(path)
-		if err != nil {
-			return RepositoryEvidence{}, fmt.Errorf("read review context: %w", err)
-		}
-		evidence.ReviewContext = &Source{Path: filepath.ToSlash(reviewContextPath), Language: "text", Text: string(content)}
-	}
-	return evidence, nil
+	return readSources(ctx, root, snapshot.revision, paths)
 }
 
 func readSources(ctx context.Context, root, revision string, paths []string) ([]Source, error) {
@@ -289,11 +227,7 @@ func readSources(ctx context.Context, root, revision string, paths []string) ([]
 					mu.Unlock()
 					continue
 				}
-				extension := strings.TrimPrefix(filepath.Ext(paths[index]), ".")
-				if extension == "" {
-					extension = "unknown"
-				}
-				result[index] = Source{Path: paths[index], Language: extension, Text: string(content)}
+				result[index] = Source{Path: paths[index], Text: string(content)}
 			}
 		}()
 	}
@@ -313,207 +247,4 @@ func readSource(ctx context.Context, root, revision, path string) ([]byte, error
 		return os.ReadFile(filepath.Join(root, filepath.FromSlash(path)))
 	}
 	return gitOutput(ctx, root, "show", revision+":"+path)
-}
-
-func sourceCandidates(source Source) []SourceCandidate {
-	lines := strings.Split(source.Text, "\n")
-	step := sourceChunkLineCount - sourceChunkOverlapLineCount
-	count := (max(0, len(lines)-sourceChunkLineCount)+step-1)/step + 1
-	result := make([]SourceCandidate, 0, count)
-	for index := range count {
-		start := index * step
-		end := min(len(lines), start+sourceChunkLineCount)
-		result = append(result, SourceCandidate{Path: source.Path, Language: source.Language, StartLine: start + 1, EndLine: end, Text: strings.Join(lines[start:end], "\n")})
-	}
-	return result
-}
-func fullFileDiffFiles(paths []string, files []Source) []DiffFile {
-	sourceByPath := make(map[string]Source, len(files))
-	for _, source := range files {
-		sourceByPath[source.Path] = source
-	}
-	result := make([]DiffFile, 0, len(paths))
-	for _, path := range paths {
-		source, ok := sourceByPath[path]
-		if !ok {
-			continue
-		}
-		id := fmt.Sprintf("file_%d", len(result)+1)
-		file := DiffFile{ID: id, Path: path, Status: "selected"}
-		for _, candidate := range sourceCandidates(source) {
-			file.Hunks = append(file.Hunks, DiffHunk{
-				ID:           fmt.Sprintf("%s_hunk_%d", id, len(file.Hunks)+1),
-				Path:         path,
-				NewStartLine: candidate.StartLine,
-				NewLineCount: candidate.EndLine - candidate.StartLine + 1,
-				Header:       "Selected file",
-				Patch:        candidate.Text,
-			})
-		}
-		result = append(result, file)
-	}
-	return result
-}
-
-func diffFilesFromEvidence(diff string, changedPaths, deletedPaths []string, files []Source) []DiffFile {
-	changed := make(map[string]bool, len(changedPaths))
-	for _, path := range changedPaths {
-		changed[path] = true
-	}
-	var parsed []DiffFile
-	for _, file := range parseDiffFiles(diff) {
-		if changed[file.Path] {
-			parsed = append(parsed, file)
-		}
-	}
-	parsedCount := len(parsed)
-	parsedPaths := make(map[string]bool)
-	for _, file := range parsed {
-		parsedPaths[file.Path] = true
-	}
-	sourceByPath := make(map[string]Source)
-	for _, source := range files {
-		sourceByPath[source.Path] = source
-	}
-	deleted := make(map[string]bool)
-	for _, path := range deletedPaths {
-		deleted[path] = true
-	}
-	var additions []DiffFile
-	for changedIndex, path := range changedPaths {
-		if parsedPaths[path] {
-			continue
-		}
-		id := fmt.Sprintf("file_%d", parsedCount+changedIndex+1)
-		source, ok := sourceByPath[path]
-		if !ok {
-			additions = append(additions, DiffFile{ID: id, Path: path, Status: "deleted", Hunks: []DiffHunk{}})
-			continue
-		}
-		status := "untracked"
-		if deleted[path] {
-			status = "deleted"
-		}
-		var hunks []DiffHunk
-		for index, candidate := range sourceCandidates(source) {
-			hunks = append(hunks, DiffHunk{ID: fmt.Sprintf("%s_hunk_%d", id, index+1), Path: path, NewStartLine: candidate.StartLine, NewLineCount: candidate.EndLine - candidate.StartLine + 1, Header: "Untracked file", Patch: candidate.Text})
-		}
-		additions = append(additions, DiffFile{ID: id, Path: path, Status: status, Hunks: hunks})
-	}
-	return append(parsed, additions...)
-}
-
-func parseDiffFiles(diff string) []DiffFile {
-	var result []DiffFile
-	sections := strings.Split(diff, "diff --git ")
-	for sectionIndex, section := range sections[1:] {
-		lines := strings.Split(section, "\n")
-		oldPath, newPath := "", ""
-		for _, line := range lines {
-			if strings.HasPrefix(line, "--- ") {
-				oldPath = parseDiffPath(strings.TrimPrefix(line, "--- "))
-			}
-			if strings.HasPrefix(line, "+++ ") {
-				newPath = parseDiffPath(strings.TrimPrefix(line, "+++ "))
-			}
-		}
-		path := newPath
-		if path == "" {
-			path = oldPath
-		}
-		if path == "" {
-			continue
-		}
-		id := fmt.Sprintf("file_%d", sectionIndex+1)
-		status := "modified"
-		switch {
-		case oldPath == "":
-			status = "added"
-		case newPath == "":
-			status = "deleted"
-		case oldPath != newPath:
-			status = "renamed"
-		}
-		file := DiffFile{ID: id, Path: path, Status: status}
-		if oldPath != "" && oldPath != path {
-			file.PreviousPath = oldPath
-		}
-		file.Hunks = parseHunks(id, path, lines)
-		result = append(result, file)
-	}
-	return result
-}
-
-func parseDiffPath(value string) string {
-	value = strings.SplitN(value, "\t", 2)[0]
-	if value == "/dev/null" {
-		return ""
-	}
-	if unquoted, err := strconv.Unquote(value); err == nil {
-		value = unquoted
-	}
-	value = strings.TrimPrefix(strings.TrimPrefix(value, "a/"), "b/")
-	return filepath.ToSlash(value)
-}
-
-func parseHunks(fileID, path string, lines []string) []DiffHunk {
-	var result []DiffHunk
-	for index := 0; index < len(lines); {
-		if !strings.HasPrefix(lines[index], "@@ ") {
-			index++
-			continue
-		}
-		end := index + 1
-		for end < len(lines) && !strings.HasPrefix(lines[end], "@@ ") {
-			end++
-		}
-		if hunk, ok := parseHunkHeader(fileID, path, len(result)+1, lines[index:end]); ok {
-			result = append(result, hunk)
-		}
-		index = end
-	}
-	return result
-}
-
-func parseHunkHeader(fileID, path string, ordinal int, lines []string) (DiffHunk, bool) {
-	if len(lines) == 0 {
-		return DiffHunk{}, false
-	}
-	parts := strings.SplitN(strings.TrimPrefix(lines[0], "@@ -"), " @@", 2)
-	if len(parts) != 2 {
-		return DiffHunk{}, false
-	}
-	ranges := strings.Split(parts[0], " +")
-	if len(ranges) != 2 {
-		return DiffHunk{}, false
-	}
-	oldStart, oldCount, ok := parseLineRange(ranges[0])
-	if !ok {
-		return DiffHunk{}, false
-	}
-	newStart, newCount, ok := parseLineRange(ranges[1])
-	if !ok {
-		return DiffHunk{}, false
-	}
-	header := strings.TrimSpace(parts[1])
-	if header == "" {
-		header = lines[0]
-	}
-	return DiffHunk{ID: fmt.Sprintf("%s_hunk_%d", fileID, ordinal), Path: path, OldStartLine: oldStart, OldLineCount: oldCount, NewStartLine: newStart, NewLineCount: newCount, Header: header, Patch: strings.Join(lines, "\n")}, true
-}
-
-func parseLineRange(value string) (int, int, bool) {
-	parts := strings.SplitN(value, ",", 2)
-	start, err := strconv.Atoi(parts[0])
-	if err != nil {
-		return 0, 0, false
-	}
-	count := 1
-	if len(parts) == 2 {
-		count, err = strconv.Atoi(parts[1])
-		if err != nil {
-			return 0, 0, false
-		}
-	}
-	return start, count, true
 }

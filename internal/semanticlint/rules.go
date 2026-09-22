@@ -23,49 +23,13 @@ type ruleSource struct {
 	source string
 }
 
+type semanticRuleCommand struct {
+	command appconfig.Command
+	rules   map[string]bool
+	all     bool
+}
+
 var ruleFrontmatterPattern = regexp.MustCompile(`(?s)^---\r?\n(.*?)\r?\n---(?:\r?\n|$)`)
-
-var deterministicChecks = map[string]string{
-	"rules/bun-builds/choose-the-install-linker-deliberately.md":                 "bun-install-linker",
-	"rules/bun-builds/declare-dependencies-in-every-consuming-workspace.md":      "declared-workspace-dependencies",
-	"rules/bun-builds/use-one-pinned-bun-toolchain-and-root-lockfile.md":         "pinned-bun-toolchain",
-	"rules/testing-enforcement/enforce-important-rules-automatically.md":         "root-check-command",
-	"rules/testing-enforcement/choose-test-runners-and-type-check-explicitly.md": "test-and-typecheck-commands",
-	"rules/repository-boundaries/import-packages-through-public-exports.md":      "workspace-public-imports",
-	"rules/repository-boundaries/enforce-acyclic-dependency-direction.md":        "acyclic-dependencies",
-	"rules/modularity/keep-dependencies-acyclic.md":                              "acyclic-dependencies",
-	"rules/typescript-contracts/use-strict-runtime-specific-tsconfig-files.md":   "strict-runtime-tsconfig",
-}
-
-var reviewEvidence = map[string][]string{
-	"rules/simplicity/require-each-change-to-justify-its-complexity.md":       {"the requirement and acceptance criteria", "considered alternatives"},
-	"rules/simplicity/solve-the-problem-that-exists.md":                       {"the reported problem and required behavior"},
-	"rules/simplicity/optimize-demonstrated-bottlenecks-not-imagined-ones.md": {"before-and-after performance measurements"},
-	"rules/simplicity/make-dependencies-earn-their-complexity.md":             {"the dependency rationale and considered built-in alternatives"},
-	"rules/abstraction/require-a-net-reduction-in-complexity.md":              {"the before-and-after complexity rationale"},
-	"rules/abstraction/name-the-concrete-problem-an-abstraction-solves.md":    {"the abstraction's stated purpose"},
-	"rules/abstraction/define-the-contract-before-the-implementation.md":      {"the contract and implementation chronology"},
-	"rules/abstraction/generalize-from-demonstrated-needs.md":                 {"demonstrated use cases and their history"},
-	"rules/abstraction/keep-adoption-focused-and-reversible.md":               {"the rollout and rollback plan"},
-}
-
-var repositoryRulePrefixes = []string{
-	"rules/abstraction/", "rules/bun-builds/", "rules/file-code-organization/",
-	"rules/filenames/", "rules/modularity/", "rules/repository-boundaries/",
-	"rules/repository-maintenance/", "rules/testing-enforcement/",
-	"rules/typescript-contracts/", "rules/web-boundaries/",
-}
-
-var repositoryRules = map[string]bool{
-	"rules/avoid-repetition.md": true,
-	"rules/simplicity/follow-existing-conventions-unless-there-is-a-clear-reason-not-to.md": true,
-	"rules/simplicity/remove-what-no-longer-contributes.md":                                 true,
-}
-
-var changeRules = map[string]bool{
-	"rules/simplicity/preserve-necessary-safeguards.md":               true,
-	"rules/simplicity/let-abstractions-emerge-from-concrete-needs.md": true,
-}
 
 func loadRules(root, localDirectory string) ([]Rule, error) {
 	sources, err := embeddedRuleSources()
@@ -135,61 +99,48 @@ func selectSemanticRules(rules []Rule, names []string) ([]Rule, error) {
 	return result, nil
 }
 
-type semanticRuleCommand struct {
-	command appconfig.Command
-	rules   map[string]bool
-}
-
-func configureSemanticRules(rules []Rule, configuration appconfig.File, changedPaths []string) ([]Rule, error) {
+func compileSemanticCommands(rules []Rule, configuration appconfig.File) ([]semanticRuleCommand, error) {
 	var commands []semanticRuleCommand
 	for index, command := range configuration.Commands {
 		if command.Mode != appconfig.ModeSemantic {
 			continue
 		}
-		var selected []Rule
-		var err error
+		configured := semanticRuleCommand{command: command}
 		if len(command.Rules) == 1 && command.Rules[0] == "*" {
-			selected = rules
+			configured.all = true
 		} else if len(command.Rules) > 0 {
-			selected, err = selectSemanticRules(rules, command.Rules)
+			selected, err := selectSemanticRules(rules, command.Rules)
 			if err != nil {
 				return nil, fmt.Errorf("parse %s: commands[%d]: %w", appconfig.FileName, index, err)
 			}
+			configured.rules = make(map[string]bool, len(selected))
+			for _, rule := range selected {
+				configured.rules[rule.Path] = true
+			}
 		}
-		names := make(map[string]bool, len(selected))
-		for _, rule := range selected {
-			names[rule.Path] = true
-		}
-		commands = append(commands, semanticRuleCommand{command: command, rules: names})
+		commands = append(commands, configured)
 	}
+	return commands, nil
+}
 
-	var configured []Rule
+func rulesForPath(rules []Rule, commands []semanticRuleCommand, path string) []Rule {
+	result := make([]Rule, 0, len(rules))
 	for _, rule := range rules {
-		directPaths := make(map[string]bool)
-		for _, changedPath := range changedPaths {
-			active := true
-			for _, command := range commands {
-				if !command.command.Matches(changedPath) {
-					continue
-				}
-				if command.command.Type == "add_inclusions" {
-					if command.rules[rule.Path] {
-						active = true
-					}
-				} else if command.rules[rule.Path] {
-					active = false
-				}
-			}
-			if active && rule.matchesPath(changedPath) {
-				directPaths[changedPath] = true
-			}
+		if !rule.matchesPath(path) {
+			continue
 		}
-		if len(directPaths) > 0 {
-			rule.directPaths = directPaths
-			configured = append(configured, rule)
+		active := true
+		for _, command := range commands {
+			if !command.command.Matches(path) || (!command.all && !command.rules[rule.Path]) {
+				continue
+			}
+			active = command.command.Type == "add_inclusions"
+		}
+		if active {
+			result = append(result, rule)
 		}
 	}
-	return configured, nil
+	return result
 }
 
 func semanticRuleSelector(value string) string {
@@ -259,8 +210,7 @@ func localRuleSources(root, directory string) ([]ruleSource, error) {
 }
 
 func parseRule(path, source string) (Rule, error) {
-	source = strings.TrimSpace(source)
-	if source == "" {
+	if strings.TrimSpace(source) == "" {
 		return Rule{}, fmt.Errorf("rule file is empty: %s", path)
 	}
 	match := ruleFrontmatterPattern.FindStringSubmatchIndex(source)
@@ -271,8 +221,8 @@ func parseRule(path, source string) (Rule, error) {
 	if err != nil {
 		return Rule{}, fmt.Errorf("%w: %s", err, path)
 	}
-	definition := strings.TrimSpace(source[match[1]:])
-	if definition == "" {
+	definition := source[match[1]:]
+	if strings.TrimSpace(definition) == "" {
 		return Rule{}, fmt.Errorf("rule definition is empty: %s", path)
 	}
 	patterns := make([]fileglob.Pattern, 0, len(globs))
@@ -290,7 +240,7 @@ func parseRule(path, source string) (Rule, error) {
 			break
 		}
 	}
-	return Rule{Path: path, Title: title, Definition: definition, Globs: globs, Patterns: patterns, Metadata: metadataForRule(canonicalRulePath(path))}, nil
+	return Rule{Path: path, Title: title, Source: source, Globs: globs, Patterns: patterns}, nil
 }
 
 func parseGlobFrontmatter(frontmatter string) ([]string, error) {
@@ -319,27 +269,6 @@ func canonicalRulePath(path string) string {
 	return path
 }
 
-func metadataForRule(path string) RuleMetadata {
-	if check := deterministicChecks[path]; check != "" {
-		return RuleMetadata{Evaluator: "deterministic", Scope: "repository", DeterministicCheck: check, RequiredEvidence: []string{"repository paths and configuration"}}
-	}
-	if evidence := reviewEvidence[path]; len(evidence) > 0 {
-		return RuleMetadata{Evaluator: "review", Scope: "change", RequiredEvidence: evidence}
-	}
-	if changeRules[path] {
-		return RuleMetadata{Evaluator: "semantic", Scope: "change", RequiredEvidence: []string{"working-tree diff and changed sources"}}
-	}
-	if repositoryRules[path] {
-		return RuleMetadata{Evaluator: "semantic", Scope: "repository", RequiredEvidence: []string{"repository paths, source, configuration, and diff"}}
-	}
-	for _, prefix := range repositoryRulePrefixes {
-		if strings.HasPrefix(path, prefix) {
-			return RuleMetadata{Evaluator: "semantic", Scope: "repository", RequiredEvidence: []string{"repository paths, source, configuration, and diff"}}
-		}
-	}
-	return RuleMetadata{Evaluator: "semantic", Scope: "source", RequiredEvidence: []string{"changed source and repository context"}}
-}
-
 func (rule Rule) matchesPath(path string) bool {
 	for _, pattern := range rule.Patterns {
 		if pattern.Match(path) {
@@ -347,11 +276,4 @@ func (rule Rule) matchesPath(path string) bool {
 		}
 	}
 	return false
-}
-
-func (rule Rule) matchesDirectPath(path string) bool {
-	if !rule.matchesPath(path) {
-		return false
-	}
-	return rule.directPaths == nil || rule.directPaths[path]
 }

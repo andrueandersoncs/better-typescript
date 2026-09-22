@@ -40,9 +40,6 @@ func newTypeSafeClient() (*typeSafeClient, error) {
 }
 
 func (client *typeSafeClient) Evaluate(ctx context.Context, request evaluationRequest) (evaluationResponse, error) {
-	if request.Model == "" {
-		request.Model = defaultModel
-	}
 	body, err := marshalJSON(request)
 	if err != nil {
 		return evaluationResponse{}, fmt.Errorf("encode TypeSafe request: %w", err)
@@ -51,7 +48,6 @@ func (client *typeSafeClient) Evaluate(ctx context.Context, request evaluationRe
 	for attempt := 0; attempt <= maximumHTTPRetries; attempt++ {
 		response, retryAfter, retry, err := client.attempt(ctx, body)
 		if err == nil {
-			response.Partition = evaluationHash(request)
 			return response, nil
 		}
 		lastErr = err
@@ -130,22 +126,8 @@ func validateResponse(response evaluationResponse) error {
 		return fmt.Errorf("TypeSafe returned an invalid response")
 	}
 	for _, answer := range response.Answers {
-		switch answer.Type {
-		case "noul":
-			if !validProbability(answer.Noul) {
-				return fmt.Errorf("TypeSafe returned an invalid Noul answer")
-			}
-		case "choice":
-			if answer.Choice == "" || !validProbability(answer.Confidence) || len(answer.Probabilities) == 0 {
-				return fmt.Errorf("TypeSafe returned an invalid Choice answer")
-			}
-			for _, probability := range answer.Probabilities {
-				if !validProbability(probability) {
-					return fmt.Errorf("TypeSafe returned an invalid Choice probability")
-				}
-			}
-		default:
-			return fmt.Errorf("TypeSafe returned an unsupported answer type %q", answer.Type)
+		if answer.Type != "noul" || !validProbability(answer.Noul) {
+			return fmt.Errorf("TypeSafe returned an invalid Noul answer")
 		}
 	}
 	return nil

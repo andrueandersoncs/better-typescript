@@ -7,4 +7,4 @@ globs:
 
 Every asynchronous operation and assertion started by a test must be awaited, returned, joined, or registered with a lifecycle mechanism that propagates failure. Do not start detached work or use async callbacks through APIs such as `forEach` that ignore their result.
 
-Report only when changed test code can finish before relevant asynchronous work or assertions complete.
+Report only when test code in this file can finish before relevant asynchronous work or assertions complete.

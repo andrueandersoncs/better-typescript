@@ -1,10 +1,10 @@
 # Semantic lint
 
-`better-typescript semantic` checks natural-language engineering policies against a Git change, selected current files, or all eligible current files.
+`better-typescript semantic` asks whether complete files violate natural-language engineering policies.
 
-It keeps deterministic work in Go and uses TypeSafe only for semantic judgments. The binary embeds the default policy catalog. Add project policies under `.better-typescript/rules/`.
+The command embeds the default policy catalog. Add project policies under `.better-typescript/rules/`.
 
-See [Semantic lint architecture](./semantic-lint-architecture.md) for the code flow, data transformations, and file map.
+See [Semantic lint architecture](./semantic-lint-architecture.md) for the implementation flow.
 
 ## Run
 
@@ -13,70 +13,63 @@ export TYPESAFE_API_KEY="..."
 npx better-typescript semantic
 ```
 
-With no target option, the command reads tracked, staged, untracked, renamed, and deleted paths from the working tree. It then:
+With no target option, the command reads complete changed, staged, and untracked files from the working tree. Deleted files are skipped because they have no current contents.
 
-1. keeps policies whose frontmatter globs match a changed path;
-2. runs exact repository checks in Go;
-3. routes domains, paths, and diff hunks with TypeSafe Choice questions;
-4. expands imports, importers, tests, manifests, and configuration;
-5. filters evidence with independent Noul questions; and
-6. evaluates each applicable policy once against bounded evidence.
+For every selected file:
 
-No request receives the complete repository or raw diff. Requests are limited to 32,000 bytes. Evidence snippets are limited to 6,000 bytes. Independent questions with byte-identical state are packed into bounded requests. Selected-only interpretation does not cap physical concurrency. Opt-in speculative routing caps logical route evaluations at eight.
+1. select policies whose frontmatter globs match its path;
+2. send the complete file as the `file` state;
+3. create one independent Noul question per policy; and
+4. classify each returned probability directly.
 
-Path routing receives each file status, path, and up to four hunk headers. Patch text remains in the later hunk-routing stage.
+Every question uses this exact instruction:
 
-Live semantic lint sends selected source and policy text to TypeSafe. Do not run it on repositories whose data cannot be sent to that provider. The normal `better-typescript` command and semantic `--dry-run` make no TypeSafe request.
+```text
+Does the `file` violate the following rule?
+
+Rule:
+<verbatim rule file>
+```
+
+The rule file includes its frontmatter and original line endings. Requests never contain diffs, neighboring files, repository context, or partial source chunks.
+
+Questions that fit are sent together. If they exceed the 32,000-byte request limit, they are partitioned and every partition for that file runs concurrently. A complete file and one policy that cannot fit cause an error; the file is never truncated.
+
+Live semantic lint sends complete selected files and policy text to TypeSafe. Do not run it on repositories whose data cannot be sent to that provider. The normal command and semantic `--dry-run` make no TypeSafe request.
 
 ## Options
 
 ```text
 --threshold <number>     Violation probability threshold (default: 0.7)
---model <name>           TypeSafe model override (default: SDK default)
---review-context <path>  Text file with requirements, rationale, or measurements needed by review rules
+--model <name>           TypeSafe model override (default: provider default)
 --rules-dir <path>       Additional Markdown rules
---range <from>..<to>     Analyze a committed Git range
+--range <from>..<to>     Analyze complete files from a committed range endpoint
 --files <glob>           Analyze selected current files; repeat or comma-separate
 --all                    Analyze all eligible current files
---rules <name>           Run selected semantic rules; repeat or comma-separate
---deterministic           Run exact repository checks without TypeSafe
---json                    Print machine-readable results
---dry-run                 Inspect declared plans and costs without API calls
---trace                   Include a canonical execution trace in JSON results
---speculative-routing     Evaluate known route branches concurrently
+--rules <name>           Run selected policies; repeat or comma-separate
+--json                   Print machine-readable results
+--dry-run                Inspect files, policies, partitions, and bytes without API calls
 --help                    Show help
 ```
 
-`--dry-run` needs no API key. It prints each complete route tree, automatic selections, question declarations, request bytes, declaration hashes, and structural cost bounds. Relevance and final stages remain explicitly unresolved because their declarations require real routing and selected evidence. Versioned pricing is not configured, so token and monetary cost remain unknown.
-
-Every plan is validated before evaluation. Invalid stage names, identities, parent relationships, question types, ordering, limits, or request sizes stop before a TypeSafe call.
-
-Live JSON findings include question provenance: rule, stage, plan node, evidence id and hash, declaration hash, model, physical request, raw probability, threshold, and policy decision. Source snippets are not copied into provenance.
-
-`--trace` adds canonical plan, question, branch, evidence, final, and finding events to JSON output. Event order follows declaration order, not completion time. A trace records a run; it does not make remote model answers deterministic.
-
-`--speculative-routing` is opt-in. It starts known route branches concurrently, discards unselected answers, ignores errors from discarded branches, cancels work that can no longer be selected, and counts successful discarded work in usage. Relevance, selected evidence, and final judgment remain sequential.
-
-`--deterministic` reports and enforces only exact repository checks. It does not require an API key and cannot be combined with `--dry-run`.
+`--range`, `--files`, and `--all` are mutually exclusive.
 
 ## Current files
 
-Use `--files` to analyze complete current files, even when Git reports no changes. Paths are repository-relative globs. Existing directories select their eligible descendants.
+Use `--files` to analyze selected complete files:
 
 ```sh
 npx better-typescript semantic --files 'src/**/*.ts'
 npx better-typescript semantic --files src/auth.ts,src/session.ts
 ```
 
-Use `--all` to analyze every eligible current file:
+Use `--all` for every eligible current file:
 
 ```sh
 npx better-typescript semantic --all
 ```
 
-The selected files are candidates. Semantic-mode commands in `better-typescript.json` select policies for each file. Use an `add_exclusions` command with `"rules": "*"` to prevent direct review of matching files while retaining them as supporting context. `--range`, `--files`, and `--all` are mutually exclusive.
-
-Use `--rules` to limit evaluation:
+Use `--rules` to limit policies:
 
 ```sh
 npx better-typescript semantic --all --rules function-naming,readonly
@@ -84,23 +77,14 @@ npx better-typescript semantic --all --rules function-naming,readonly
 
 Rule names are Markdown basenames without `.md`. If a basename is ambiguous, use its catalog-relative path, such as `readability/abstract-shared-concepts-not-merely-similar-looking-code`.
 
-The embedded testing policies cover focused or excluded tests, asynchronous ownership, vacuous assertions, independent expectations, typed fixtures, snapshots, nondeterminism, Effect execution and failures, hermetic resources, browser locators and isolation, and property-test execution, laws, domains, sampling, and case isolation. Test configuration changes must not silently weaken repository policy.
-
 ## Committed ranges
-
-Use a two-dot range to compare two commits directly:
 
 ```sh
 npx better-typescript semantic --range 'release..HEAD'
-```
-
-Use a three-dot range for a pull request or feature branch:
-
-```sh
 npx better-typescript semantic --range 'origin/main...HEAD'
 ```
 
-Three-dot ranges start at Git's merge base. Range mode excludes untracked and working-tree changes. Changed source, repository context, and `better-typescript.json` are read from the range's end commit, so the result does not depend on the checked-out file contents. Fetch the base ref before using a remote-tracking name in CI.
+Range mode selects paths changed by the range and reads each complete file from the range's end commit. Deleted files are skipped. It also reads `better-typescript.json` from the end commit. Untracked and working-tree contents are excluded.
 
 ## Project policies
 
@@ -118,26 +102,28 @@ Remove debugger statements.
 
 Files under `.better-typescript/rules/` are discovered recursively. `--rules-dir` selects another additional directory. Invalid or empty policy files stop the run.
 
-## Review context
+The complete policy file is sent verbatim. Write policies that can be judged from one complete file without its path, repository structure, history, diff, measurements, or external rationale.
 
-Some policies need requirements, rationale, or measurements that source code cannot provide:
+## Configuration
 
-```sh
-npx better-typescript semantic --review-context review-context.txt
-```
+Semantic-mode commands in `better-typescript.json` include or exclude policies for matching files. Commands apply in order. An explicit `--rules` selection skips semantic-mode commands.
 
-When routing finds no applicable changed evidence, the policy is `not_applicable`.
+## Dry run
 
-Without review context, applicable review policies report `insufficient_evidence`.
+`--dry-run` needs no API key. It reports, for each file:
+
+- complete file byte count;
+- applicable policies;
+- physical request partitions;
+- question count per partition; and
+- encoded request bytes per partition.
 
 ## Results
 
-| Classification | Meaning | Fails a live run |
+| Probability | Classification | Fails a live run |
 | --- | --- | --- |
-| `pass` | Evidence shows no violation | No |
-| `not_applicable` | No matching candidate remains | No |
-| `review` | Probability is above `0.4` and below the violation threshold | Yes |
-| `violation` | Probability reaches the violation threshold | Yes |
-| `insufficient_evidence` | Required evidence is unavailable | Yes |
+| `≤ 0.40` | `pass` | No |
+| `> 0.40` and below `--threshold` | `review` | Yes |
+| At or above `--threshold` | `violation` | Yes |
 
-Live runs exit `0` when clean, `1` for actionable findings, and `2` for arguments, Git, file, response, or TypeSafe errors. The API key remains in the process environment and is sent only in the TypeSafe authorization header.
+Live runs exit `0` when clean, `1` for review or violation findings, and `2` for arguments, Git, file, response, or TypeSafe errors. The API key remains in the process environment and is sent only in the TypeSafe authorization header.
