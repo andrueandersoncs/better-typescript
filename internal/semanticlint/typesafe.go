@@ -40,6 +40,7 @@ func newTypeSafeClient() (*typeSafeClient, error) {
 }
 
 func (client *typeSafeClient) Evaluate(ctx context.Context, request evaluationRequest) (evaluationResponse, error) {
+	request.Model = modelOrDefault(request.Model)
 	body, err := marshalJSON(request)
 	if err != nil {
 		return evaluationResponse{}, fmt.Errorf("encode TypeSafe request: %w", err)

@@ -241,7 +241,7 @@ func TestRunDryRunNeedsNoTypeSafeCredentials(t *testing.T) {
 	if err := json.Unmarshal(output.Bytes(), &plan); err != nil {
 		t.Fatal(err)
 	}
-	if plan.Kind != "dry-run-plan" || len(plan.Files) != 1 || plan.Files[0].Path != "src/example.ts" || plan.Files[0].FileBytes != len("const values = [1, 2] as const;\n") {
+	if plan.Kind != "dry-run-plan" || plan.Model != defaultModel || len(plan.Files) != 1 || plan.Files[0].Path != "src/example.ts" || plan.Files[0].FileBytes != len("const values = [1, 2] as const;\n") {
 		t.Fatalf("plan = %#v", plan)
 	}
 	if len(plan.Files[0].Rules) != 1 || len(plan.Files[0].Partitions) != 1 || plan.Files[0].Partitions[0].QuestionCount != 1 {
@@ -264,6 +264,10 @@ func TestRunSendsExactWholeFileNoulRequest(t *testing.T) {
 		if err := json.NewDecoder(request.Body).Decode(&recorded); err != nil {
 			t.Error(err)
 		}
+		if recorded.Model == "" {
+			http.Error(writer, "body.model: Field required", http.StatusUnprocessableEntity)
+			return
+		}
 		answers := make(map[string]answer, len(recorded.Questions))
 		for id := range recorded.Questions {
 			answers[id] = answer{Type: "noul", Noul: 0.9}
@@ -284,8 +288,8 @@ func TestRunSendsExactWholeFileNoulRequest(t *testing.T) {
 	if !reflect.DeepEqual(recorded.State, map[string]string{"file": file}) {
 		t.Fatalf("state = %#v", recorded.State)
 	}
-	if recorded.Model != "" {
-		t.Fatalf("default model override = %q", recorded.Model)
+	if recorded.Model != "jev-latest" {
+		t.Fatalf("default model = %q, want jev-latest", recorded.Model)
 	}
 	if len(recorded.Questions) != 1 {
 		t.Fatalf("questions = %#v", recorded.Questions)

@@ -9,12 +9,20 @@ import (
 )
 
 const (
+	defaultModel           = "jev-latest"
 	defaultThreshold       = 0.7
 	maximumPassProbability = 0.4
 	maximumRequestBytes    = 32_000
 	defaultHTTPTimeout     = 10 * time.Second
 	maximumHTTPRetries     = 2
 )
+
+func modelOrDefault(model string) string {
+	if model == "" {
+		return defaultModel
+	}
+	return model
+}
 
 var repositoryExtensions = map[string]bool{
 	".ts": true, ".tsx": true, ".js": true, ".jsx": true,

@@ -41,7 +41,7 @@ Live semantic lint sends complete selected files and policy text to TypeSafe. Do
 
 ```text
 --threshold <number>     Violation probability threshold (default: 0.7)
---model <name>           TypeSafe model override (default: provider default)
+--model <name>           TypeSafe model override (default: jev-latest)
 --rules-dir <path>       Additional Markdown rules
 --range <from>..<to>     Analyze complete files from a committed range endpoint
 --files <glob>           Analyze selected current files; repeat or comma-separate

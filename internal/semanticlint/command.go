@@ -15,7 +15,7 @@ const usage = `Usage: better-typescript semantic [options]
 
 Options:
   --threshold <number>     Violation probability threshold (default: 0.7)
-  --model <name>           TypeSafe model override (default: provider default)
+  --model <name>           TypeSafe model override (default: jev-latest)
   --rules-dir <path>       Additional Markdown rules (default: .better-typescript/rules)
   --range <from>..<to>     Analyze complete files from a committed Git range endpoint
   --files <glob>           Analyze selected current files; repeat or comma-separate
@@ -134,12 +134,12 @@ func Run(ctx context.Context, root string, args []string, output io.Writer) (int
 }
 
 func parseOptions(args []string) (Options, bool, error) {
-	options := Options{Threshold: defaultThreshold, RulesDirectory: ".better-typescript/rules"}
+	options := Options{Threshold: defaultThreshold, Model: defaultModel, RulesDirectory: ".better-typescript/rules"}
 	var filePatterns, ruleNames stringListFlag
 	flags := flag.NewFlagSet("semantic", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	flags.Float64Var(&options.Threshold, "threshold", defaultThreshold, "")
-	flags.StringVar(&options.Model, "model", "", "")
+	flags.StringVar(&options.Model, "model", defaultModel, "")
 	flags.StringVar(&options.RulesDirectory, "rules-dir", options.RulesDirectory, "")
 	flags.StringVar(&options.CommitRange, "range", "", "")
 	flags.Var(&filePatterns, "files", "")
@@ -183,6 +183,7 @@ func parseOptions(args []string) (Options, bool, error) {
 }
 
 func dryRunPlan(evaluations []sourceEvaluation, model string) (DryRunPlan, error) {
+	model = modelOrDefault(model)
 	plan := DryRunPlan{Kind: "dry-run-plan", Model: model, Files: make([]DryRunFile, len(evaluations))}
 	for index, evaluation := range evaluations {
 		file, err := dryRunFile(evaluation.source, evaluation.rules, model)

@@ -23,6 +23,7 @@ func questionForRule(rule Rule) question {
 }
 
 func buildRequestPartitions(source Source, rules []Rule, model string, maximumBytes int) ([]requestPartition, error) {
+	model = modelOrDefault(model)
 	state := map[string]string{"file": source.Text}
 	var partitions []requestPartition
 	current := requestPartition{request: evaluationRequest{State: state, Questions: map[string]question{}, Model: model}}
