@@ -18,5 +18,6 @@ func TestRule(t *testing.T) {
 		{RuleName: "no-known-value-widening", Level: "error", Message: "The explicit unknown type on binding `regexValue` discards known type evidence. Keep inference, validate with `satisfies`, or use a named owner contract.", FilePath: "cases.ts", Line: 19, Column: 29},
 		{RuleName: "no-known-value-widening", Level: "error", Message: "The explicit unknown type on binding `forwarded` discards known type evidence. Keep inference, validate with `satisfies`, or use a named owner contract.", FilePath: "cases.ts", Line: 22, Column: 37},
 		{RuleName: "no-known-value-widening", Level: "error", Message: "The explicit unknown type on binding `parenthesizedForward` discards known type evidence. Keep inference, validate with `satisfies`, or use a named owner contract.", FilePath: "cases.ts", Line: 34, Column: 61},
+		{RuleName: "no-known-value-widening", Level: "error", Message: "The explicit unknown type on return value of `computed method` discards known type evidence. Keep inference, validate with `satisfies`, or use a named owner contract.", FilePath: "cases.ts", Line: 41, Column: 12},
 	})
 }

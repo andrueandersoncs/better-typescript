@@ -3,6 +3,7 @@
 ## What it does
 
 Reports known values explicitly widened to `unknown`, `object`, anonymous object types, or open dictionaries. Empty dictionary accumulators remain valid.
+Return values in computed-name methods are analyzed safely.
 
 ## When to use it
 

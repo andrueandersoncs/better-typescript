@@ -3,6 +3,7 @@
 The fixed catalog contains these 156 rules:
 
 `prefer-effect-schema-constructor` requires Effect Schema classes to use their static `make` method.
+`no-known-value-widening` analyzes returns in computed-name methods without interrupting the lint run.
 
 `boundary-schema-decode` treats string literals passed to `JSON.parse` as non-boundary input.
 

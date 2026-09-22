@@ -509,7 +509,10 @@ func run(ctx rule.RuleContext, _ any) rule.RuleListeners {
 			if expression != nil && owner != nil {
 				name := "anonymous function"
 				if owner.Name() != nil {
-					name = owner.Name().Text()
+					name = "computed method"
+					if propertyName, ok := ast.TryGetTextOfPropertyName(owner.Name()); ok {
+						name = propertyName
+					}
 				}
 				reportFlow(ctx, expression, owner.Type(), fmt.Sprintf("return value of `%s`", name))
 			}

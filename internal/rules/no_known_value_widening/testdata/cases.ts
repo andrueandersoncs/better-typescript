@@ -35,3 +35,9 @@ const parenthesizedForward: ForwardParenthesized<unknown> = 1
 void wrappedUser
 void emptyMapped
 void parenthesizedForward
+const computedMethodKey = Symbol()
+class ComputedMethod {
+  [computedMethodKey](): unknown {
+    return "value"
+  }
+}
