@@ -268,6 +268,32 @@ func TestClassifyProbabilityUsesPassReviewAndViolationBoundaries(t *testing.T) {
 	}
 }
 
+func TestFindingReportsOmitRedundantClassificationMessages(t *testing.T) {
+	report := FindingReport{
+		Source: "src/example.ts",
+		Findings: []Finding{{
+			RulePath:             "rules/simplicity/keep-control-flow-shallow.md",
+			RuleTitle:            "Keep control flow shallow",
+			Classification:       "review",
+			ViolationProbability: 0.58,
+		}},
+	}
+	wantHuman := "Source file: src/example.ts\n" +
+		"violation=0 review=1 pass=0\n" +
+		"[review 0.58] Keep control flow shallow (rules/simplicity/keep-control-flow-shallow.md)"
+	if got := humanReports([]FindingReport{report}); got != wantHuman {
+		t.Fatalf("human report:\n%s\nwant:\n%s", got, wantHuman)
+	}
+	gotJSON, err := marshalJSON(report.Findings[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantJSON := `{"rulePath":"rules/simplicity/keep-control-flow-shallow.md","ruleTitle":"Keep control flow shallow","classification":"review","violationProbability":0.58}`
+	if string(gotJSON) != wantJSON {
+		t.Fatalf("JSON finding:\n%s\nwant:\n%s", gotJSON, wantJSON)
+	}
+}
+
 func TestRunDryRunNeedsNoTypeSafeCredentials(t *testing.T) {
 	root := newSemanticTestRepository(t)
 	writeTestFile(t, root, "src/example.ts", "const values = [1, 2] as const;\n")

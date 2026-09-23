@@ -244,7 +244,6 @@ func humanReports(reports []FindingReport) string {
 			}
 			lines = append(lines,
 				fmt.Sprintf("[%s %s] %s (%s)", finding.Classification, strconv.FormatFloat(finding.ViolationProbability, 'f', -1, 64), finding.RuleTitle, finding.RulePath),
-				"  "+finding.Message,
 			)
 		}
 		if counts["violation"]+counts["review"] == 0 {

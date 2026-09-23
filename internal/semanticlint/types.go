@@ -60,7 +60,6 @@ type Finding struct {
 	RulePath             string  `json:"rulePath"`
 	RuleTitle            string  `json:"ruleTitle"`
 	Classification       string  `json:"classification"`
-	Message              string  `json:"message"`
 	ViolationProbability float64 `json:"violationProbability"`
 }
 

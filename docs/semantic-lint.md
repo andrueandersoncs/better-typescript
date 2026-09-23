@@ -139,4 +139,6 @@ Semantic-mode commands in `better-typescript.json` include or exclude policies f
 | `> 0.40` and below `--threshold` | `review` | Yes |
 | At or above `--threshold` | `violation` | Yes |
 
+Text output prints each review or violation once as `[classification probability] title (rule path)`. JSON findings contain the rule path, title, classification, and probability. Neither format adds a sentence that merely repeats the classification.
+
 Live runs exit `0` when clean, `1` for review or violation findings, and `2` for arguments, Git, file, response, or TypeSafe errors. The API key remains in the process environment and is sent only in the TypeSafe authorization header.

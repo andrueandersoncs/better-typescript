@@ -317,7 +317,6 @@ func evaluateSource(ctx context.Context, source Source, rules []Rule, options Op
 		report.Findings = append(report.Findings, Finding{
 			RulePath: rule.Path, RuleTitle: rule.Title,
 			Classification:       classification,
-			Message:              messageForClassification(classification),
 			ViolationProbability: probability,
 		})
 	}
@@ -332,17 +331,6 @@ func classifyProbability(probability, threshold float64) string {
 		return "review"
 	}
 	return "pass"
-}
-
-func messageForClassification(classification string) string {
-	switch classification {
-	case "violation":
-		return "The file violates this rule."
-	case "review":
-		return "The file may violate this rule."
-	default:
-		return "The file does not violate this rule."
-	}
 }
 
 func dryRunFile(source Source, rules []Rule, model string) (DryRunFile, error) {
