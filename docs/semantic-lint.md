@@ -1,6 +1,6 @@
 # Semantic lint
 
-`better-typescript semantic` asks whether complete files violate natural-language engineering policies.
+`better-typescript semantic` asks whether selected files violate natural-language engineering policies.
 
 The command embeds the default policy catalog. Add project policies under `.better-typescript/rules/`.
 
@@ -18,11 +18,11 @@ With no target option, the command reads complete changed, staged, and untracked
 For every selected file:
 
 1. select policies whose frontmatter globs match its path;
-2. send the complete file as the `file` state;
-3. create one independent Noul question per policy; and
-4. classify each returned probability directly.
+2. send the complete file when it fits, otherwise send overlapping file windows;
+3. create one independent Noul question per policy and evaluated scope; and
+4. classify each policy from its highest returned probability.
 
-Every question uses this exact instruction:
+Whole-file questions use:
 
 ```text
 Does the `file` violate the following rule?
@@ -31,11 +31,22 @@ Rule:
 <verbatim rule file>
 ```
 
-The rule file includes its frontmatter and original line endings. Requests never contain diffs, neighboring files, repository context, or partial source chunks.
+Window questions use:
 
-Questions that fit are sent together. If they exceed the 32,000-byte request limit, they are partitioned and every partition for that file runs concurrently. A complete file and one policy that cannot fit cause an error; the file is never truncated.
+```text
+Does the `file` fragment contain enough evidence to conclude that the complete file violates the following rule? Answer no when deciding would require omitted surrounding content.
 
-Live semantic lint sends complete selected files and policy text to TypeSafe. Do not run it on repositories whose data cannot be sent to that provider. The normal command and semantic `--dry-run` make no TypeSafe request.
+Rule:
+<verbatim rule file>
+```
+
+The rule file includes its frontmatter and original line endings. Requests never contain diffs, neighboring files, or repository context.
+
+Questions that fit are sent together. If a complete file and policy exceed the 32,000-byte request limit, only that policy uses overlapping file windows. Windows prefer line boundaries, overlap by up to 2,000 source bytes, and ask only whether the shown fragment contains enough evidence to conclude that the complete file violates the policy. The highest window probability becomes the policy result. At most eight requests run concurrently.
+
+A policy that leaves no room for source text still causes an error. Files and policies are never truncated.
+
+Live semantic lint sends selected source text—complete files or windows—and policy text to TypeSafe. Do not run it on repositories whose data cannot be sent to that provider. The normal command and semantic `--dry-run` make no TypeSafe request.
 
 ## Options
 
@@ -102,7 +113,7 @@ Remove debugger statements.
 
 Files under `.better-typescript/rules/` are discovered recursively. `--rules-dir` selects another additional directory. Invalid or empty policy files stop the run.
 
-The complete policy file is sent verbatim. Write policies that can be judged from one complete file without its path, repository structure, history, diff, measurements, or external rationale.
+The complete policy file is sent verbatim. Write policies whose violations can be demonstrated from one file. Policies that require proving a global absence or comparing distant regions may be inconclusive when an oversized file needs windows.
 
 ## Configuration
 
@@ -115,6 +126,8 @@ Semantic-mode commands in `better-typescript.json` include or exclude policies f
 - complete file byte count;
 - applicable policies;
 - physical request partitions;
+- whether each partition uses a window;
+- window start, end, and source byte count;
 - question count per partition; and
 - encoded request bytes per partition.
 

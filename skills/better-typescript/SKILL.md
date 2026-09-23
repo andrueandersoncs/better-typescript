@@ -51,7 +51,7 @@ export TYPESAFE_API_KEY="..."
 npx better-typescript semantic
 ```
 
-Run `npx better-typescript semantic --range 'origin/main...HEAD'` for complete changed files from a committed range endpoint, `--files 'src/**/*.ts'` for selected current files, or `--all` for every eligible current file. Add `--rules function-naming,readonly` to select policies. `--range`, `--files`, and `--all` are mutually exclusive. Range mode uses file contents and `better-typescript.json` from the end commit. Each applicable policy becomes one independent TypeSafe Noul question over the complete file. The policy file is inserted verbatim into the question. Requests use `jev-latest` unless `--model` overrides it. Use `--dry-run` to inspect files, policies, request partitions, and encoded bytes without an API call.
+Run `npx better-typescript semantic --range 'origin/main...HEAD'` for complete changed files from a committed range endpoint, `--files 'src/**/*.ts'` for selected current files, or `--all` for every eligible current file. Add `--rules function-naming,readonly` to select policies. `--range`, `--files`, and `--all` are mutually exclusive. Range mode uses file contents and `better-typescript.json` from the end commit. Each applicable policy becomes an independent TypeSafe Noul question over the complete file when it fits. Oversized file-policy pairs use overlapping windows and keep the highest probability. The policy file is inserted verbatim into every question. Requests use `jev-latest` unless `--model` overrides it. Use `--dry-run` to inspect files, policies, windows, request partitions, and encoded bytes without an API call.
 
 ## Handle results
 

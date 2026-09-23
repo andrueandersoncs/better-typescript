@@ -91,9 +91,13 @@ type DryRunFile struct {
 }
 
 type DryRunPartition struct {
-	Rules         []string `json:"rules"`
-	QuestionCount int      `json:"questionCount"`
-	RequestBytes  int      `json:"requestBytes"`
+	Rules           []string `json:"rules"`
+	QuestionCount   int      `json:"questionCount"`
+	RequestBytes    int      `json:"requestBytes"`
+	Windowed        bool     `json:"windowed"`
+	WindowStartByte int      `json:"windowStartByte"`
+	WindowEndByte   int      `json:"windowEndByte"`
+	WindowBytes     int      `json:"windowBytes"`
 }
 
 type question struct {

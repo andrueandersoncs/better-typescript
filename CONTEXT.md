@@ -18,15 +18,17 @@ Better TypeScript is a Go linter that analyzes the TypeScript project graph root
 
 ## Semantic review
 
-**Policy**: A natural-language engineering requirement that can be judged from one complete file.
+**Policy**: A natural-language engineering requirement scoped to one selected file.
 
 **File**: The complete contents of one selected current or range-endpoint file.
 
-**Question**: One TypeSafe Noul asking whether the `file` violates one verbatim policy.
+**Window**: An overlapping contiguous file range used when a file-policy pair cannot fit one TypeSafe request.
 
-**Partition**: Independent policy questions grouped under the same file state within the request-size limit.
+**Question**: One TypeSafe Noul asking whether its whole file or window proves that the file violates one verbatim policy.
 
-**Finding**: A Noul probability classified as pass, review, or violation.
+**Partition**: Independent policy questions grouped under one whole-file or window state within the request-size limit.
+
+**Finding**: The highest Noul probability for a policy, classified as pass, review, or violation.
 
 ## Modules
 

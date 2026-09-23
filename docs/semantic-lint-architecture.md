@@ -1,6 +1,6 @@
 # Semantic lint architecture
 
-`better-typescript semantic` evaluates complete files against whole-file policies.
+`better-typescript semantic` evaluates selected files against file-scoped policies.
 
 See [Semantic lint](./semantic-lint.md) for command usage.
 
@@ -8,11 +8,12 @@ See [Semantic lint](./semantic-lint.md) for command usage.
 
 | Term | Meaning | Main Go type |
 | --- | --- | --- |
-| **Policy** | Markdown rule answerable from one complete file | `Rule` |
+| **Policy** | Markdown rule answerable from one file | `Rule` |
 | **File** | Complete selected file contents | `Source` |
-| **Question** | One Noul asking whether the file violates one policy | `question` |
-| **Partition** | One size-bounded request containing independent questions | `requestPartition` |
-| **Finding** | Probability classified as pass, review, or violation | `Finding` |
+| **Window** | Overlapping contiguous file range used when a file and policy cannot fit one request | `sourceWindow` |
+| **Question** | One Noul asking whether its scope proves that the file violates one policy | `question` |
+| **Partition** | One size-bounded request containing independent questions over one scope | `requestPartition` |
+| **Finding** | Highest policy probability classified as pass, review, or violation | `Finding` |
 
 ## Flow
 
@@ -20,12 +21,15 @@ See [Semantic lint](./semantic-lint.md) for command usage.
 Git paths
    │
    ▼
-complete files ──► glob and config selection ──► one Noul per policy
+complete files ──► glob and config selection ──► policy scopes
                                                     │
                                                     ▼
                                         size-bounded partitions
                                                     │
-                                      concurrent TypeSafe requests
+                                      up to 8 concurrent requests
+                                                    │
+                                                    ▼
+                                      maximum probability per policy
                                                     │
                                                     ▼
                                               findings
@@ -33,20 +37,13 @@ complete files ──► glob and config selection ──► one Noul per policy
 
 `command.go: Run` owns the flow.
 
-For every file, the TypeSafe state is exactly:
+For policies that fit, the TypeSafe state remains exactly:
 
 ```json
 {"file":"<complete contents>"}
 ```
 
-Every policy produces exactly one question:
-
-```text
-Does the `file` violate the following rule?
-
-Rule:
-<verbatim rule file>
-```
+An oversized file-policy pair uses the same `file` key with one window's text. Whole-file questions keep the original instruction. Window questions ask whether the fragment contains enough evidence to conclude that the complete file violates the policy and require a negative answer when omitted context is necessary.
 
 There are no routing, relevance, evidence-expansion, deterministic, speculative, or review-context stages.
 
@@ -67,9 +64,11 @@ Deleted files are skipped. Every retained path is read completely.
 
 `batch.go` constructs all applicable questions before evaluation.
 
-Questions are added in catalog order until another question would exceed 32,000 encoded bytes. The next partition then begins. All partitions for a file run concurrently. Findings are restored to catalog order.
+Each policy first attempts the complete file. Fitting policies keep whole-file semantics and are packed in catalog order. Policies that do not fit use windows sized against the largest applicable encoded question. Windows prefer line boundaries and overlap by up to 2,000 source bytes.
 
-The complete file is present in every partition. If the file and one policy cannot fit, evaluation fails before an API call. No truncation or chunking is allowed.
+Questions are packed until another would exceed 32,000 encoded bytes. At most eight partitions run concurrently. Window answers for the same policy are reduced to their maximum probability, then findings are restored to catalog order.
+
+A policy that leaves no room for source text fails before an API call. Files and policies are never truncated.
 
 The `evaluator` interface remains the transport seam:
 

@@ -153,11 +153,54 @@ func TestEvaluateSourceRunsDeterministicPartitionsConcurrently(t *testing.T) {
 	}
 }
 
-func TestBuildRequestPartitionsRejectsOversizedWholeFile(t *testing.T) {
-	source := Source{Path: "src/large.ts", Text: strings.Repeat("x", maximumRequestBytes)}
-	_, err := buildRequestPartitions(source, []Rule{testRule(t, "example", "Be clear.")}, "", maximumRequestBytes)
-	if err == nil || !strings.Contains(err.Error(), "whole file src/large.ts") {
-		t.Fatalf("error = %v", err)
+func TestEvaluateSourceAggregatesOversizedFileWindows(t *testing.T) {
+	source := Source{
+		Path: "src/large.ts",
+		Text: strings.Repeat("const safe = true;\n", 2_000) +
+			"const VIOLATION = true;\n" +
+			strings.Repeat("const safe = true;\n", 2_000),
+	}
+	rule := testRule(t, "example", "Do not declare VIOLATION.")
+	requestCount := 0
+	var requestCountMutex sync.Mutex
+	evaluator := evaluatorFunc(func(_ context.Context, request evaluationRequest) (evaluationResponse, error) {
+		requestCountMutex.Lock()
+		requestCount++
+		requestCountMutex.Unlock()
+		if size := requestSize(request); size > maximumRequestBytes {
+			return evaluationResponse{}, fmt.Errorf("request size = %d, limit = %d", size, maximumRequestBytes)
+		}
+		if request.Questions[rule.ID] != questionForWindowRule(rule) {
+			return evaluationResponse{}, fmt.Errorf("unexpected window question")
+		}
+		probability := 0.1
+		if strings.Contains(request.State["file"], "VIOLATION") {
+			probability = 0.9
+		}
+		return evaluationResponse{
+			Model:   "jev-test",
+			Answers: map[string]answer{rule.ID: {Type: "noul", Noul: probability}},
+		}, nil
+	})
+
+	report, err := evaluateSource(
+		context.Background(),
+		source,
+		[]Rule{rule},
+		Options{Threshold: defaultThreshold},
+		evaluator,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	requestCountMutex.Lock()
+	gotRequestCount := requestCount
+	requestCountMutex.Unlock()
+	if gotRequestCount < 2 {
+		t.Fatalf("requests = %d, want multiple windows", gotRequestCount)
+	}
+	if len(report.Findings) != 1 || report.Findings[0].ViolationProbability != 0.9 {
+		t.Fatalf("findings = %#v", report.Findings)
 	}
 }
 
