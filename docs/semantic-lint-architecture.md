@@ -21,7 +21,7 @@ See [Semantic lint](./semantic-lint.md) for command usage.
 Git paths
    │
    ▼
-complete files ──► glob and config selection ──► policy scopes
+complete files ──► glob and config selection ──► candidate policy scopes
                                                     │
                                                     ▼
                                         size-bounded partitions
@@ -43,7 +43,7 @@ For policies that fit, the TypeSafe state remains exactly:
 {"file":"<complete contents>"}
 ```
 
-An oversized file-policy pair uses the same `file` key with one window's text. Whole-file questions keep the original instruction. Window questions ask whether the fragment contains enough evidence to conclude that the complete file violates the policy and require a negative answer when omitted context is necessary.
+An oversized file-policy pair uses the same `file` key with one window's text. Whole-file questions require a negative answer when the policy subject is absent or inapplicable to the shown code shape. Window questions add the same applicability guard and require a negative answer when omitted context is necessary.
 
 There are no routing, relevance, evidence-expansion, deterministic, speculative, or review-context stages.
 
@@ -62,9 +62,9 @@ Deleted files are skipped. Every retained path is read completely.
 
 ## Requests
 
-`batch.go` constructs all applicable questions before evaluation.
+`batch.go` constructs all candidate questions before evaluation.
 
-Each policy first attempts the complete file. Fitting policies keep whole-file semantics and are packed in catalog order. Policies that do not fit use windows sized against the largest applicable encoded question. Windows prefer line boundaries and overlap by up to 2,000 source bytes.
+Each policy first attempts the complete file. Fitting policies keep whole-file semantics and are packed in catalog order. Policies that do not fit use windows sized against the largest candidate encoded question. Windows prefer line boundaries and overlap by up to 2,000 source bytes.
 
 Questions are packed until another would exceed 32,000 encoded bytes. At most eight partitions run concurrently. Window answers for the same policy are reduced to their maximum probability, then findings are restored to catalog order.
 

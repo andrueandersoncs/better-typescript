@@ -22,10 +22,12 @@ For every selected file:
 3. create one independent Noul question per policy and evaluated scope; and
 4. classify each policy from its highest returned probability.
 
+Glob and ordered configuration selection make a policy a candidate. That is not evidence that the policy applies to the file's code shape; the judgment must answer no when the policy's subject is absent.
+
 Whole-file questions use:
 
 ```text
-Does the `file` violate the following rule?
+Does the `file` violate the following rule? Answer no when the rule's subject is absent or the rule does not apply to the code shape shown.
 
 Rule:
 <verbatim rule file>
@@ -34,7 +36,7 @@ Rule:
 Window questions use:
 
 ```text
-Does the `file` fragment contain enough evidence to conclude that the complete file violates the following rule? Answer no when deciding would require omitted surrounding content.
+Does the `file` fragment contain enough evidence to conclude that the complete file violates the following rule? Answer no when the rule's subject is absent, the rule does not apply to the code shape shown, or deciding would require omitted surrounding content.
 
 Rule:
 <verbatim rule file>
@@ -113,18 +115,18 @@ Remove debugger statements.
 
 Files under `.better-typescript/rules/` are discovered recursively. `--rules-dir` selects another additional directory. Invalid or empty policy files stop the run.
 
-The complete policy file is sent verbatim. Write policies whose violations can be demonstrated from one file. Policies that require proving a global absence or comparing distant regions may be inconclusive when an oversized file needs windows.
+The complete policy file is sent verbatim. Write policies with explicit applicability boundaries and violations that can be demonstrated from one file. Policies that require proving a global absence or comparing distant regions may be inconclusive when an oversized file needs windows.
 
 ## Configuration
 
-Semantic-mode commands in `better-typescript.json` include or exclude policies for matching files. Commands apply in order. An explicit `--rules` selection skips semantic-mode commands.
+Semantic-mode commands in `better-typescript.json` include or exclude policies for matching files. Commands apply in order. Use a per-file exclusion only when that policy genuinely cannot apply; do not suppress unrelated readability findings. An explicit `--rules` selection skips semantic-mode commands.
 
 ## Dry run
 
 `--dry-run` needs no API key. It reports, for each file:
 
 - complete file byte count;
-- applicable policies;
+- candidate policies selected by path and configuration;
 - physical request partitions;
 - whether each partition uses a window;
 - window start, end, and source byte count;

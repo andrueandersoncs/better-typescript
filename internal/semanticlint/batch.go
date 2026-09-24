@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	ruleQuestionPrefix           = "Does the `file` violate the following rule?\n\nRule:\n"
-	windowRuleQuestionPrefix     = "Does the `file` fragment contain enough evidence to conclude that the complete file violates the following rule? Answer no when deciding would require omitted surrounding content.\n\nRule:\n"
+	ruleQuestionPrefix           = "Does the `file` violate the following rule? Answer no when the rule's subject is absent or the rule does not apply to the code shape shown.\n\nRule:\n"
+	windowRuleQuestionPrefix     = "Does the `file` fragment contain enough evidence to conclude that the complete file violates the following rule? Answer no when the rule's subject is absent, the rule does not apply to the code shape shown, or deciding would require omitted surrounding content.\n\nRule:\n"
 	maximumWindowOverlapBytes    = 2_000
 	maximumConcurrentEvaluations = 8
 )
