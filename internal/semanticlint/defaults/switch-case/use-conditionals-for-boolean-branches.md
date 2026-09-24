@@ -4,4 +4,6 @@ globs:
 ---
 # Use conditionals for boolean branches
 
-Do not use `switch` for simple boolean conditions with only two branches.
+Use a simple conditional or `if`/`else` for two-way boolean branches. Do not
+replace them with `switch`; use Effect `Match` for suitable tagged multiway
+branches instead.

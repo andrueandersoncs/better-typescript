@@ -4,4 +4,4 @@ globs:
 ---
 # Abstract shared meaning, not merely similar code
 
-Similar-looking code does not necessarily represent the same concept. Accept modest duplication when sharing would require flags, special cases, or confusing parameters; combine code only when it shares a contract and should change together.
+Extract repeated logic when it expresses the same rule or responsibility, shares a contract, and should change together for the same reason. Similar-looking code likely to evolve differently may remain separate; do not force sharing through flags, special cases, or confusing parameters. Avoid `utils`, `common`, or `helpers` modules becoming dumping grounds for unrelated responsibilities.

@@ -4,4 +4,4 @@ globs:
 ---
 # Give each function or module one coherent responsibility
 
-Keep code that changes together close together. Split a function or module when it mixes distinct responsibilities or unrelated reasons to change—not because it exceeds an arbitrary line count.
+Give functions and modules a purpose that can be described clearly in one sentence; keep closely related behavior together and separate distinct responsibilities that change for unrelated reasons. Split functions into meaningful, well-named operations when that clarifies responsibilities, not merely because they are long; avoid modules that accumulate miscellaneous business logic.

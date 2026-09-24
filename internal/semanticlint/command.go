@@ -221,7 +221,7 @@ func writeJSON(output io.Writer, value any, indent bool) error {
 	return nil
 }
 
-var classifications = []string{"violation", "review", "pass"}
+var classifications = []string{"violation", "review", "inconclusive", "pass"}
 
 func humanReports(reports []FindingReport) string {
 	if len(reports) == 0 {
@@ -230,8 +230,12 @@ func humanReports(reports []FindingReport) string {
 	parts := make([]string, len(reports))
 	for index, report := range reports {
 		counts := make(map[string]int)
+		noCandidateCount := 0
 		for _, finding := range report.Findings {
 			counts[finding.Classification]++
+			if finding.Classification == "inconclusive" && finding.Reason == "no candidate evidence selected" {
+				noCandidateCount++
+			}
 		}
 		summary := make([]string, len(classifications))
 		for position, classification := range classifications {
@@ -242,12 +246,22 @@ func humanReports(reports []FindingReport) string {
 			if finding.Classification == "pass" {
 				continue
 			}
-			lines = append(lines,
-				fmt.Sprintf("[%s %s] %s (%s)", finding.Classification, strconv.FormatFloat(finding.ViolationProbability, 'f', -1, 64), finding.RuleTitle, finding.RulePath),
-			)
+			if finding.Classification == "inconclusive" {
+				if finding.Reason != "no candidate evidence selected" {
+					lines = append(lines, fmt.Sprintf("[inconclusive] %s (%s): %s", finding.RuleTitle, finding.RulePath, finding.Reason))
+				}
+				continue
+			}
+			line := fmt.Sprintf("[%s %s] %s (%s)", finding.Classification, strconv.FormatFloat(*finding.ViolationProbability, 'f', -1, 64), finding.RuleTitle, finding.RulePath)
+			for _, candidate := range finding.CandidateRanges {
+				line += fmt.Sprintf(" [candidate lines %d-%d]", candidate.StartLine, candidate.EndLine)
+			}
+			lines = append(lines, line)
 		}
-		if counts["violation"]+counts["review"] == 0 {
+		if counts["violation"]+counts["review"]+counts["inconclusive"] == 0 {
 			lines = append(lines, "No findings.")
+		} else if noCandidateCount == len(report.Findings) {
+			lines = append(lines, "No candidate evidence selected.")
 		}
 		parts[index] = strings.Join(lines, "\n")
 	}

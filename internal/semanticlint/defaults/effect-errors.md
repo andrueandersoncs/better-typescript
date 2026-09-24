@@ -4,12 +4,12 @@ globs:
 ---
 # Model failures with Effect
 
-Application functions must return `Effect<A, E>`. Expected failures belong in
-the typed error channel as tagged errors. Callers must compose or handle them
-with Effect operators.
+Effectful application operations return `Effect<A, E>`: model expected
+failures as tagged errors in the typed error channel, and compose or handle
+them with Effect operators. Deterministic helpers, including pure validation,
+remain ordinary functions; represent pure expected failures as data rather
+than wrapping a helper in Effect because application code calls it.
 
-Catch thrown exceptions only at external boundaries and convert them with
-`Effect.try` or `Effect.tryPromise`. No exception may escape an application
-function.
-
-Run Effects only at executable and test boundaries.
+Catch thrown exceptions at external boundaries and convert them with
+`Effect.try` or `Effect.tryPromise`. Do not let exceptions escape effectful
+application operations. Run Effects only at executable and test boundaries.

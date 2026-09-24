@@ -9,8 +9,10 @@ import (
 )
 
 const (
-	ruleQuestionPrefix           = "Does the `file` violate the following rule?\n\nRule:\n"
-	windowRuleQuestionPrefix     = "Does the `file` fragment contain enough evidence to conclude that the complete file violates the following rule? Answer no when deciding would require omitted surrounding content.\n\nRule:\n"
+	candidateQuestionPrefix      = "Could the `file` segment provide concrete evidence that the complete file violates the following rule? Answer yes for plausible evidence or necessary context, not merely related code. Answer no if the rule cannot apply to this segment.\n\nRule:\n"
+	finalQuestionPrefix          = "Do the selected source spans in `file` provide enough evidence to conclude that the original file violates the following rule? Answer no if omitted context is needed; do not infer missing code.\n\nRule:\n"
+	candidateSelectionThreshold  = 0.4
+	maximumSegmentBytes          = 4_000
 	maximumWindowOverlapBytes    = 2_000
 	maximumConcurrentEvaluations = 8
 )
@@ -32,12 +34,12 @@ type partitionResult struct {
 	err      error
 }
 
-func questionForRule(rule Rule) question {
-	return question{Type: "noul", Instructions: ruleQuestionPrefix + rule.Source}
+func questionForCandidate(rule Rule) question {
+	return question{Type: "noul", Instructions: candidateQuestionPrefix + rule.Source}
 }
 
-func questionForWindowRule(rule Rule) question {
-	return question{Type: "noul", Instructions: windowRuleQuestionPrefix + rule.Source}
+func questionForFinal(rule Rule) question {
+	return question{Type: "noul", Instructions: finalQuestionPrefix + rule.Source}
 }
 
 func buildRequestPartitions(source Source, rules []Rule, model string, maximumBytes int) ([]requestPartition, error) {
@@ -45,42 +47,13 @@ func buildRequestPartitions(source Source, rules []Rule, model string, maximumBy
 		return nil, nil
 	}
 	model = modelOrDefault(model)
-	var wholeFileRules, windowRules []Rule
-	emptyQuestionRequest := evaluationRequest{
-		State:     map[string]string{"file": source.Text},
-		Questions: map[string]question{},
-		Model:     model,
-	}
-	if requestSize(emptyQuestionRequest) > maximumBytes {
-		windowRules = append(windowRules, rules...)
-	} else {
-		for _, rule := range rules {
-			if requestSize(singleRuleRequest(source.Text, rule, model, false)) <= maximumBytes {
-				wholeFileRules = append(wholeFileRules, rule)
-			} else {
-				windowRules = append(windowRules, rule)
-			}
-		}
-	}
-
-	var partitions []requestPartition
-	if len(wholeFileRules) > 0 {
-		wholeFilePartitions, err := partitionWindow(source, sourceWindow{end: len(source.Text)}, wholeFileRules, model, maximumBytes, false)
-		if err != nil {
-			return nil, err
-		}
-		partitions = append(partitions, wholeFilePartitions...)
-	}
-	if len(windowRules) == 0 {
-		return partitions, nil
-	}
-
-	windows, err := sourceWindows(source, windowRules, model, maximumBytes)
+	windows, err := sourceWindows(source, rules, model, maximumBytes)
 	if err != nil {
 		return nil, err
 	}
+	var partitions []requestPartition
 	for _, window := range windows {
-		windowPartitions, err := partitionWindow(source, window, windowRules, model, maximumBytes, true)
+		windowPartitions, err := partitionWindow(source, window, rules, model, maximumBytes, len(windows) > 1)
 		if err != nil {
 			return nil, err
 		}
@@ -89,14 +62,10 @@ func buildRequestPartitions(source Source, rules []Rule, model string, maximumBy
 	return partitions, nil
 }
 
-func singleRuleRequest(sourceText string, rule Rule, model string, windowed bool) evaluationRequest {
-	ruleQuestion := questionForRule(rule)
-	if windowed {
-		ruleQuestion = questionForWindowRule(rule)
-	}
+func singleRuleRequest(sourceText string, rule Rule, model string) evaluationRequest {
 	return evaluationRequest{
 		State:     map[string]string{"file": sourceText},
-		Questions: map[string]question{rule.ID: ruleQuestion},
+		Questions: map[string]question{rule.ID: questionForCandidate(rule)},
 		Model:     model,
 	}
 }
@@ -105,23 +74,18 @@ func partitionWindow(source Source, window sourceWindow, rules []Rule, model str
 	state := map[string]string{"file": source.Text[window.start:window.end]}
 	var partitions []requestPartition
 	current := requestPartition{
-		request:  evaluationRequest{State: state, Questions: map[string]question{}, Model: model},
+		request:  evaluationRequest{State: state, Questions: make(map[string]question, len(rules)), Model: model},
 		window:   window,
 		windowed: windowed,
 	}
 	for _, rule := range rules {
-		ruleQuestion := questionForRule(rule)
-		if windowed {
-			ruleQuestion = questionForWindowRule(rule)
-		}
-		candidateQuestions := cloneQuestions(current.request.Questions, 1)
-		candidateQuestions[rule.ID] = ruleQuestion
-		candidate := evaluationRequest{State: state, Questions: candidateQuestions, Model: model}
-		if requestSize(candidate) <= maximumBytes {
-			current.request = candidate
+		ruleQuestion := questionForCandidate(rule)
+		current.request.Questions[rule.ID] = ruleQuestion
+		if requestSize(current.request) <= maximumBytes {
 			current.rules = append(current.rules, rule)
 			continue
 		}
+		delete(current.request.Questions, rule.ID)
 		if len(current.rules) > 0 {
 			partitions = append(partitions, current)
 		}
@@ -139,9 +103,9 @@ func partitionWindow(source Source, window sourceWindow, rules []Rule, model str
 
 func sourceWindows(source Source, rules []Rule, model string, maximumBytes int) ([]sourceWindow, error) {
 	largestRule := rules[0]
-	largestEmptyRequest := requestSize(singleRuleRequest("", largestRule, model, true))
+	largestEmptyRequest := requestSize(singleRuleRequest("", largestRule, model))
 	for _, rule := range rules[1:] {
-		size := requestSize(singleRuleRequest("", rule, model, true))
+		size := requestSize(singleRuleRequest("", rule, model))
 		if size > largestEmptyRequest {
 			largestRule = rule
 			largestEmptyRequest = size
@@ -154,14 +118,14 @@ func sourceWindows(source Source, rules []Rule, model string, maximumBytes int) 
 		return []sourceWindow{{}}, nil
 	}
 
-	contentBudget := maximumBytes - largestEmptyRequest
+	contentBudget := min(maximumSegmentBytes, maximumBytes-largestEmptyRequest)
 	var windows []sourceWindow
 	for start := 0; start < len(source.Text); {
 		end := encodedPrefixEnd(source.Text, start, contentBudget)
 		if end < len(source.Text) {
 			end = preferLineEnd(source.Text, start, end)
 		}
-		for end > start && requestSize(singleRuleRequest(source.Text[start:end], largestRule, model, true)) > maximumBytes {
+		for end > start && requestSize(singleRuleRequest(source.Text[start:end], largestRule, model)) > maximumBytes {
 			_, width := utf8.DecodeLastRuneInString(source.Text[start:end])
 			end -= width
 		}
@@ -241,14 +205,6 @@ func nextWindowStart(text string, start, end int) int {
 	return end
 }
 
-func cloneQuestions(source map[string]question, extra int) map[string]question {
-	result := make(map[string]question, len(source)+extra)
-	for id, value := range source {
-		result[id] = value
-	}
-	return result
-}
-
 func requestSize(request evaluationRequest) int {
 	encoded, err := marshalJSON(request)
 	if err != nil {
@@ -257,11 +213,7 @@ func requestSize(request evaluationRequest) int {
 	return len(encoded)
 }
 
-func evaluateSource(ctx context.Context, source Source, rules []Rule, options Options, evaluator evaluator) (FindingReport, error) {
-	partitions, err := buildRequestPartitions(source, rules, options.Model, maximumRequestBytes)
-	if err != nil {
-		return FindingReport{}, err
-	}
+func evaluatePartitions(ctx context.Context, partitions []requestPartition, evaluator evaluator) []partitionResult {
 	results := make([]partitionResult, len(partitions))
 	jobs := make(chan int)
 	var workers sync.WaitGroup
@@ -279,46 +231,133 @@ func evaluateSource(ctx context.Context, source Source, rules []Rule, options Op
 	}
 	close(jobs)
 	workers.Wait()
+	return results
+}
 
-	report := FindingReport{Source: source.Path, ViolationProbabilityThreshold: options.Threshold, Findings: []Finding{}}
-	probabilities := make(map[string]float64, len(rules))
-	answered := make(map[string]bool, len(rules))
-	for index, result := range results {
-		if result.err != nil {
-			return FindingReport{}, fmt.Errorf("evaluate %s partition %d: %w", source.Path, index+1, result.err)
+func addResponse(report *FindingReport, sourcePath string, result partitionResult, index int) error {
+	if result.err != nil {
+		return fmt.Errorf("evaluate %s partition %d: %w", sourcePath, index+1, result.err)
+	}
+	if report.Model == "" {
+		report.Model = result.response.Model
+	} else if report.Model != result.response.Model {
+		return fmt.Errorf("TypeSafe returned inconsistent models for %s", sourcePath)
+	}
+	report.Usage.InputTokens += result.response.Usage.InputTokens
+	report.Usage.OutputTokens += result.response.Usage.OutputTokens
+	return nil
+}
+
+func probabilityForRule(response evaluationResponse, rule Rule) (float64, error) {
+	answer, ok := response.Answers[rule.ID]
+	if !ok {
+		return 0, fmt.Errorf("TypeSafe omitted answer for %s", rule.Path)
+	}
+	if answer.Type != "noul" || !validProbability(answer.Noul) {
+		return 0, fmt.Errorf("TypeSafe returned an invalid Noul answer for %s", rule.Path)
+	}
+	return answer.Noul, nil
+}
+
+func mergeCandidate(windows []sourceWindow, candidate sourceWindow) []sourceWindow {
+	if len(windows) > 0 && candidate.start <= windows[len(windows)-1].end {
+		windows[len(windows)-1].end = max(windows[len(windows)-1].end, candidate.end)
+		return windows
+	}
+	return append(windows, candidate)
+}
+
+func candidateRanges(source Source, windows []sourceWindow) []CandidateRange {
+	ranges := make([]CandidateRange, 0, len(windows))
+	line, cursor := 1, 0
+	for _, window := range windows {
+		line += strings.Count(source.Text[cursor:window.start], "\n")
+		endLine := line + strings.Count(source.Text[window.start:max(window.start, window.end-1)], "\n")
+		ranges = append(ranges, CandidateRange{StartByte: window.start, EndByte: window.end, StartLine: line, EndLine: endLine})
+		line += strings.Count(source.Text[window.start:window.end], "\n")
+		cursor = window.end
+	}
+	return ranges
+}
+
+func finalRequest(source Source, rule Rule, windows []sourceWindow, ranges []CandidateRange, model string) evaluationRequest {
+	var text strings.Builder
+	for index, window := range windows {
+		if index > 0 {
+			text.WriteString("\n")
 		}
-		if report.Model == "" {
-			report.Model = result.response.Model
-		} else if report.Model != result.response.Model {
-			return FindingReport{}, fmt.Errorf("TypeSafe returned inconsistent models for %s", source.Path)
+		fmt.Fprintf(&text, "[source lines %d-%d]\n", ranges[index].StartLine, ranges[index].EndLine)
+		text.WriteString(source.Text[window.start:window.end])
+	}
+	return evaluationRequest{
+		State:     map[string]string{"file": text.String()},
+		Questions: map[string]question{rule.ID: questionForFinal(rule)},
+		Model:     modelOrDefault(model),
+	}
+}
+
+func evaluateSource(ctx context.Context, source Source, rules []Rule, options Options, evaluator evaluator) (FindingReport, error) {
+	partitions, err := buildRequestPartitions(source, rules, options.Model, maximumRequestBytes)
+	if err != nil {
+		return FindingReport{}, err
+	}
+	report := FindingReport{Source: source.Path, ViolationProbabilityThreshold: options.Threshold, Findings: make([]Finding, 0, len(rules))}
+	selected := make(map[string][]sourceWindow, len(rules))
+	for index, result := range evaluatePartitions(ctx, partitions, evaluator) {
+		if err := addResponse(&report, source.Path, result, index); err != nil {
+			return FindingReport{}, err
 		}
-		report.Usage.InputTokens += result.response.Usage.InputTokens
-		report.Usage.OutputTokens += result.response.Usage.OutputTokens
 		for _, rule := range partitions[index].rules {
-			answer, ok := result.response.Answers[rule.ID]
-			if !ok {
-				return FindingReport{}, fmt.Errorf("TypeSafe omitted answer for %s", rule.Path)
+			probability, err := probabilityForRule(result.response, rule)
+			if err != nil {
+				return FindingReport{}, err
 			}
-			if answer.Type != "noul" || !validProbability(answer.Noul) {
-				return FindingReport{}, fmt.Errorf("TypeSafe returned an invalid Noul answer for %s", rule.Path)
+			if probability > candidateSelectionThreshold {
+				selected[rule.ID] = mergeCandidate(selected[rule.ID], partitions[index].window)
 			}
-			if !answered[rule.ID] || answer.Noul > probabilities[rule.ID] {
-				probabilities[rule.ID] = answer.Noul
-			}
-			answered[rule.ID] = true
 		}
 	}
+
+	finalPartitions := make([]requestPartition, 0, len(rules))
+	finalIndexes := make(map[string]int, len(rules))
 	for _, rule := range rules {
-		probability, ok := probabilities[rule.ID]
-		if !ok {
-			return FindingReport{}, fmt.Errorf("TypeSafe omitted answer for %s", rule.Path)
+		finding := Finding{RulePath: rule.Path, RuleTitle: rule.Title}
+		windows := selected[rule.ID]
+		if len(windows) == 0 {
+			finding.Classification = "inconclusive"
+			finding.Reason = "no candidate evidence selected"
+		} else {
+			finding.CandidateRanges = candidateRanges(source, windows)
+			selectedBytes := 0
+			for _, candidate := range finding.CandidateRanges {
+				selectedBytes += candidate.EndByte - candidate.StartByte
+			}
+			var request evaluationRequest
+			if selectedBytes < maximumRequestBytes {
+				request = finalRequest(source, rule, windows, finding.CandidateRanges, options.Model)
+			}
+			if selectedBytes >= maximumRequestBytes || requestSize(request) > maximumRequestBytes {
+				finding.Classification = "inconclusive"
+				finding.Reason = "selected context exceeds the TypeSafe request limit"
+			} else {
+				finalIndexes[rule.ID] = len(report.Findings)
+				finalPartitions = append(finalPartitions, requestPartition{request: request, rules: []Rule{rule}})
+			}
 		}
-		classification := classifyProbability(probability, options.Threshold)
-		report.Findings = append(report.Findings, Finding{
-			RulePath: rule.Path, RuleTitle: rule.Title,
-			Classification:       classification,
-			ViolationProbability: probability,
-		})
+		report.Findings = append(report.Findings, finding)
+	}
+	for index, result := range evaluatePartitions(ctx, finalPartitions, evaluator) {
+		if err := addResponse(&report, source.Path, result, index); err != nil {
+			return FindingReport{}, err
+		}
+		rule := finalPartitions[index].rules[0]
+		probability, err := probabilityForRule(result.response, rule)
+		if err != nil {
+			return FindingReport{}, err
+		}
+		finding := &report.Findings[finalIndexes[rule.ID]]
+		finding.ViolationProbability = &probability
+		finding.Classification = classifyProbability(probability, options.Threshold)
 	}
 	return report, nil
 }

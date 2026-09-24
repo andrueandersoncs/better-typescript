@@ -1,0 +1,16 @@
+file-code-organization/eliminate-all-duplication
+modularity/extract-shared-concepts-not-merely-similar-looking-code
+modularity/give-every-module-one-clear-purpose
+modularity/keep-implementation-details-private-by-default
+modularity/test-modules-through-their-contracts
+readability/abstract-shared-concepts-not-merely-similar-looking-code
+readability/give-each-function-one-coherent-responsibility
+readability/make-dependencies-and-side-effects-visible
+readability/make-failure-behavior-explicit
+readability/make-the-normal-flow-easy-to-follow
+simplicity/keep-interfaces-small-and-predictable
+simplicity/name-things-so-their-purpose-is-clear
+simplicity/prefer-obvious-code-over-clever-code
+simplicity/separate-complicated-decision-making-from-external-operations
+simplicity/test-behavior-rather-than-implementation-details
+switch-case/prefer-switch-for-multiple-branches

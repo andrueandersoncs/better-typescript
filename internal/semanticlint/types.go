@@ -56,11 +56,20 @@ type Rule struct {
 	Patterns []fileglob.Pattern
 }
 
+type CandidateRange struct {
+	StartByte int `json:"startByte"`
+	EndByte   int `json:"endByte"`
+	StartLine int `json:"startLine"`
+	EndLine   int `json:"endLine"`
+}
+
 type Finding struct {
-	RulePath             string  `json:"rulePath"`
-	RuleTitle            string  `json:"ruleTitle"`
-	Classification       string  `json:"classification"`
-	ViolationProbability float64 `json:"violationProbability"`
+	RulePath             string           `json:"rulePath"`
+	RuleTitle            string           `json:"ruleTitle"`
+	Classification       string           `json:"classification"`
+	ViolationProbability *float64         `json:"violationProbability,omitempty"`
+	CandidateRanges      []CandidateRange `json:"candidateRanges,omitempty"`
+	Reason               string           `json:"reason,omitempty"`
 }
 
 type Usage struct {

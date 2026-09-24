@@ -4,18 +4,16 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
-	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
-	"time"
 
 	appconfig "github.com/andrueandersoncs/better-typescript/internal/config"
 )
@@ -35,173 +33,6 @@ func testRule(t *testing.T, id, body string) Rule {
 	}
 	rule.ID = id
 	return rule
-}
-
-func TestParseRulePreservesVerbatimSourceAndBuildsExactQuestion(t *testing.T) {
-	source := "---\r\nglobs:\r\n  - \"**/*.ts\"\r\n---\r\n# Exact rule\r\n\r\nKeep this text.\r\n"
-	rule, err := parseRule("rules/exact.md", source)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if rule.Source != source {
-		t.Fatalf("rule source changed:\n%q\nwant:\n%q", rule.Source, source)
-	}
-	question := questionForRule(rule)
-	if question.Type != "noul" {
-		t.Fatalf("question type = %q", question.Type)
-	}
-	want := "Does the `file` violate the following rule?\n\nRule:\n" + source
-	if question.Instructions != want {
-		t.Fatalf("instructions = %q, want %q", question.Instructions, want)
-	}
-	encoded, err := json.Marshal(question)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if bytes.Contains(encoded, []byte("criteria")) {
-		t.Fatalf("question contains criteria: %s", encoded)
-	}
-}
-
-func TestBuildRequestPartitionsUsesWholeFileAndOneNoulPerRule(t *testing.T) {
-	source := Source{Path: "src/example.ts", Text: "const value = 1;\n"}
-	rules := []Rule{testRule(t, "first", "First rule."), testRule(t, "second", "Second rule.")}
-	partitions, err := buildRequestPartitions(source, rules, "", maximumRequestBytes)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(partitions) != 1 {
-		t.Fatalf("partitions = %d, want 1", len(partitions))
-	}
-	request := partitions[0].request
-	if !reflect.DeepEqual(request.State, map[string]string{"file": source.Text}) {
-		t.Fatalf("state = %#v", request.State)
-	}
-	if len(request.Questions) != len(rules) {
-		t.Fatalf("questions = %d, want %d", len(request.Questions), len(rules))
-	}
-	for _, rule := range rules {
-		question, ok := request.Questions[rule.ID]
-		if !ok {
-			t.Fatalf("missing question for %s", rule.ID)
-		}
-		if question != questionForRule(rule) {
-			t.Fatalf("question for %s changed: %#v", rule.ID, question)
-		}
-	}
-}
-
-func TestEvaluateSourceRunsDeterministicPartitionsConcurrently(t *testing.T) {
-	source := Source{Path: "src/example.ts", Text: "export const value = 1;\n"}
-	rules := []Rule{
-		testRule(t, "first", strings.Repeat("a", 17_000)),
-		testRule(t, "second", strings.Repeat("b", 17_000)),
-	}
-	partitions, err := buildRequestPartitions(source, rules, "", maximumRequestBytes)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(partitions) != 2 {
-		t.Fatalf("partitions = %d, want 2", len(partitions))
-	}
-	started := make(chan struct{}, len(partitions))
-	release := make(chan struct{})
-	var mu sync.Mutex
-	var requests []evaluationRequest
-	evaluator := evaluatorFunc(func(_ context.Context, request evaluationRequest) (evaluationResponse, error) {
-		mu.Lock()
-		requests = append(requests, request)
-		mu.Unlock()
-		started <- struct{}{}
-		<-release
-		answers := make(map[string]answer, len(request.Questions))
-		for id := range request.Questions {
-			answers[id] = answer{Type: "noul", Noul: 0.1}
-		}
-		return evaluationResponse{Model: "jev-test", Answers: answers}, nil
-	})
-	result := make(chan struct {
-		report FindingReport
-		err    error
-	}, 1)
-	go func() {
-		report, err := evaluateSource(context.Background(), source, rules, Options{Threshold: defaultThreshold}, evaluator)
-		result <- struct {
-			report FindingReport
-			err    error
-		}{report: report, err: err}
-	}()
-	for range partitions {
-		select {
-		case <-started:
-		case <-time.After(time.Second):
-			t.Fatal("request partitions did not start concurrently")
-		}
-	}
-	close(release)
-	outcome := <-result
-	if outcome.err != nil {
-		t.Fatal(outcome.err)
-	}
-	if len(requests) != 2 {
-		t.Fatalf("requests = %d, want 2", len(requests))
-	}
-	got := []string{outcome.report.Findings[0].RulePath, outcome.report.Findings[1].RulePath}
-	want := []string{rules[0].Path, rules[1].Path}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("finding order = %#v, want %#v", got, want)
-	}
-}
-
-func TestEvaluateSourceAggregatesOversizedFileWindows(t *testing.T) {
-	source := Source{
-		Path: "src/large.ts",
-		Text: strings.Repeat("const safe = true;\n", 2_000) +
-			"const VIOLATION = true;\n" +
-			strings.Repeat("const safe = true;\n", 2_000),
-	}
-	rule := testRule(t, "example", "Do not declare VIOLATION.")
-	requestCount := 0
-	var requestCountMutex sync.Mutex
-	evaluator := evaluatorFunc(func(_ context.Context, request evaluationRequest) (evaluationResponse, error) {
-		requestCountMutex.Lock()
-		requestCount++
-		requestCountMutex.Unlock()
-		if size := requestSize(request); size > maximumRequestBytes {
-			return evaluationResponse{}, fmt.Errorf("request size = %d, limit = %d", size, maximumRequestBytes)
-		}
-		if request.Questions[rule.ID] != questionForWindowRule(rule) {
-			return evaluationResponse{}, fmt.Errorf("unexpected window question")
-		}
-		probability := 0.1
-		if strings.Contains(request.State["file"], "VIOLATION") {
-			probability = 0.9
-		}
-		return evaluationResponse{
-			Model:   "jev-test",
-			Answers: map[string]answer{rule.ID: {Type: "noul", Noul: probability}},
-		}, nil
-	})
-
-	report, err := evaluateSource(
-		context.Background(),
-		source,
-		[]Rule{rule},
-		Options{Threshold: defaultThreshold},
-		evaluator,
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	requestCountMutex.Lock()
-	gotRequestCount := requestCount
-	requestCountMutex.Unlock()
-	if gotRequestCount < 2 {
-		t.Fatalf("requests = %d, want multiple windows", gotRequestCount)
-	}
-	if len(report.Findings) != 1 || report.Findings[0].ViolationProbability != 0.9 {
-		t.Fatalf("findings = %#v", report.Findings)
-	}
 }
 
 func TestRulesForPathAppliesGlobsAndOrderedConfiguration(t *testing.T) {
@@ -268,32 +99,6 @@ func TestClassifyProbabilityUsesPassReviewAndViolationBoundaries(t *testing.T) {
 	}
 }
 
-func TestFindingReportsOmitRedundantClassificationMessages(t *testing.T) {
-	report := FindingReport{
-		Source: "src/example.ts",
-		Findings: []Finding{{
-			RulePath:             "rules/simplicity/keep-control-flow-shallow.md",
-			RuleTitle:            "Keep control flow shallow",
-			Classification:       "review",
-			ViolationProbability: 0.58,
-		}},
-	}
-	wantHuman := "Source file: src/example.ts\n" +
-		"violation=0 review=1 pass=0\n" +
-		"[review 0.58] Keep control flow shallow (rules/simplicity/keep-control-flow-shallow.md)"
-	if got := humanReports([]FindingReport{report}); got != wantHuman {
-		t.Fatalf("human report:\n%s\nwant:\n%s", got, wantHuman)
-	}
-	gotJSON, err := marshalJSON(report.Findings[0])
-	if err != nil {
-		t.Fatal(err)
-	}
-	wantJSON := `{"rulePath":"rules/simplicity/keep-control-flow-shallow.md","ruleTitle":"Keep control flow shallow","classification":"review","violationProbability":0.58}`
-	if string(gotJSON) != wantJSON {
-		t.Fatalf("JSON finding:\n%s\nwant:\n%s", gotJSON, wantJSON)
-	}
-}
-
 func TestRunDryRunNeedsNoTypeSafeCredentials(t *testing.T) {
 	root := newSemanticTestRepository(t)
 	writeTestFile(t, root, "src/example.ts", "const values = [1, 2] as const;\n")
@@ -318,27 +123,247 @@ func TestRunDryRunNeedsNoTypeSafeCredentials(t *testing.T) {
 	}
 }
 
-func TestRunSendsExactWholeFileNoulRequest(t *testing.T) {
+func TestRunSelectsCandidateSpansBeforeFinalJudgment(t *testing.T) {
 	root := newSemanticTestRepository(t)
-	file := "const values = [1, 2] as const;\n"
-	writeTestFile(t, root, "src/example.ts", file)
-	var recorded evaluationRequest
+	source := strings.Repeat("export const safe = 1;\n", 220) + "export const VIOLATION = true;\n"
+	writeTestFile(t, root, "src/example.ts", source)
+	var requests []evaluationRequest
+	var mu sync.Mutex
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if request.URL.Path != "/v1/systemone" {
-			t.Errorf("path = %s", request.URL.Path)
-		}
-		if request.Header.Get("Authorization") != "Bearer secret" {
-			t.Errorf("authorization = %q", request.Header.Get("Authorization"))
-		}
-		if err := json.NewDecoder(request.Body).Decode(&recorded); err != nil {
+		var received evaluationRequest
+		if err := json.NewDecoder(request.Body).Decode(&received); err != nil {
 			t.Error(err)
-		}
-		if recorded.Model == "" {
-			http.Error(writer, "body.model: Field required", http.StatusUnprocessableEntity)
 			return
 		}
-		answers := make(map[string]answer, len(recorded.Questions))
-		for id := range recorded.Questions {
+		mu.Lock()
+		requests = append(requests, received)
+		mu.Unlock()
+		probability := 0.1
+		if strings.Contains(received.State["file"], "VIOLATION") {
+			probability = 0.9
+		}
+		answers := make(map[string]answer, len(received.Questions))
+		for id := range received.Questions {
+			answers[id] = answer{Type: "noul", Noul: probability}
+		}
+		_ = json.NewEncoder(writer).Encode(evaluationResponse{Model: "jev-test", Answers: answers})
+	}))
+	defer server.Close()
+	t.Setenv("TYPESAFE_API_KEY", "secret")
+	t.Setenv("TYPESAFE_BASE_URL", server.URL)
+	var output bytes.Buffer
+	exitCode, err := Run(context.Background(), root, []string{"--files", "src/example.ts", "--rules", "effect/separate-service-interfaces-from-layer-construction", "--json"}, &output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if exitCode != 1 {
+		t.Fatalf("exit code = %d, output = %s", exitCode, output.String())
+	}
+	var reports []struct {
+		Findings []struct {
+			Classification       string  `json:"classification"`
+			ViolationProbability float64 `json:"violationProbability"`
+			CandidateRanges      []struct {
+				StartByte int `json:"startByte"`
+				EndByte   int `json:"endByte"`
+			} `json:"candidateRanges"`
+		} `json:"findings"`
+	}
+	if err := json.Unmarshal(output.Bytes(), &reports); err != nil {
+		t.Fatal(err)
+	}
+	if len(reports) != 1 || len(reports[0].Findings) != 1 {
+		t.Fatalf("reports = %s", output.String())
+	}
+	finding := reports[0].Findings[0]
+	if finding.Classification != "violation" || finding.ViolationProbability != 0.9 || len(finding.CandidateRanges) != 1 {
+		t.Fatalf("finding = %#v", finding)
+	}
+	region := finding.CandidateRanges[0]
+	if region.StartByte <= 0 || region.EndByte != len(source) || !strings.Contains(source[region.StartByte:region.EndByte], "VIOLATION") {
+		t.Fatalf("candidate range = %#v", region)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if len(requests) < 3 {
+		t.Fatalf("requests = %d, want multiple selection requests and one final request", len(requests))
+	}
+	foundFinal := false
+	for _, received := range requests {
+		if len(received.Questions) != 1 {
+			t.Fatalf("questions = %#v", received.Questions)
+		}
+		for _, q := range received.Questions {
+			if strings.Contains(q.Instructions, "Do the selected") {
+				foundFinal = true
+				if len(received.State["file"]) >= len(source) || !strings.Contains(received.State["file"], "VIOLATION") {
+					t.Fatalf("final state = %q", received.State["file"])
+				}
+			}
+		}
+	}
+	if !foundFinal {
+		t.Fatal("no final Noul question")
+	}
+}
+
+func TestRunRecomposesDistantCandidateSpans(t *testing.T) {
+	root := newSemanticTestRepository(t)
+	source := "const VIOLATION_A = true;\n" + strings.Repeat("const safe = true;\n", 450) + "const VIOLATION_B = true;\n"
+	writeTestFile(t, root, "src/example.ts", source)
+	var finalState string
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		var received evaluationRequest
+		if err := json.NewDecoder(request.Body).Decode(&received); err != nil {
+			t.Error(err)
+			return
+		}
+		probability := 0.1
+		for _, q := range received.Questions {
+			if strings.Contains(q.Instructions, "Do the selected") {
+				finalState = received.State["file"]
+				if strings.Contains(finalState, "VIOLATION_A") && strings.Contains(finalState, "VIOLATION_B") {
+					probability = 0.9
+				}
+			} else if strings.Contains(received.State["file"], "VIOLATION_A") || strings.Contains(received.State["file"], "VIOLATION_B") {
+				probability = 0.8
+			}
+		}
+		answers := make(map[string]answer, len(received.Questions))
+		for id := range received.Questions {
+			answers[id] = answer{Type: "noul", Noul: probability}
+		}
+		_ = json.NewEncoder(writer).Encode(evaluationResponse{Model: "jev-test", Answers: answers})
+	}))
+	defer server.Close()
+	t.Setenv("TYPESAFE_API_KEY", "secret")
+	t.Setenv("TYPESAFE_BASE_URL", server.URL)
+	var output bytes.Buffer
+	exitCode, err := Run(context.Background(), root, []string{"--files", "src/example.ts", "--rules", "effect/separate-service-interfaces-from-layer-construction", "--json"}, &output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var reports []FindingReport
+	if err := json.Unmarshal(output.Bytes(), &reports); err != nil {
+		t.Fatal(err)
+	}
+	if exitCode != 1 || len(reports) != 1 || len(reports[0].Findings) != 1 {
+		t.Fatalf("exit=%d reports=%s", exitCode, output.String())
+	}
+	finding := reports[0].Findings[0]
+	if finding.Classification != "violation" || finding.ViolationProbability == nil || *finding.ViolationProbability != 0.9 || len(finding.CandidateRanges) != 2 {
+		t.Fatalf("finding = %#v", finding)
+	}
+	first, second := finding.CandidateRanges[0], finding.CandidateRanges[1]
+	if first.StartLine != 1 || second.StartLine <= first.EndLine ||
+		!strings.Contains(source[first.StartByte:first.EndByte], "VIOLATION_A") ||
+		!strings.Contains(source[second.StartByte:second.EndByte], "VIOLATION_B") ||
+		len(finalState) >= len(source) {
+		t.Fatalf("ranges = %#v; final state = %q", finding.CandidateRanges, finalState)
+	}
+}
+
+func TestRunUsesFinalVerdictRatherThanCandidateScore(t *testing.T) {
+	root := newSemanticTestRepository(t)
+	writeTestFile(t, root, "src/example.ts", "export const value = 1;\n")
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		var received evaluationRequest
+		if err := json.NewDecoder(request.Body).Decode(&received); err != nil {
+			t.Error(err)
+			return
+		}
+		calls++
+		probability := 0.95
+		for _, q := range received.Questions {
+			if strings.Contains(q.Instructions, "Do the selected") {
+				probability = 0.1
+			}
+		}
+		answers := make(map[string]answer, len(received.Questions))
+		for id := range received.Questions {
+			answers[id] = answer{Type: "noul", Noul: probability}
+		}
+		_ = json.NewEncoder(writer).Encode(evaluationResponse{Model: "jev-test", Answers: answers})
+	}))
+	defer server.Close()
+	t.Setenv("TYPESAFE_API_KEY", "secret")
+	t.Setenv("TYPESAFE_BASE_URL", server.URL)
+	var output bytes.Buffer
+	exitCode, err := Run(context.Background(), root, []string{"--files", "src/example.ts", "--rules", "effect/separate-service-interfaces-from-layer-construction", "--json"}, &output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var reports []FindingReport
+	if err := json.Unmarshal(output.Bytes(), &reports); err != nil {
+		t.Fatal(err)
+	}
+	if exitCode != 0 || calls != 2 || len(reports) != 1 || len(reports[0].Findings) != 1 {
+		t.Fatalf("exit=%d calls=%d reports=%s", exitCode, calls, output.String())
+	}
+	finding := reports[0].Findings[0]
+	if finding.Classification != "pass" || finding.ViolationProbability == nil || *finding.ViolationProbability != 0.1 || len(finding.CandidateRanges) != 1 {
+		t.Fatalf("finding = %#v", finding)
+	}
+}
+
+func TestRunReportsNoCandidateAsInconclusiveWithoutFinalJudgment(t *testing.T) {
+	root := newSemanticTestRepository(t)
+	writeTestFile(t, root, "src/example.ts", "export const value = 1;\n")
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		calls++
+		var received evaluationRequest
+		if err := json.NewDecoder(request.Body).Decode(&received); err != nil {
+			t.Error(err)
+			return
+		}
+		answers := make(map[string]answer, len(received.Questions))
+		for id := range received.Questions {
+			answers[id] = answer{Type: "noul", Noul: 0.1}
+		}
+		_ = json.NewEncoder(writer).Encode(evaluationResponse{Model: "jev-test", Answers: answers})
+	}))
+	defer server.Close()
+	t.Setenv("TYPESAFE_API_KEY", "secret")
+	t.Setenv("TYPESAFE_BASE_URL", server.URL)
+	var output bytes.Buffer
+	exitCode, err := Run(context.Background(), root, []string{"--files", "src/example.ts", "--rules", "effect/separate-service-interfaces-from-layer-construction", "--json"}, &output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var reports []FindingReport
+	if err := json.Unmarshal(output.Bytes(), &reports); err != nil {
+		t.Fatal(err)
+	}
+	if exitCode != 0 || calls != 1 || len(reports) != 1 || len(reports[0].Findings) != 1 {
+		t.Fatalf("exit=%d calls=%d reports=%s", exitCode, calls, output.String())
+	}
+	finding := reports[0].Findings[0]
+	if finding.Classification != "inconclusive" || finding.ViolationProbability != nil || len(finding.CandidateRanges) != 0 {
+		t.Fatalf("finding = %#v", finding)
+	}
+}
+
+func TestRunDoesNotJudgeTruncatedCandidateContext(t *testing.T) {
+	root := newSemanticTestRepository(t)
+	source := strings.Repeat("export const relevant = true;\n", 1_400)
+	writeTestFile(t, root, "src/example.ts", source)
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		var received evaluationRequest
+		if err := json.NewDecoder(request.Body).Decode(&received); err != nil {
+			t.Error(err)
+			return
+		}
+		for _, q := range received.Questions {
+			if strings.Contains(q.Instructions, "Do the selected") {
+				t.Error("final judgment ran with truncated context")
+			}
+		}
+		calls.Add(1)
+		answers := make(map[string]answer, len(received.Questions))
+		for id := range received.Questions {
 			answers[id] = answer{Type: "noul", Noul: 0.9}
 		}
 		_ = json.NewEncoder(writer).Encode(evaluationResponse{Model: "jev-test", Answers: answers})
@@ -347,58 +372,52 @@ func TestRunSendsExactWholeFileNoulRequest(t *testing.T) {
 	t.Setenv("TYPESAFE_API_KEY", "secret")
 	t.Setenv("TYPESAFE_BASE_URL", server.URL)
 	var output bytes.Buffer
-	exitCode, err := Run(context.Background(), root, []string{"--rules", "readonly", "--json"}, &output)
+	exitCode, err := Run(context.Background(), root, []string{"--files", "src/example.ts", "--rules", "effect/separate-service-interfaces-from-layer-construction", "--json"}, &output)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if exitCode != 1 {
-		t.Fatalf("exit code = %d, output = %s", exitCode, output.String())
-	}
-	if !reflect.DeepEqual(recorded.State, map[string]string{"file": file}) {
-		t.Fatalf("state = %#v", recorded.State)
-	}
-	if recorded.Model != "jev-latest" {
-		t.Fatalf("default model = %q, want jev-latest", recorded.Model)
-	}
-	if len(recorded.Questions) != 1 {
-		t.Fatalf("questions = %#v", recorded.Questions)
-	}
-	rules, err := loadRules(root, ".better-typescript/rules")
-	if err != nil {
+	var reports []FindingReport
+	if err := json.Unmarshal(output.Bytes(), &reports); err != nil {
 		t.Fatal(err)
 	}
-	selected, err := selectSemanticRules(rules, []string{"readonly"})
-	if err != nil {
-		t.Fatal(err)
+	if exitCode != 0 || calls.Load() < 2 || len(reports) != 1 || len(reports[0].Findings) != 1 {
+		t.Fatalf("exit=%d calls=%d reports=%s", exitCode, calls.Load(), output.String())
 	}
-	for _, question := range recorded.Questions {
-		if question != questionForRule(selected[0]) {
-			t.Fatalf("question = %#v, want %#v", question, questionForRule(selected[0]))
-		}
+	finding := reports[0].Findings[0]
+	if finding.Classification != "inconclusive" || finding.ViolationProbability != nil ||
+		finding.Reason != "selected context exceeds the TypeSafe request limit" ||
+		len(finding.CandidateRanges) != 1 || finding.CandidateRanges[0].EndByte != len(source) {
+		t.Fatalf("finding = %#v", finding)
 	}
 }
 
-func TestEmbeddedCatalogMatchesWholeFileManifest(t *testing.T) {
-	content, err := os.ReadFile("testdata/surviving-rules.txt")
+func TestRemovedSemanticPolicySelectorsRejectStaleConfiguration(t *testing.T) {
+	rules, err := loadRules(t.TempDir(), "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := strings.Fields(string(content))
-	sources, err := embeddedRuleSources()
+	content, err := os.ReadFile("testdata/retired-policy-selectors.txt")
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := make([]string, len(sources))
-	for index, source := range sources {
-		got[index] = strings.TrimSuffix(strings.TrimPrefix(source.path, "rules/"), ".md")
+	for _, selector := range strings.Fields(string(content)) {
+		t.Run(selector, func(t *testing.T) {
+			configuration := appconfig.File{Commands: []appconfig.Command{{
+				Mode: appconfig.ModeSemantic, Type: "add_exclusions", Rules: []string{selector},
+			}}}
+			_, err := compileSemanticCommands(rules, configuration)
+			if err == nil || !strings.Contains(err.Error(), "unknown semantic rule: "+selector) {
+				t.Fatalf("stale selector %q: expected unknown-rule error, got %v", selector, err)
+			}
+		})
 	}
-	sort.Strings(got)
-	sort.Strings(want)
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("embedded rules do not match whole-file manifest\ngot:  %q\nwant: %q", got, want)
-	}
-	if len(got) != 111 {
-		t.Fatalf("embedded rules = %d, want 111", len(got))
+	for _, selector := range []string{
+		"abstraction/abstract-shared-meaning-not-merely-similar-code",
+		"switch-case/prefer-match-for-multiple-branches",
+	} {
+		if _, err := selectSemanticRules(rules, []string{selector}); err != nil {
+			t.Fatalf("replacement selector %q: %v", selector, err)
+		}
 	}
 }
 
@@ -442,14 +461,4 @@ func runGit(t *testing.T, root string, args ...string) string {
 		t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, output)
 	}
 	return string(output)
-}
-
-func Example_questionForRule() {
-	rule := Rule{Source: "# Prefer clear names\n"}
-	fmt.Println(questionForRule(rule).Instructions)
-	// Output:
-	// Does the `file` violate the following rule?
-	//
-	// Rule:
-	// # Prefer clear names
 }

@@ -51,14 +51,14 @@ export TYPESAFE_API_KEY="..."
 npx better-typescript semantic
 ```
 
-Run `npx better-typescript semantic --range 'origin/main...HEAD'` for complete changed files from a committed range endpoint, `--files 'src/**/*.ts'` for selected current files, or `--all` for every eligible current file. Add `--rules function-naming,readonly` to select policies. `--range`, `--files`, and `--all` are mutually exclusive. Range mode uses file contents and `better-typescript.json` from the end commit. Each applicable policy becomes an independent TypeSafe Noul question over the complete file when it fits. Oversized file-policy pairs use overlapping windows and keep the highest probability. The policy file is inserted verbatim into every question. Requests use `jev-latest` unless `--model` overrides it. Use `--dry-run` to inspect files, policies, windows, request partitions, and encoded bytes without an API call.
+Run `semantic --range 'origin/main...HEAD'` for committed changes, `--files 'src/**/*.ts'` for selected files, or `--all` for all eligible files; these modes are mutually exclusive. `--rules function-naming,readonly` selects policies. Range mode uses file contents and configuration from the end commit. Semantic review asks TypeSafe to select candidate source spans, then asks one final Noul per policy over their combined context. Candidate ranges are leads, not confirmed defects. No candidates or oversized combined context yield `inconclusive` without a final probability. Review and violation findings fail the run; inconclusive findings do not. Requests use `jev-latest` unless `--model` overrides it. Use `--dry-run` to inspect selection requests without an API call; final requests depend on live answers. See `docs/semantic-lint.md` for details.
 
 ## Handle results
 
-1. Parse every stdout line.
+1. Parse deterministic NDJSON per line; use `semantic --json` for structured semantic reports.
 2. For a check request, report violations without editing.
 3. For a fix request, apply the smallest behavior-preserving fixes.
    For Effect lifecycle, validation, identity, or timing changes, read `docs/engineering-principles.md` in the Better TypeScript checkout. Preserve those contracts when applying a diagnostic's guidance.
 4. Run the project's formatter, type check, and tests.
 5. Rerun `better-typescript` from the same directory.
-6. Finish when stdout is empty or report the exact blocker.
+6. Finish when deterministic stdout is empty or semantic has no actionable findings; report unresolved cases.

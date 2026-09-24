@@ -27,6 +27,7 @@ Recursive and generic-inference-guiding annotations are retained. Effect Schema 
 Statement spacing separates different syntax kinds. Single-line declarations inside functions stay contiguous only within the same kind; multiline statements retain their surrounding separators.
 
 See [Engineering principles](./engineering-principles.md) for ownership, validation, concurrency, and compatibility boundaries.
+For embedded natural-language policies, see [Semantic lint](./semantic-lint.md); those policies are not part of the fixed built-in catalog.
 
 - [`boundary-schema-decode`](./rules/boundary-schema-decode.md)
 - [`bounded-retry-schedule`](./rules/bounded-retry-schedule.md)

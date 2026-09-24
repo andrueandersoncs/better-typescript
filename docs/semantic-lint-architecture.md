@@ -10,42 +10,36 @@ See [Semantic lint](./semantic-lint.md) for command usage.
 | --- | --- | --- |
 | **Policy** | Markdown rule answerable from one file | `Rule` |
 | **File** | Complete selected file contents | `Source` |
-| **Window** | Overlapping contiguous file range used when a file and policy cannot fit one request | `sourceWindow` |
-| **Question** | One Noul asking whether its scope proves that the file violates one policy | `question` |
-| **Partition** | One size-bounded request containing independent questions over one scope | `requestPartition` |
-| **Finding** | Highest policy probability classified as pass, review, or violation | `Finding` |
+| **Span** | Overlapping, line-aware source range for candidate selection | `sourceWindow` |
+| **Candidate** | Selected span that could demonstrate a violation; not proof | `CandidateRange` |
+| **Question** | One Noul selecting a candidate span or judging selected spans | `question` |
+| **Partition** | Size-bounded request over one span or one policy's merged candidates | `requestPartition` |
+| **Finding** | Final verdict or inconclusive outcome with candidate ranges | `Finding` |
 
 ## Flow
 
 ```text
-Git paths
-   │
-   ▼
-complete files ──► glob and config selection ──► policy scopes
-                                                    │
-                                                    ▼
-                                        size-bounded partitions
-                                                    │
-                                      up to 8 concurrent requests
-                                                    │
-                                                    ▼
-                                      maximum probability per policy
-                                                    │
-                                                    ▼
-                                              findings
+Git paths → complete files → path-matched policies
+                               │
+                               ▼
+                  overlapping source spans
+                               │
+                               ▼
+                 candidate Nouls per span/policy
+                               │
+                               ▼
+               merge selected spans per policy
+                               │
+                               ▼
+                  one final Noul per policy
+                               │
+                               ▼
+            findings with candidate source ranges
 ```
 
-`command.go: Run` owns the flow.
+`command.go: Run` owns the flow. Candidate selection and final judgment are separate evaluation stages. The final request is built only after selection answers arrive.
 
-For policies that fit, the TypeSafe state remains exactly:
-
-```json
-{"file":"<complete contents>"}
-```
-
-An oversized file-policy pair uses the same `file` key with one window's text. Whole-file questions keep the original instruction. Window questions ask whether the fragment contains enough evidence to conclude that the complete file violates the policy and require a negative answer when omitted context is necessary.
-
-There are no routing, relevance, evidence-expansion, deterministic, speculative, or review-context stages.
+Each selection request uses `{"file":"<source span>"}`. Final requests use the same key with labeled original source spans. There is no source truncation; an unselected policy or an oversized combined context is inconclusive without a final Noul.
 
 ## Selection
 
@@ -62,13 +56,11 @@ Deleted files are skipped. Every retained path is read completely.
 
 ## Requests
 
-`batch.go` constructs all applicable questions before evaluation.
+`batch.go` builds selection partitions from line-aware spans of at most 4,000 encoded source bytes. Spans overlap by up to 2,000 source bytes. Questions for each span are packed in policy order until the 32,000-byte request limit.
 
-Each policy first attempts the complete file. Fitting policies keep whole-file semantics and are packed in catalog order. Policies that do not fit use windows sized against the largest applicable encoded question. Windows prefer line boundaries and overlap by up to 2,000 source bytes.
+Each candidate Noul asks whether its span could supply concrete violation evidence or necessary context. Scores above 0.40 select candidates. Overlapping or adjacent selected spans merge before the final request. The final Noul asks whether their combined context proves that the *original* file violates the policy; it must answer no when omitted context is necessary. At most eight partitions run concurrently in each stage. Findings remain in policy order.
 
-Questions are packed until another would exceed 32,000 encoded bytes. At most eight partitions run concurrently. Window answers for the same policy are reduced to their maximum probability, then findings are restored to catalog order.
-
-A policy that leaves no room for source text fails before an API call. Files and policies are never truncated.
+`--dry-run` describes selection partitions only: final requests depend on selection answers. A policy that leaves no room for source text fails before an API call. No source is truncated.
 
 The `evaluator` interface remains the transport seam:
 
@@ -82,13 +74,14 @@ type evaluator interface {
 
 ## Classification
 
-| Probability | Classification |
+| Final probability or selection outcome | Classification |
 | --- | --- |
-| `≤ 0.40` | `pass` |
-| `> 0.40` and below `--threshold` | `review` |
-| At or above `--threshold` | `violation` |
+| No candidate or selected context exceeds one request | `inconclusive` (no final probability) |
+| Final `≤ 0.40` | `pass` |
+| Final `> 0.40` and below `--threshold` | `review` |
+| Final at or above `--threshold` | `violation` |
 
-The default violation threshold is `0.70`.
+The default violation threshold is `0.70`. Candidate ranges locate source used by the final judgment, not proven defects. Inconclusive findings do not fail the run; reviews and violations do.
 
 ## File map
 

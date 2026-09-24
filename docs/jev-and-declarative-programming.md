@@ -114,17 +114,16 @@ Monad:
   ask B over that new state
 ```
 
-The current semantic linter does not need monadic sequencing:
+The semantic linter now uses both forms:
 
 ```text
 read one complete file
-→ declare every applicable policy question
-→ evaluate the independent Nouls
-→ classify each probability
+→ ask independent candidate Nouls over source spans (Applicative)
+→ use selected spans to build new state (Monad)
+→ ask a final Noul per policy
 ```
 
-Every question is known before evaluation and shares the same whole-file state. The program is
-Applicative; physical request partitioning changes transport only.
+Selection answers construct the final request, so the entire program cannot be batched up front.
 
 ## 3. Selective functors may be the exact middle ground
 
@@ -414,55 +413,19 @@ For reproducibility:
 
 `jev-latest` is convenient operationally but cannot provide long-term referential transparency.
 
-## `semanticlint`: one Applicative program
+## `semanticlint`: staged evidence selection
 
-`internal/semanticlint` uses the simplest dependency graph:
-
-```text
-complete file
-    │
-    ├─ pure: select matching policies
-    │
-    ├─ Applicative: ask one independent Noul per policy
-    │
-    └─ pure: classify each probability
-```
-
-Every judgment is known before evaluation. No answer constructs or selects another judgment.
-Therefore the semantic program is Applicative. It has no Selective or Monad stage.
-
-For one file, every question shares this state:
-
-```json
-{"file":"<complete contents>"}
-```
-
-Each policy produces one question:
+`internal/semanticlint` has two judgment stages:
 
 ```text
-Does the `file` violate the following rule?
-
-Rule:
-<verbatim rule file>
+complete file → overlapping source spans
+              → Applicative: ask candidate Nouls per span and policy
+              → pure: merge selected spans with original source ranges
+              → Monad: build one final request per policy from selected spans
+              → Applicative: ask independent final Nouls
+              → pure: classify final answers
 ```
 
-Physical request partitioning is an interpreter detail. Questions are grouped until the next
-question would exceed the request-size limit. All partitions for the file run concurrently. The
-complete file is repeated in every partition, so partitioning does not change the program.
+Selection questions share one span as state, and can be batched within the request-size limit. Their scores choose *candidate context*, not findings. Only the final answer classifies a policy. If nothing was selected or the combined context is too large for one request, the result is inconclusive.
 
-The only essential effects are:
-
-- reading selected complete files;
-- sending independent Noul questions;
-- receiving probabilities.
-
-Glob matching, configuration, partition construction, request-size checks, stable result ordering,
-and probability classification are pure.
-
-`--dry-run` can therefore expose the complete program before evaluation: file bytes, matching
-policies, physical partitions, question counts, and encoded request bytes. It needs no unresolved
-stage and makes no model call.
-
-This design intentionally excludes repository evidence, diffs, source chunks, routing, relevance
-selection, review context, deterministic semantic checks, speculative execution, provenance, and
-execution traces. A policy that needs those inputs is not a whole-file semantic policy.
+Because selected source text determines the final request, `--dry-run` can show the selection plan but cannot predict final partitions. This is a real dependency, not transport partitioning. The original source offsets stay with each candidate so findings can point to the context evaluated. Model judgments remain probabilistic; selection does not establish correctness or score stability.
