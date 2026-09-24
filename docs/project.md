@@ -4,15 +4,15 @@
 
 The CLI analyzes the project graph rooted in the current directory. It loads `./tsconfig.json` and its recursive project references. Each config gets one `typescript-go` Program and contributes its non-declaration root source files. Optional project-relative globs restrict which files are linted.
 
-The `semantic` subcommand uses Git working-tree changes or an explicit commit range as its change seam. It evaluates embedded and project-local Markdown policies with deterministic Go checks plus bounded TypeSafe Choice and Noul judgments. The semantic module owns evidence selection, network retries, classifications, and its report contract.
+The `semantic` subcommand uses Git working-tree changes, selected current files, all eligible current files, or an explicit commit range as its change seam. Frontmatter globs and ordered semantic configuration select each file's candidate policies. Each candidate file-policy pair declares one whole-file scope when it fits or every required overlapping window scope otherwise; candidate selection does not prove that the policy applies to the code shape. At most eight request partitions run concurrently. The semantic module owns file selection, request partitioning, network retries, classifications, and its report contract.
 
 The root Go module imports generated public compiler adapters from `github.com/andrueandersoncs/typescript-go`.
 
-The complete sorted rule catalog is on by default. Optional CLI rule names select a sorted catalog subset. Ordered `better-typescript.json` commands use `add_exclusions` to turn rules off and `add_inclusions` to turn them back on for matching files; `"rules": "*"` addresses the complete catalog for that mode. Commands default to deterministic rules; semantic-mode commands apply the same selection model to semantic policies without removing files from repository context. For each analyzed file, every selected deterministic rule creates a listener map keyed by AST kind. The linter combines those listeners and dispatches them during one traversal. Rules report nodes or ranges through `rule.RuleContext`.
+The complete sorted rule catalog is on by default. Optional CLI rule names select a sorted catalog subset. Ordered `better-typescript.json` commands use `add_exclusions` to turn rules off and `add_inclusions` to turn them back on for matching files; `"rules": "*"` addresses the complete catalog for that mode. Commands default to deterministic rules; semantic-mode commands apply the same ordered selection to semantic policy candidates. For each analyzed file, every selected deterministic rule creates a listener map keyed by AST kind. The linter combines those listeners and dispatches them during one traversal. Rules report nodes or ranges through `rule.RuleContext`.
 
 Analysis converts reports into the stable six-field NDJSON contract. It makes paths relative to the current directory, converts positions to one-based UTF-16 coordinates, sorts all records, and removes exact duplicates. The CLI prints only NDJSON to stdout and status or operational errors to stderr.
 
-Semantic findings are repository-wide and may be probabilistic, so they use a separate text or JSON report. TypeSafe never receives the complete repository or raw diff.
+Semantic findings are file-scoped and probabilistic, so they use a separate text or JSON report. TypeSafe receives selected complete-file or window text plus policy text, never the complete repository or raw diff.
 
 Each rule owns one `internal/rules/<rule_name>` package and a minimal `testdata` TypeScript project. Shared runtime code does not encode rule-specific verdicts.
 

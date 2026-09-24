@@ -117,14 +117,15 @@ Monad:
 The current semantic linter does not need monadic sequencing:
 
 ```text
-read one complete file
-→ declare every applicable policy question
-→ evaluate the independent Nouls
+read one selected complete file
+→ select candidate policies by frontmatter glob and ordered configuration
+→ declare one whole-file scope or all required window scopes per policy
+→ evaluate independent Nouls with at most eight concurrent requests
 → classify each probability
 ```
 
-Every question is known before evaluation and shares the same whole-file state. The program is
-Applicative; physical request partitioning changes transport only.
+Every question and its complete-file or window state is known before evaluation. The program is
+Applicative; physical request partitioning and bounded concurrency change transport only.
 
 ## 3. Selective functors may be the exact middle ground
 
@@ -421,9 +422,9 @@ For reproducibility:
 ```text
 complete file
     │
-    ├─ pure: select matching policies
+    ├─ pure: select glob- and configuration-matched candidate policies
     │
-    ├─ Applicative: ask one independent Noul per policy
+    ├─ Applicative: ask one whole-file Noul or one Noul per required window
     │
     └─ pure: classify each probability
 ```
@@ -431,24 +432,30 @@ complete file
 Every judgment is known before evaluation. No answer constructs or selects another judgment.
 Therefore the semantic program is Applicative. It has no Selective or Monad stage.
 
-For one file, every question shares this state:
+For a fitting whole-file judgment, every question shares this state:
 
 ```json
 {"file":"<complete contents>"}
 ```
 
-Each policy produces one question:
+Each policy produces this question:
 
 ```text
-Does the `file` violate the following rule?
+Does the `file` violate the following rule? Answer no when the rule's subject is absent or the rule does not apply to the code shape shown.
 
 Rule:
 <verbatim rule file>
 ```
 
-Physical request partitioning is an interpreter detail. Questions are grouped until the next
-question would exceed the request-size limit. All partitions for the file run concurrently. The
-complete file is repeated in every partition, so partitioning does not change the program.
+When a file-policy pair does not fit, the program declares overlapping window judgments before evaluation. Each window uses:
+
+```json
+{"file":"<window contents>"}
+```
+
+Its question asks whether the fragment is enough to prove a complete-file violation and requires a negative answer for an absent subject, an inapplicable code shape, or necessary omitted context.
+
+Physical request partitioning is an interpreter detail. Whole-file questions are grouped until the next question would exceed the request-size limit. Oversized pairs use independently declared windows, and at most eight requests run concurrently. Scope choice never depends on an earlier answer, so partitioning and windowing do not change the Applicative program.
 
 The only essential effects are:
 
@@ -459,10 +466,10 @@ The only essential effects are:
 Glob matching, configuration, partition construction, request-size checks, stable result ordering,
 and probability classification are pure.
 
-`--dry-run` can therefore expose the complete program before evaluation: file bytes, matching
+`--dry-run` can therefore expose the complete program before evaluation: file bytes, candidate
 policies, physical partitions, question counts, and encoded request bytes. It needs no unresolved
 stage and makes no model call.
 
 This design intentionally excludes repository evidence, diffs, source chunks, routing, relevance
 selection, review context, deterministic semantic checks, speculative execution, provenance, and
-execution traces. A policy that needs those inputs is not a whole-file semantic policy.
+execution traces. A policy that needs those inputs is not a file-scoped semantic policy.

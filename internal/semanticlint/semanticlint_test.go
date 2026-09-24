@@ -50,7 +50,7 @@ func TestParseRulePreservesVerbatimSourceAndBuildsExactQuestion(t *testing.T) {
 	if question.Type != "noul" {
 		t.Fatalf("question type = %q", question.Type)
 	}
-	want := "Does the `file` violate the following rule?\n\nRule:\n" + source
+	want := "Does the `file` violate the following rule? Answer no when the rule's subject is absent or the rule does not apply to the code shape shown.\n\nRule:\n" + source
 	if question.Instructions != want {
 		t.Fatalf("instructions = %q, want %q", question.Instructions, want)
 	}
@@ -422,7 +422,7 @@ func Example_questionForRule() {
 	rule := Rule{Source: "# Prefer clear names\n"}
 	fmt.Println(questionForRule(rule).Instructions)
 	// Output:
-	// Does the `file` violate the following rule?
+	// Does the `file` violate the following rule? Answer no when the rule's subject is absent or the rule does not apply to the code shape shown.
 	//
 	// Rule:
 	// # Prefer clear names
