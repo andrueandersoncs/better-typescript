@@ -30,16 +30,18 @@ Git paths → complete files → path-matched policies
                                ▼
                merge selected spans per policy
                                │
-                               ▼
-                  one final Noul per policy
+               two independent Nouls per policy:
+               applicability and violation
                                │
+                               ▼
+           gate verdict on applicability ≥ 0.70
                                ▼
             findings with candidate source ranges
 ```
 
 `command.go: Run` owns the flow. Candidate selection and final judgment are separate evaluation stages. The final request is built only after selection answers arrive.
 
-Each selection request uses `{"file":"<source span>"}`. Final requests use the same key with labeled original source spans. There is no source truncation; an unselected policy or an oversized combined context is inconclusive without a final Noul.
+Each selection request uses `{"file":"<source span>"}`. Final requests use the same key with labeled original source spans. Two independent Nouls judge applicability and violation; a review or violation needs applicability of at least 0.70. There is no source truncation; an unselected policy, unestablished applicability, or oversized combined context is inconclusive without a final violation probability.
 
 ## Selection
 
@@ -58,7 +60,7 @@ Deleted files are skipped. Every retained path is read completely.
 
 `batch.go` builds selection partitions from line-aware spans of at most 4,000 encoded source bytes. Spans overlap by up to 2,000 source bytes. Questions for each span are packed in policy order until the 32,000-byte request limit.
 
-Each candidate Noul asks whether its span could supply concrete violation evidence or necessary context. Scores above 0.40 select candidates. Overlapping or adjacent selected spans merge before the final request. The final Noul asks whether their combined context proves that the *original* file violates the policy; it must answer no when omitted context is necessary. At most eight partitions run concurrently in each stage. Findings remain in policy order.
+Each candidate Noul asks whether its span could supply concrete violation evidence or necessary context. Scores above 0.40 select candidates. Overlapping or adjacent selected spans merge before the final request. The final request asks independently whether the policy applies to the selected behavior and whether their combined context proves that the *original* file violates the policy; it must answer no when omitted context is necessary. A potential review or violation is inconclusive unless applicability scores at least 0.70. At most eight partitions run concurrently in each stage. Findings remain in policy order.
 
 `--dry-run` describes selection partitions only: final requests depend on selection answers. A policy that leaves no room for source text fails before an API call. No source is truncated.
 
@@ -76,12 +78,12 @@ type evaluator interface {
 
 | Final probability or selection outcome | Classification |
 | --- | --- |
-| No candidate or selected context exceeds one request | `inconclusive` (no final probability) |
+| No candidate, selected context exceeds one request, or applicability < 0.70 for a potential finding | `inconclusive` (no violation probability) |
 | Final `≤ 0.40` | `pass` |
-| Final `> 0.40` and below `--threshold` | `review` |
-| Final at or above `--threshold` | `violation` |
+| Final `> 0.40` and below `--threshold`, with applicability ≥ 0.70 | `review` |
+| Final at or above `--threshold`, with applicability ≥ 0.70 | `violation` |
 
-The default violation threshold is `0.70`. Candidate ranges locate source used by the final judgment, not proven defects. Inconclusive findings do not fail the run; reviews and violations do.
+The default violation threshold is `0.70`. Applicability uses a fixed `0.70` gate and its probability is included in JSON when evaluated. Candidate ranges locate source used by the final judgment, not proven defects. Inconclusive findings do not fail the run; reviews and violations do.
 
 ## File map
 

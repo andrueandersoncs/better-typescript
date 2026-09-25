@@ -190,11 +190,14 @@ func TestRunSelectsCandidateSpansBeforeFinalJudgment(t *testing.T) {
 	}
 	foundFinal := false
 	for _, received := range requests {
-		if len(received.Questions) != 1 {
+		if len(received.Questions) < 1 || len(received.Questions) > 2 {
 			t.Fatalf("questions = %#v", received.Questions)
 		}
 		for _, q := range received.Questions {
 			if strings.Contains(q.Instructions, "Do the selected") {
+				if len(received.Questions) != 2 {
+					t.Fatalf("final questions = %#v", received.Questions)
+				}
 				foundFinal = true
 				if len(received.State["file"]) >= len(source) || !strings.Contains(received.State["file"], "VIOLATION") {
 					t.Fatalf("final state = %q", received.State["file"])
@@ -218,9 +221,10 @@ func TestRunRecomposesDistantCandidateSpans(t *testing.T) {
 			t.Error(err)
 			return
 		}
-		probability := 0.1
-		for _, q := range received.Questions {
-			if strings.Contains(q.Instructions, "Do the selected") {
+		answers := make(map[string]answer, len(received.Questions))
+		for id, q := range received.Questions {
+			probability := 0.1
+			if strings.Contains(q.Instructions, "Do the selected") || strings.Contains(q.Instructions, "Does this policy apply") {
 				finalState = received.State["file"]
 				if strings.Contains(finalState, "VIOLATION_A") && strings.Contains(finalState, "VIOLATION_B") {
 					probability = 0.9
@@ -228,9 +232,6 @@ func TestRunRecomposesDistantCandidateSpans(t *testing.T) {
 			} else if strings.Contains(received.State["file"], "VIOLATION_A") || strings.Contains(received.State["file"], "VIOLATION_B") {
 				probability = 0.8
 			}
-		}
-		answers := make(map[string]answer, len(received.Questions))
-		for id := range received.Questions {
 			answers[id] = answer{Type: "noul", Noul: probability}
 		}
 		_ = json.NewEncoder(writer).Encode(evaluationResponse{Model: "jev-test", Answers: answers})
@@ -274,14 +275,12 @@ func TestRunUsesFinalVerdictRatherThanCandidateScore(t *testing.T) {
 			return
 		}
 		calls++
-		probability := 0.95
-		for _, q := range received.Questions {
+		answers := make(map[string]answer, len(received.Questions))
+		for id, q := range received.Questions {
+			probability := 0.95
 			if strings.Contains(q.Instructions, "Do the selected") {
 				probability = 0.1
 			}
-		}
-		answers := make(map[string]answer, len(received.Questions))
-		for id := range received.Questions {
 			answers[id] = answer{Type: "noul", Noul: probability}
 		}
 		_ = json.NewEncoder(writer).Encode(evaluationResponse{Model: "jev-test", Answers: answers})

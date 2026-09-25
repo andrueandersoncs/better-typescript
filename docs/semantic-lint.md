@@ -20,8 +20,9 @@ For every selected file:
 1. select policies whose frontmatter globs match its path;
 2. split the file into overlapping, line-aware spans of at most 4,000 encoded source bytes;
 3. ask a Noul per span and policy whether it could contain concrete violation evidence or necessary context;
-4. merge spans scoring above 0.40 for each policy, then ask one final Noul over those selected spans; and
-5. report the final verdict with candidate source ranges.
+4. merge candidate spans scoring above 0.40 for each policy;
+5. ask two independent Nouls over those spans: whether the policy applies and whether the original file violates it; and
+6. report the verdict only when applicability is at least 0.70, with candidate source ranges.
 
 Selection questions use:
 
@@ -32,7 +33,16 @@ Rule:
 <verbatim rule file>
 ```
 
-Final questions use:
+Final applicability question:
+
+```text
+Does this policy apply to the behavior actually present in `file`? Answer yes only if the selected source spans establish the subject governed by the rule. Answer no when the source is merely related or the rule's subject is absent. Do not infer missing behavior or configuration.
+
+Rule:
+<verbatim rule file>
+```
+
+Final violation question:
 
 ```text
 Do the selected source spans in `file` provide enough evidence to conclude that the original file violates the following rule? Answer no if omitted context is needed; do not infer missing code.
@@ -41,7 +51,7 @@ Rule:
 <verbatim rule file>
 ```
 
-The rule file includes its frontmatter and original line endings. Requests never contain diffs, neighboring files, or repository context. Final state includes selected source text with original line labels; reported byte and line ranges locate *candidates*, not proven violations.
+The two questions receive the same state but are judged independently. The rule file includes its frontmatter and original line endings. Requests never contain diffs, neighboring files, or repository context. Final state includes selected source text with original line labels; reported byte and line ranges locate *candidates*, not proven violations.
 
 Questions over the same span are batched up to the 32,000-byte request limit. Spans prefer line boundaries and overlap by up to 2,000 source bytes. At most eight requests run concurrently per stage. If no span is selected, or all selected spans cannot fit one final request, the result is `inconclusive` without a final probability. No source is silently truncated. A policy that leaves no room for source text still causes an error.
 
@@ -158,10 +168,13 @@ Final requests depend on live selection answers, so they are not included in the
 | Outcome | Classification | Fails a live run |
 | --- | --- | --- |
 | No candidate span or selected context too large | `inconclusive` (no final probability) | No |
+| Final probability `> 0.40`, but applicability below `0.70` | `inconclusive` (no violation probability) | No |
 | Final probability `≤ 0.40` | `pass` | No |
-| Final probability `> 0.40` and below `--threshold` | `review` | Yes |
-| Final probability at or above `--threshold` | `violation` | Yes |
+| Final probability `> 0.40` and below `--threshold`, with applicability at least `0.70` | `review` | Yes |
+| Final probability at or above `--threshold`, with applicability at least `0.70` | `violation` | Yes |
 
-Text output prints each review or violation with candidate line ranges; inconclusive findings without candidate spans are summarized. JSON findings include candidate byte and line ranges, the final probability when available, and a reason for inconclusive results. Selection scores are not final verdicts. The default threshold is `0.70`.
+Text output prints each review or violation with candidate line ranges; inconclusive findings without candidate spans are summarized. JSON findings include candidate byte and line ranges, applicability probability when evaluated, the violation probability only for applicable verdicts, and a reason for inconclusive results. Selection scores are not final verdicts. The default violation threshold is `0.70`; the applicability gate stays at `0.70` when `--threshold` changes.
+
+The applicability check is a model judgment, not proof of correctness. The service/Layer policy applies only to files with a service definition or Layer construction; the Effect failure policy applies to fallible effectful operations, not pure checks. A function-local mutable builder remains subject to the immutability policy unless deterministic mutation rules are explicitly excluded for that file. Review concrete findings; use narrow semantic-mode exclusions for policies that do not apply instead of rewriting correct code to satisfy a false positive.
 
 Live runs exit `0` when there are no review or violation findings, `1` for review or violation findings, and `2` for arguments, Git, file, response, or TypeSafe errors. The API key remains in the process environment and is sent only in the TypeSafe authorization header.

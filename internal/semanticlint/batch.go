@@ -9,12 +9,14 @@ import (
 )
 
 const (
-	candidateQuestionPrefix      = "Could the `file` segment provide concrete evidence that the complete file violates the following rule? Answer yes for plausible evidence or necessary context, not merely related code. Answer no if the rule cannot apply to this segment.\n\nRule:\n"
-	finalQuestionPrefix          = "Do the selected source spans in `file` provide enough evidence to conclude that the original file violates the following rule? Answer no if omitted context is needed; do not infer missing code.\n\nRule:\n"
-	candidateSelectionThreshold  = 0.4
-	maximumSegmentBytes          = 4_000
-	maximumWindowOverlapBytes    = 2_000
-	maximumConcurrentEvaluations = 8
+	candidateQuestionPrefix         = "Could the `file` segment provide concrete evidence that the complete file violates the following rule? Answer yes for plausible evidence or necessary context, not merely related code. Answer no if the rule cannot apply to this segment.\n\nRule:\n"
+	finalQuestionPrefix             = "Do the selected source spans in `file` provide enough evidence to conclude that the original file violates the following rule? Answer no if omitted context is needed; do not infer missing code.\n\nRule:\n"
+	applicabilityQuestionPrefix     = "Does this policy apply to the behavior actually present in `file`? Answer yes only if the selected source spans establish the subject governed by the rule. Answer no when the source is merely related or the rule's subject is absent. Do not infer missing behavior or configuration.\n\nRule:\n"
+	candidateSelectionThreshold     = 0.4
+	minimumApplicabilityProbability = 0.7
+	maximumSegmentBytes             = 4_000
+	maximumWindowOverlapBytes       = 2_000
+	maximumConcurrentEvaluations    = 8
 )
 
 type sourceWindow struct {
@@ -40,6 +42,10 @@ func questionForCandidate(rule Rule) question {
 
 func questionForFinal(rule Rule) question {
 	return question{Type: "noul", Instructions: finalQuestionPrefix + rule.Source}
+}
+
+func applicabilityQuestion(rule Rule) question {
+	return question{Type: "noul", Instructions: applicabilityQuestionPrefix + rule.Source}
 }
 
 func buildRequestPartitions(source Source, rules []Rule, model string, maximumBytes int) ([]requestPartition, error) {
@@ -290,9 +296,12 @@ func finalRequest(source Source, rule Rule, windows []sourceWindow, ranges []Can
 		text.WriteString(source.Text[window.start:window.end])
 	}
 	return evaluationRequest{
-		State:     map[string]string{"file": text.String()},
-		Questions: map[string]question{rule.ID: questionForFinal(rule)},
-		Model:     modelOrDefault(model),
+		State: map[string]string{"file": text.String()},
+		Questions: map[string]question{
+			rule.ID:              questionForFinal(rule),
+			rule.ID + "_applies": applicabilityQuestion(rule),
+		},
+		Model: modelOrDefault(model),
 	}
 }
 
@@ -355,7 +364,17 @@ func evaluateSource(ctx context.Context, source Source, rules []Rule, options Op
 		if err != nil {
 			return FindingReport{}, err
 		}
+		applicability, err := probabilityForRule(result.response, Rule{ID: rule.ID + "_applies", Path: rule.Path})
+		if err != nil {
+			return FindingReport{}, err
+		}
 		finding := &report.Findings[finalIndexes[rule.ID]]
+		finding.ApplicabilityProbability = &applicability
+		if probability > maximumPassProbability && applicability < minimumApplicabilityProbability {
+			finding.Classification = "inconclusive"
+			finding.Reason = "policy applicability not established"
+			continue
+		}
 		finding.ViolationProbability = &probability
 		finding.Classification = classifyProbability(probability, options.Threshold)
 	}

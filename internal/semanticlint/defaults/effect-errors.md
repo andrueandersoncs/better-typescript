@@ -4,6 +4,8 @@ globs:
 ---
 # Model failures with Effect
 
+Apply this policy to effectful application operations that may fail, not pure calculations returning values (including check results). A pure function does not need an Effect error channel just because its caller uses Effect.
+
 Effectful application operations return `Effect<A, E>`: model expected
 failures as tagged errors in the typed error channel, and compose or handle
 them with Effect operators. Deterministic helpers, including pure validation,
