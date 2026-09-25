@@ -336,21 +336,30 @@ func evaluateSource(ctx context.Context, source Source, rules []Rule, options Op
 			finding.Classification = "inconclusive"
 			finding.Reason = "no candidate evidence selected"
 		} else {
-			finding.CandidateRanges = candidateRanges(source, windows)
-			selectedBytes := 0
-			for _, candidate := range finding.CandidateRanges {
-				selectedBytes += candidate.EndByte - candidate.StartByte
+			windows, err = selectEvidence(ctx, source, rule, windows, options.Model, evaluator, &report)
+			if err != nil {
+				return FindingReport{}, err
 			}
-			var request evaluationRequest
-			if selectedBytes < maximumRequestBytes {
-				request = finalRequest(source, rule, windows, finding.CandidateRanges, options.Model)
-			}
-			if selectedBytes >= maximumRequestBytes || requestSize(request) > maximumRequestBytes {
+			if len(windows) == 0 {
 				finding.Classification = "inconclusive"
-				finding.Reason = "selected context exceeds the TypeSafe request limit"
+				finding.Reason = "no evidence selected"
 			} else {
-				finalIndexes[rule.ID] = len(report.Findings)
-				finalPartitions = append(finalPartitions, requestPartition{request: request, rules: []Rule{rule}})
+				finding.CandidateRanges = candidateRanges(source, windows)
+				selectedBytes := 0
+				for _, candidate := range finding.CandidateRanges {
+					selectedBytes += candidate.EndByte - candidate.StartByte
+				}
+				var request evaluationRequest
+				if selectedBytes < maximumRequestBytes {
+					request = finalRequest(source, rule, windows, finding.CandidateRanges, options.Model)
+				}
+				if selectedBytes >= maximumRequestBytes || requestSize(request) > maximumRequestBytes {
+					finding.Classification = "inconclusive"
+					finding.Reason = "selected context exceeds the TypeSafe request limit"
+				} else {
+					finalIndexes[rule.ID] = len(report.Findings)
+					finalPartitions = append(finalPartitions, requestPartition{request: request, rules: []Rule{rule}})
+				}
 			}
 		}
 		report.Findings = append(report.Findings, finding)

@@ -203,7 +203,7 @@ func writeFindingReports(output io.Writer, reports []FindingReport, jsonOutput b
 	} else if _, err := io.WriteString(output, humanReports(reports)+"\n"); err != nil {
 		return 2, err
 	}
-	if hasActionableFindings(reports) {
+	if hasViolations(reports) {
 		return 1, nil
 	}
 	return 0, nil
@@ -268,10 +268,10 @@ func humanReports(reports []FindingReport) string {
 	return strings.Join(parts, "\n\n")
 }
 
-func hasActionableFindings(reports []FindingReport) bool {
+func hasViolations(reports []FindingReport) bool {
 	for _, report := range reports {
 		for _, finding := range report.Findings {
-			if finding.Classification == "violation" || finding.Classification == "review" {
+			if finding.Classification == "violation" {
 				return true
 			}
 		}

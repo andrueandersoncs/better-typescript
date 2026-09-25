@@ -143,8 +143,12 @@ func TestRunSelectsCandidateSpansBeforeFinalJudgment(t *testing.T) {
 			probability = 0.9
 		}
 		answers := make(map[string]answer, len(received.Questions))
-		for id := range received.Questions {
-			answers[id] = answer{Type: "noul", Noul: probability}
+		for id, q := range received.Questions {
+			if q.Type == "choice" {
+				answers[id] = testRouteAnswer(received, "VIOLATION")
+			} else {
+				answers[id] = answer{Type: "noul", Noul: probability}
+			}
 		}
 		_ = json.NewEncoder(writer).Encode(evaluationResponse{Model: "jev-test", Answers: answers})
 	}))
@@ -223,6 +227,10 @@ func TestRunRecomposesDistantCandidateSpans(t *testing.T) {
 		}
 		answers := make(map[string]answer, len(received.Questions))
 		for id, q := range received.Questions {
+			if q.Type == "choice" {
+				answers[id] = testRouteAnswer(received, "VIOLATION_A", "VIOLATION_B")
+				continue
+			}
 			probability := 0.1
 			if strings.Contains(q.Instructions, "Do the selected") || strings.Contains(q.Instructions, "Does this policy apply") {
 				finalState = received.State["file"]
@@ -426,6 +434,26 @@ func TestParseOptionsRejectsRemovedPipelines(t *testing.T) {
 			t.Fatalf("%s was accepted", option)
 		}
 	}
+}
+
+func testRouteAnswer(request evaluationRequest, markers ...string) answer {
+	left, right := false, false
+	for _, marker := range markers {
+		left = left || strings.Contains(request.State["left"], marker)
+		right = right || strings.Contains(request.State["right"], marker)
+	}
+	choice := "neither"
+	switch {
+	case left && right:
+		choice = "both"
+	case left:
+		choice = "left"
+	case right:
+		choice = "right"
+	}
+	probabilities := map[string]float64{"left": 0.02, "right": 0.02, "both": 0.02, "neither": 0.02}
+	probabilities[choice] = 0.94
+	return answer{Type: "choice", Choice: choice, Probabilities: probabilities, Confidence: 0.94}
 }
 
 func newSemanticTestRepository(t *testing.T) string {

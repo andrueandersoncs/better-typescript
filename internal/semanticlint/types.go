@@ -110,8 +110,9 @@ type DryRunPartition struct {
 }
 
 type question struct {
-	Type         string `json:"type"`
-	Instructions string `json:"instructions"`
+	Type         string            `json:"type"`
+	Instructions string            `json:"instructions"`
+	Criteria     map[string]string `json:"criteria,omitempty"`
 }
 
 type evaluationRequest struct {
@@ -121,8 +122,11 @@ type evaluationRequest struct {
 }
 
 type answer struct {
-	Type string  `json:"type"`
-	Noul float64 `json:"noul"`
+	Type          string             `json:"type"`
+	Noul          float64            `json:"noul"`
+	Choice        string             `json:"choice,omitempty"`
+	Probabilities map[string]float64 `json:"probabilities,omitempty"`
+	Confidence    float64            `json:"confidence,omitempty"`
 }
 
 type evaluationResponse struct {

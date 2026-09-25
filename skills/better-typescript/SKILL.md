@@ -51,7 +51,7 @@ export TYPESAFE_API_KEY="..."
 npx better-typescript semantic
 ```
 
-Run `semantic --range 'origin/main...HEAD'` for committed changes, `--files 'src/**/*.ts'` for selected files, or `--all` for all eligible files; these modes are mutually exclusive. `--rules function-naming,readonly` selects policies. Range mode uses file contents and configuration from the end commit. Semantic review selects candidate source spans, then asks separate applicability and violation Nouls over their combined context. A review or violation requires applicability ≥ 0.70; other potential findings are inconclusive and do not fail the run. Candidate ranges are leads, not confirmed defects. No candidates or oversized combined context are also inconclusive. Requests use `jev-latest` unless `--model` overrides it. Use `--dry-run` to inspect selection requests without an API call; final requests depend on live answers. See `docs/semantic-lint.md` for details.
+Run `semantic --range 'origin/main...HEAD'` for committed changes, `--files 'src/**/*.ts'` for selected files, or `--all` for all Git-visible eligible files; these modes are mutually exclusive. `--rules function-naming,readonly` selects policies. Range mode uses file contents and configuration from the end commit. Semantic review selects candidate source spans, routes through a Choice hierarchy while retaining plausible branches, then asks separate applicability and violation Nouls over the combined evidence set. Candidate ranges may be distant and are leads, not generated rationales. Only violations fail the run; reviews remain visible. Requests use `jev-latest` unless `--model` overrides it. Use `--dry-run` to inspect selection requests without an API call; routing and final requests depend on live answers. See `docs/semantic-lint.md` for details.
 
 ## Handle results
 
@@ -61,4 +61,4 @@ Run `semantic --range 'origin/main...HEAD'` for committed changes, `--files 'src
    For Effect lifecycle, validation, identity, or timing changes, read `docs/engineering-principles.md` in the Better TypeScript checkout. Preserve those contracts when applying a diagnostic's guidance.
 4. Run the project's formatter, type check, and tests.
 5. Rerun `better-typescript` from the same directory.
-6. Finish when deterministic stdout is empty or semantic has no actionable findings; report unresolved cases.
+6. Finish when deterministic stdout is empty or semantic reports no violations; report reviews and unresolved findings.

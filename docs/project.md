@@ -4,7 +4,7 @@
 
 The CLI analyzes the project graph rooted in the current directory. It loads `./tsconfig.json` and its recursive project references. Each config gets one `typescript-go` Program and contributes its non-declaration root source files. Optional project-relative globs restrict which files are linted.
 
-The `semantic` subcommand selects working-tree changes, current files (`--files` or `--all`), or a committed range. It evaluates embedded and project-local Markdown policies in two TypeSafe Noul stages: select candidate spans, then judge each policy from their combined context. The semantic module owns evidence selection, network retries, classifications, and reports.
+The `semantic` subcommand selects working-tree changes, current files (`--files` or `--all`), or a committed range. It evaluates embedded and project-local Markdown policies in three stages: Noul questions select candidate spans, Choice questions search those spans for a multi-location evidence set, and final Nouls judge applicability and violation from that set. The semantic module owns evidence selection, network retries, classifications, and reports.
 
 The root Go module imports generated public compiler adapters from `github.com/andrueandersoncs/typescript-go`.
 
