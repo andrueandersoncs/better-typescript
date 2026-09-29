@@ -24,6 +24,7 @@ type branchPair struct {
 func routeRequest(source Source, rule Rule, pair branchPair, model string) evaluationRequest {
 	return evaluationRequest{
 		State: map[string]string{
+			"path":  source.Path,
 			"left":  source.Text[pair.left.start:pair.left.end],
 			"right": source.Text[pair.right.start:pair.right.end],
 		},

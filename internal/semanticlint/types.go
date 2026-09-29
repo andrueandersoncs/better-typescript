@@ -70,6 +70,7 @@ type Finding struct {
 	ApplicabilityProbability *float64         `json:"applicabilityProbability,omitempty"`
 	ViolationProbability     *float64         `json:"violationProbability,omitempty"`
 	CandidateRanges          []CandidateRange `json:"candidateRanges,omitempty"`
+	EvidenceScope            string           `json:"evidenceScope,omitempty"`
 	Reason                   string           `json:"reason,omitempty"`
 }
 

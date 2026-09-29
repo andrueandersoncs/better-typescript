@@ -26,6 +26,8 @@ Better TypeScript is a Go linter that analyzes the TypeScript project graph root
 
 **Candidate**: A span that may contain evidence of a policy violation; it is not a confirmed violation.
 
+**Evidence scope**: Whether selected candidate context covers a whole file or only part of it. It does not indicate that a violation was pinpointed.
+
 **Question**: A TypeSafe Noul that selects a candidate or judges selected candidates against a policy.
 
 **Partition**: Questions grouped within one request-size limit.

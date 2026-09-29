@@ -253,8 +253,12 @@ func humanReports(reports []FindingReport) string {
 				continue
 			}
 			line := fmt.Sprintf("[%s %s] %s (%s)", finding.Classification, strconv.FormatFloat(*finding.ViolationProbability, 'f', -1, 64), finding.RuleTitle, finding.RulePath)
-			for _, candidate := range finding.CandidateRanges {
-				line += fmt.Sprintf(" [candidate lines %d-%d]", candidate.StartLine, candidate.EndLine)
+			if finding.EvidenceScope == "file" {
+				line += " [file-wide context]"
+			} else {
+				for _, candidate := range finding.CandidateRanges {
+					line += fmt.Sprintf(" [context lines %d-%d]", candidate.StartLine, candidate.EndLine)
+				}
 			}
 			lines = append(lines, line)
 		}

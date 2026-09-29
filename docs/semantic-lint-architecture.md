@@ -12,6 +12,7 @@ See [Semantic lint](./semantic-lint.md) for command usage.
 | **File** | Complete selected file contents | `Source` |
 | **Span** | Overlapping source range for candidate selection or hierarchical search | `sourceWindow` |
 | **Candidate** | Selected source range that may matter, not proof | `CandidateRange` |
+| **Evidence scope** | Whether selected context covers the whole file or only part | `Finding.EvidenceScope` |
 | **Question** | Noul for candidates/verdicts or Choice for search branches | `question` |
 | **Partition** | Size-bounded request over a span, branch, or policy's evidence set | `requestPartition` |
 | **Finding** | Final verdict or inconclusive outcome with candidate ranges | `Finding` |
@@ -41,12 +42,13 @@ Git paths → complete files → path-matched policies
                applicability and violation
                                │
                                ▼
-             findings with selected source ranges
+             findings with selected context and scope
 ```
 
 `command.go: Run` owns the flow. Selection, hierarchical search, and final judgment are separate evaluation stages. Final questions are built only after Choice routing produces an evidence set.
 
-Selection requests use `{"file":"<source span>"}`. Routing requests use `{"left":"<source half>","right":"<source half>"}`. Final requests use labeled original source spans under `file`. Two independent Nouls judge applicability and violation over the same evidence set; a review or violation needs applicability of at least 0.70. No source is truncated: an unselected policy, absent evidence set, unestablished applicability, or oversized combined context is inconclusive without a final violation probability.
+Every TypeSafe request includes the selected file's project-relative `path`. Selection requests also provide `file` with a source span; routing requests provide `left` and `right` source halves; final requests provide labeled original spans under `file`. Two independent Nouls judge applicability and violation over the same evidence set; a review or violation needs applicability of at least 0.70. No source is truncated: an unselected policy, absent evidence set, unestablished applicability, or oversized combined context is inconclusive without a final violation probability.
+Applicability judges whether the policy's subject is present, regardless of compliance; violation separately judges whether selected spans establish a concrete breach. Unrelated compliant code does not negate that breach.
 
 ## Selection
 
@@ -89,7 +91,7 @@ type evaluator interface {
 | Final `> 0.40` and below `--threshold`, with applicability ≥ 0.70 | `review` |
 | Final at or above `--threshold`, with applicability ≥ 0.70 | `violation` |
 
-The default violation threshold is `0.70`; applicability uses a fixed `0.70` gate. Candidate ranges may be distant and are leads, not proven defects or generated rationales. Inconclusive findings do not fail the run; reviews are informational and only violations fail.
+The default violation threshold is `0.70`; applicability uses a fixed `0.70` gate. `evidenceScope` is `file` only for a single range covering every source byte; otherwise selected ranges are `localized`. It is absent when no context was selected. Candidate ranges may be distant and are leads, not proven defects or generated rationales. Inconclusive findings do not fail the run; reviews are informational and only violations fail.
 
 ## File map
 

@@ -23,7 +23,7 @@ For every selected file:
 4. merge candidate spans scoring above 0.40 for each policy;
 5. recursively split selected spans and ask Choice questions over their left and right halves, retaining multiple plausible branches as an evidence set;
 6. ask two independent Nouls over that complete evidence set: whether the policy applies and whether the original file violates it; and
-7. report the verdict with the selected source ranges.
+7. report the verdict, selected context, and whether that context covers the entire file.
 
 Selection questions use:
 
@@ -48,22 +48,23 @@ Options are `left`, `right`, `both`, and `neither`. Both halves are included in 
 Final applicability question:
 
 ```text
-Does this policy apply to the behavior actually present in `file`? Answer yes only if the selected source spans establish the subject governed by the rule. Answer no when the source is merely related or the rule's subject is absent. Do not infer missing behavior or configuration.
+Is the subject of this rule present in `file`? Answer yes for any covered operation, even one that complies. Do not decide whether the rule is violated.
 
 Rule:
 <verbatim rule file>
 ```
+Applicability uses `true` for a covered operation whether it complies or violates, and `false` when no covered operation is present.
 
 Final violation question:
 
 ```text
-Do the selected source spans in `file` provide enough evidence to conclude that the original file violates the following rule? Answer no if omitted context is needed; do not infer missing code.
+Do the selected source spans in `file`, considered together, establish a concrete violation of the following rule? Answer yes if they demonstrate a violation even when other code complies. Answer no if the shown behavior follows the rule or omitted context is needed to decide.
 
 Rule:
 <verbatim rule file>
 ```
 
-The final questions receive the same evidence set but are judged independently. The rule file includes its frontmatter and original line endings. Requests never contain diffs, neighboring files, or repository context. Final state includes selected source text with original line labels. Selected ranges can include distant spans that matter together; they locate code to inspect, not a proven explanation or an automatically generated fix. Choice and Noul responses provide probabilities, not prose rationales.
+The final questions receive the same evidence set but are judged independently. Every request includes the project-relative file `path` so the model can apply path-specific policy text. The rule file includes its frontmatter and original line endings. Requests never contain diffs, neighboring files, or other repository context. Final state includes selected source text with original line labels. Selected spans can include distant context that matters together; they do not explain a violation or pinpoint the offending code.
 
 Selection questions over the same span are batched up to the 32,000-byte request limit. Selection spans prefer line boundaries and overlap by up to 2,000 source bytes. At most eight requests run concurrently per stage. If no candidate is selected, routing finds no evidence, or the combined evidence set cannot fit one final request, the result is `inconclusive` without a final probability. No source is silently truncated. A policy that leaves no room for source text still causes an error.
 
@@ -113,7 +114,7 @@ Rule names are Markdown basenames without `.md`. Catalog-relative paths also wor
 
 ## Default policy cutover
 
-The embedded policies distinguish shared behavior from similar-looking code, keep pure calculations outside Effect, and avoid copying a growing accumulator with one-pass construction. Local mutable builders require explicit exclusions from the mutation rules. Suitable tagged multiway decisions use Effect `Match`, not forbidden `switch` statements.
+The embedded policies distinguish shared behavior from similar-looking code, keep pure calculations outside Effect, and avoid copying a growing accumulator with one-pass construction. Converting already decoded data into a result stays a plain function, even when its caller uses Effect. Local mutable builders require explicit exclusions from the mutation rules. Suitable tagged multiway decisions use Effect `Match`, not forbidden `switch` statements.
 
 Retired selectors have no aliases. Update `--rules` and semantic-mode `better-typescript.json` commands:
 
@@ -187,7 +188,7 @@ Final requests depend on live selection answers, so they are not included in the
 | Final probability `> 0.40` and below `--threshold`, with applicability at least `0.70` | `review` | No |
 | Final probability at or above `--threshold`, with applicability at least `0.70` | `violation` | Yes |
 
-Text output prints each review or violation with selected candidate line ranges; inconclusive findings without candidate spans are summarized. JSON findings include candidate byte and line ranges, applicability probability when evaluated, the final violation probability when available, and a reason for inconclusive results. Candidate selection and Choice routing are not verdicts. The default violation threshold is `0.70`; the applicability gate stays at `0.70` when `--threshold` changes.
+Text output marks whole-file selections as `[file-wide context]` instead of displaying a full-file line range. Partial selections appear as `[context lines N-M]`; these are leads to inspect, not precise defect locations. JSON findings retain candidate byte and line ranges and add `evidenceScope`: `file` when the selected range covers every source byte, `localized` when it does not, or omitted when no context was selected. They also include applicability probability when evaluated, the final violation probability when available, and a reason for inconclusive results. Candidate selection and Choice routing are not verdicts. The default violation threshold is `0.70`; the applicability gate stays at `0.70` when `--threshold` changes.
 
 The applicability check is a model judgment, not proof of correctness. The service/Layer policy applies only to files with a service definition or Layer construction; the Effect failure policy applies to fallible effectful operations, not pure checks. A function-local mutable builder remains subject to the immutability policy unless deterministic mutation rules are explicitly excluded for that file. Review concrete findings; use narrow semantic-mode exclusions for policies that do not apply instead of rewriting correct code to satisfy a false positive.
 

@@ -30,9 +30,9 @@ func TestEvaluateSourceDoesNotReportViolationWhenPolicyDoesNotApply(t *testing.T
 			seenApplicability := false
 			evaluate := evaluatorFunc(func(_ context.Context, request evaluationRequest) (evaluationResponse, error) {
 				answers := make(map[string]answer, len(request.Questions))
-				for id, question := range request.Questions {
+				for id := range request.Questions {
 					probability := 0.9
-					if strings.Contains(question.Instructions, "Does this policy apply") {
+					if strings.HasSuffix(id, "_applies") {
 						seenApplicability = true
 						probability = test.applicability
 					}

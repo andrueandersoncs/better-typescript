@@ -10,14 +10,19 @@ import (
 
 const (
 	candidateQuestionPrefix         = "Could the `file` segment provide concrete evidence that the complete file violates the following rule? Answer yes for plausible evidence or necessary context, not merely related code. Answer no if the rule cannot apply to this segment.\n\nRule:\n"
-	finalQuestionPrefix             = "Do the selected source spans in `file` provide enough evidence to conclude that the original file violates the following rule? Answer no if omitted context is needed; do not infer missing code.\n\nRule:\n"
-	applicabilityQuestionPrefix     = "Does this policy apply to the behavior actually present in `file`? Answer yes only if the selected source spans establish the subject governed by the rule. Answer no when the source is merely related or the rule's subject is absent. Do not infer missing behavior or configuration.\n\nRule:\n"
+	finalQuestionPrefix             = "Do the selected source spans in `file`, considered together, establish a concrete violation of the following rule? Answer yes if they demonstrate a violation even when other code complies. Answer no if the shown behavior follows the rule or omitted context is needed to decide.\n\nRule:\n"
+	applicabilityQuestionPrefix     = "Is the subject of this rule present in `file`? Answer yes for any covered operation, even one that complies. Do not decide whether the rule is violated.\n\nRule:\n"
 	candidateSelectionThreshold     = 0.4
 	minimumApplicabilityProbability = 0.7
 	maximumSegmentBytes             = 4_000
 	maximumWindowOverlapBytes       = 2_000
 	maximumConcurrentEvaluations    = 8
 )
+
+var applicabilityCriteria = map[string]string{
+	"true":  "The source contains an operation of the kind this policy governs, whether it complies or violates.",
+	"false": "The source has no operation of the kind this policy governs.",
+}
 
 type sourceWindow struct {
 	start int
@@ -45,7 +50,7 @@ func questionForFinal(rule Rule) question {
 }
 
 func applicabilityQuestion(rule Rule) question {
-	return question{Type: "noul", Instructions: applicabilityQuestionPrefix + rule.Source}
+	return question{Type: "noul", Instructions: applicabilityQuestionPrefix + rule.Source, Criteria: applicabilityCriteria}
 }
 
 func buildRequestPartitions(source Source, rules []Rule, model string, maximumBytes int) ([]requestPartition, error) {
@@ -68,16 +73,16 @@ func buildRequestPartitions(source Source, rules []Rule, model string, maximumBy
 	return partitions, nil
 }
 
-func singleRuleRequest(sourceText string, rule Rule, model string) evaluationRequest {
+func singleRuleRequest(path, sourceText string, rule Rule, model string) evaluationRequest {
 	return evaluationRequest{
-		State:     map[string]string{"file": sourceText},
+		State:     map[string]string{"path": path, "file": sourceText},
 		Questions: map[string]question{rule.ID: questionForCandidate(rule)},
 		Model:     model,
 	}
 }
 
 func partitionWindow(source Source, window sourceWindow, rules []Rule, model string, maximumBytes int, windowed bool) ([]requestPartition, error) {
-	state := map[string]string{"file": source.Text[window.start:window.end]}
+	state := map[string]string{"path": source.Path, "file": source.Text[window.start:window.end]}
 	var partitions []requestPartition
 	current := requestPartition{
 		request:  evaluationRequest{State: state, Questions: make(map[string]question, len(rules)), Model: model},
@@ -109,9 +114,9 @@ func partitionWindow(source Source, window sourceWindow, rules []Rule, model str
 
 func sourceWindows(source Source, rules []Rule, model string, maximumBytes int) ([]sourceWindow, error) {
 	largestRule := rules[0]
-	largestEmptyRequest := requestSize(singleRuleRequest("", largestRule, model))
+	largestEmptyRequest := requestSize(singleRuleRequest(source.Path, "", largestRule, model))
 	for _, rule := range rules[1:] {
-		size := requestSize(singleRuleRequest("", rule, model))
+		size := requestSize(singleRuleRequest(source.Path, "", rule, model))
 		if size > largestEmptyRequest {
 			largestRule = rule
 			largestEmptyRequest = size
@@ -131,7 +136,7 @@ func sourceWindows(source Source, rules []Rule, model string, maximumBytes int) 
 		if end < len(source.Text) {
 			end = preferLineEnd(source.Text, start, end)
 		}
-		for end > start && requestSize(singleRuleRequest(source.Text[start:end], largestRule, model)) > maximumBytes {
+		for end > start && requestSize(singleRuleRequest(source.Path, source.Text[start:end], largestRule, model)) > maximumBytes {
 			_, width := utf8.DecodeLastRuneInString(source.Text[start:end])
 			end -= width
 		}
@@ -296,7 +301,7 @@ func finalRequest(source Source, rule Rule, windows []sourceWindow, ranges []Can
 		text.WriteString(source.Text[window.start:window.end])
 	}
 	return evaluationRequest{
-		State: map[string]string{"file": text.String()},
+		State: map[string]string{"path": source.Path, "file": text.String()},
 		Questions: map[string]question{
 			rule.ID:              questionForFinal(rule),
 			rule.ID + "_applies": applicabilityQuestion(rule),
@@ -345,6 +350,10 @@ func evaluateSource(ctx context.Context, source Source, rules []Rule, options Op
 				finding.Reason = "no evidence selected"
 			} else {
 				finding.CandidateRanges = candidateRanges(source, windows)
+				finding.EvidenceScope = "localized"
+				if len(windows) == 1 && windows[0].start == 0 && windows[0].end == len(source.Text) {
+					finding.EvidenceScope = "file"
+				}
 				selectedBytes := 0
 				for _, candidate := range finding.CandidateRanges {
 					selectedBytes += candidate.EndByte - candidate.StartByte

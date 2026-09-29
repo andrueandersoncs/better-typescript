@@ -167,6 +167,7 @@ func TestRunSelectsCandidateSpansBeforeFinalJudgment(t *testing.T) {
 		Findings []struct {
 			Classification       string  `json:"classification"`
 			ViolationProbability float64 `json:"violationProbability"`
+			EvidenceScope        string  `json:"evidenceScope"`
 			CandidateRanges      []struct {
 				StartByte int `json:"startByte"`
 				EndByte   int `json:"endByte"`
@@ -180,7 +181,7 @@ func TestRunSelectsCandidateSpansBeforeFinalJudgment(t *testing.T) {
 		t.Fatalf("reports = %s", output.String())
 	}
 	finding := reports[0].Findings[0]
-	if finding.Classification != "violation" || finding.ViolationProbability != 0.9 || len(finding.CandidateRanges) != 1 {
+	if finding.Classification != "violation" || finding.ViolationProbability != 0.9 || finding.EvidenceScope != "localized" || len(finding.CandidateRanges) != 1 {
 		t.Fatalf("finding = %#v", finding)
 	}
 	region := finding.CandidateRanges[0]
@@ -197,15 +198,10 @@ func TestRunSelectsCandidateSpansBeforeFinalJudgment(t *testing.T) {
 		if len(received.Questions) < 1 || len(received.Questions) > 2 {
 			t.Fatalf("questions = %#v", received.Questions)
 		}
-		for _, q := range received.Questions {
-			if strings.Contains(q.Instructions, "Do the selected") {
-				if len(received.Questions) != 2 {
-					t.Fatalf("final questions = %#v", received.Questions)
-				}
-				foundFinal = true
-				if len(received.State["file"]) >= len(source) || !strings.Contains(received.State["file"], "VIOLATION") {
-					t.Fatalf("final state = %q", received.State["file"])
-				}
+		if len(received.Questions) == 2 {
+			foundFinal = true
+			if len(received.State["file"]) >= len(source) || !strings.Contains(received.State["file"], "VIOLATION") {
+				t.Fatalf("final state = %q", received.State["file"])
 			}
 		}
 	}
@@ -232,7 +228,7 @@ func TestRunRecomposesDistantCandidateSpans(t *testing.T) {
 				continue
 			}
 			probability := 0.1
-			if strings.Contains(q.Instructions, "Do the selected") || strings.Contains(q.Instructions, "Does this policy apply") {
+			if len(received.Questions) == 2 {
 				finalState = received.State["file"]
 				if strings.Contains(finalState, "VIOLATION_A") && strings.Contains(finalState, "VIOLATION_B") {
 					probability = 0.9
@@ -284,9 +280,9 @@ func TestRunUsesFinalVerdictRatherThanCandidateScore(t *testing.T) {
 		}
 		calls++
 		answers := make(map[string]answer, len(received.Questions))
-		for id, q := range received.Questions {
+		for id := range received.Questions {
 			probability := 0.95
-			if strings.Contains(q.Instructions, "Do the selected") {
+			if len(received.Questions) == 2 && !strings.HasSuffix(id, "_applies") {
 				probability = 0.1
 			}
 			answers[id] = answer{Type: "noul", Noul: probability}
@@ -309,7 +305,7 @@ func TestRunUsesFinalVerdictRatherThanCandidateScore(t *testing.T) {
 		t.Fatalf("exit=%d calls=%d reports=%s", exitCode, calls, output.String())
 	}
 	finding := reports[0].Findings[0]
-	if finding.Classification != "pass" || finding.ViolationProbability == nil || *finding.ViolationProbability != 0.1 || len(finding.CandidateRanges) != 1 {
+	if finding.Classification != "pass" || finding.ViolationProbability == nil || *finding.ViolationProbability != 0.1 || finding.EvidenceScope != "file" || len(finding.CandidateRanges) != 1 {
 		t.Fatalf("finding = %#v", finding)
 	}
 }
@@ -347,7 +343,7 @@ func TestRunReportsNoCandidateAsInconclusiveWithoutFinalJudgment(t *testing.T) {
 		t.Fatalf("exit=%d calls=%d reports=%s", exitCode, calls, output.String())
 	}
 	finding := reports[0].Findings[0]
-	if finding.Classification != "inconclusive" || finding.ViolationProbability != nil || len(finding.CandidateRanges) != 0 {
+	if finding.Classification != "inconclusive" || finding.ViolationProbability != nil || finding.EvidenceScope != "" || len(finding.CandidateRanges) != 0 {
 		t.Fatalf("finding = %#v", finding)
 	}
 }
@@ -363,10 +359,8 @@ func TestRunDoesNotJudgeTruncatedCandidateContext(t *testing.T) {
 			t.Error(err)
 			return
 		}
-		for _, q := range received.Questions {
-			if strings.Contains(q.Instructions, "Do the selected") {
-				t.Error("final judgment ran with truncated context")
-			}
+		if len(received.Questions) == 2 {
+			t.Error("final judgment ran with truncated context")
 		}
 		calls.Add(1)
 		answers := make(map[string]answer, len(received.Questions))

@@ -5,6 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"net/http"
+	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 )
@@ -14,9 +17,9 @@ func TestReviewDoesNotFailSemanticRun(t *testing.T) {
 	source := Source{Path: "src/args.ts", Text: "export const parseArgs = (args: string[]) => args.indexOf('--')\n"}
 	evaluate := evaluatorFunc(func(_ context.Context, request evaluationRequest) (evaluationResponse, error) {
 		answers := make(map[string]answer, len(request.Questions))
-		for id, question := range request.Questions {
+		for id := range request.Questions {
 			probability := 0.9
-			if strings.Contains(question.Instructions, "Do the selected") {
+			if len(request.Questions) == 2 && !strings.HasSuffix(id, "_applies") {
 				probability = 0.6
 			}
 			answers[id] = answer{Type: "noul", Noul: probability}
@@ -33,6 +36,62 @@ func TestReviewDoesNotFailSemanticRun(t *testing.T) {
 	code, err := writeFindingReports(io.Discard, []FindingReport{report}, true)
 	if err != nil || code != 0 {
 		t.Fatalf("review exit code = %d, error = %v", code, err)
+	}
+}
+
+func TestPathSpecificPolicyFindsOnlyTheMatchingFile(t *testing.T) {
+	root := newSemanticTestRepository(t)
+	source, err := os.ReadFile("testdata/evidence/debugger.ts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	policy, err := os.ReadFile("testdata/evidence/path-specific-debugger.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, root, ".better-typescript/rules/path-specific-debugger.md", string(policy))
+	writeTestFile(t, root, "src/smoke.ts", string(source))
+	writeTestFile(t, root, "src/other.ts", string(source))
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		var received evaluationRequest
+		if err := json.NewDecoder(request.Body).Decode(&received); err != nil {
+			t.Error(err)
+			writer.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		probability := 0.02
+		if received.State["path"] == "src/smoke.ts" && strings.Contains(received.State["file"], "debugger;") {
+			probability = 0.98
+		}
+		answers := make(map[string]answer, len(received.Questions))
+		for id := range received.Questions {
+			answers[id] = answer{Type: "noul", Noul: probability}
+		}
+		if err := json.NewEncoder(writer).Encode(evaluationResponse{Model: "jev-test", Answers: answers}); err != nil {
+			t.Error(err)
+		}
+	}))
+	defer server.Close()
+	t.Setenv("TYPESAFE_API_KEY", "test-key")
+	t.Setenv("TYPESAFE_BASE_URL", server.URL)
+
+	var output bytes.Buffer
+	code, err := Run(context.Background(), root, []string{
+		"--files", "src/smoke.ts,src/other.ts", "--rules", "path-specific-debugger", "--json",
+	}, &output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var reports []FindingReport
+	if err := json.Unmarshal(output.Bytes(), &reports); err != nil {
+		t.Fatal(err)
+	}
+	if code != 1 || len(reports) != 2 ||
+		reports[0].Source != "src/other.ts" || reports[0].Findings[0].Classification != "inconclusive" ||
+		reports[1].Source != "src/smoke.ts" || reports[1].Findings[0].Classification != "violation" ||
+		reports[1].Findings[0].EvidenceScope != "file" ||
+		len(reports[1].Findings[0].CandidateRanges) != 1 || reports[1].Findings[0].CandidateRanges[0].StartLine != 1 {
 	}
 }
 
@@ -59,7 +118,7 @@ func TestSemanticViolationLocatesEvidenceWithinCandidateSpan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(report.Findings) != 1 || report.Findings[0].Classification != "violation" || len(report.Findings[0].CandidateRanges) != 1 {
+	if len(report.Findings) != 1 || report.Findings[0].Classification != "violation" || len(report.Findings[0].CandidateRanges) != 1 || report.Findings[0].EvidenceScope != "localized" {
 		t.Fatalf("findings = %#v", report.Findings)
 	}
 	range_ := report.Findings[0].CandidateRanges[0]
@@ -89,7 +148,7 @@ func TestDistantDeclarationsRemainTogetherInEvidenceSet(t *testing.T) {
 			text := request.State["file"]
 			both := strings.Contains(text, "interface Service") && strings.Contains(text, "const Service")
 			probability := 0.9
-			if strings.Contains(question.Instructions, "Do the selected") && !both {
+			if len(request.Questions) == 2 && !strings.HasSuffix(id, "_applies") && !both {
 				probability = 0.1
 			}
 			answers[id] = answer{Type: "noul", Noul: probability}
@@ -100,7 +159,7 @@ func TestDistantDeclarationsRemainTogetherInEvidenceSet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(report.Findings) != 1 || report.Findings[0].Classification != "violation" || len(report.Findings[0].CandidateRanges) != 2 {
+	if len(report.Findings) != 1 || report.Findings[0].Classification != "violation" || len(report.Findings[0].CandidateRanges) != 2 || report.Findings[0].EvidenceScope != "localized" {
 		t.Fatalf("findings = %#v", report.Findings)
 	}
 	first, second := report.Findings[0].CandidateRanges[0], report.Findings[0].CandidateRanges[1]
