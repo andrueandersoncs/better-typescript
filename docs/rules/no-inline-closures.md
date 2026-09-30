@@ -2,7 +2,7 @@
 
 ## What it does
 
-Reports arrow functions unless their effective immediate parent is a variable declaration or another arrow, or they are passed to an external package. The effective parent ignores parentheses, `as`, `satisfies`, and non-null wrappers. Currying is exempt only for an arrow nested this way directly under another arrow. An arrow returned by a block-bodied curried function is reported.
+Reports arrow functions unless their effective immediate parent is a variable declaration or another arrow, or they are passed to a function or constructor resolved from an external declaration. External declarations include package declarations and standard-library APIs such as `Promise`. The effective parent ignores parentheses, `as`, `satisfies`, and non-null wrappers. Currying is exempt only for an arrow nested this way directly under another arrow. An arrow returned by a block-bodied curried function is reported.
 
 ## When to use it
 
@@ -12,6 +12,7 @@ Use it to make closures easy to find and reuse. Name the function and pass it by
 
 ```ts
 const identity = (value: number) => value
+const promised = new Promise<void>((resolve) => { resolve() })
 ```
 
 ## Non-conformant

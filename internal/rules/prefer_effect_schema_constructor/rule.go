@@ -12,18 +12,17 @@ import (
 )
 
 var Rule = rule.Rule{Name: "prefer-effect-schema-constructor", Run: func(ctx rule.RuleContext, _ any) rule.RuleListeners {
-	report := func(literal *ast.Node) {
-		tag := tagValue(literal)
-		if tag != "" {
-			ctx.ReportNode(literal, rule.RuleMessage{Id: "prefer-effect-schema-constructor", Description: fmt.Sprintf("Avoid declaring or returning a raw %q object literal.", tag), Help: fmt.Sprintf("Reuse the existing Effect Schema for the %q protocol variant and construct it through schema.make. If no such model exists, first decide whether this tagged value is an independent protocol concept or this function is only a procedural seam. Model a reusable boundary-crossing variant with Schema.TaggedStruct and a Schema-suffixed const and a decoded interface named without the suffix; use Schema.TaggedUnion for boundary-crossing unions. Use Data.TaggedEnum for internal workflow decisions or state, and Schema.TaggedErrorClass only for typed errors.", tag)})
-		} else {
-			ctx.ReportNode(literal, rule.RuleMessage{Id: "prefer-effect-schema-constructor", Description: "Avoid declaring or returning a raw object literal.", Help: "Reuse an existing Effect Schema whose semantics match this result and construct it through schema.make. If none exists, reconsider whether this function is a real abstraction or a procedural seam that should be collapsed into its owner. For data with independent meaning, define a Schema.Struct with a Schema-suffixed const and a decoded interface named without the suffix."})
-		}
+	report := func(literal *ast.Node, tag string) {
+		ctx.ReportNode(literal, rule.RuleMessage{Id: "prefer-effect-schema-constructor", Description: fmt.Sprintf("Avoid declaring or returning a raw %q object literal.", tag), Help: fmt.Sprintf("Reuse the existing Effect Schema for the %q protocol variant and construct it through schema.make. If no such model exists, first decide whether this tagged value is an independent protocol concept or this function is only a procedural seam. Model a reusable boundary-crossing variant with Schema.TaggedStruct and a Schema-suffixed const and a decoded interface named without the suffix; use Schema.TaggedUnion for boundary-crossing unions. Use Data.TaggedEnum for internal workflow decisions or state, and Schema.TaggedErrorClass only for typed errors.", tag)})
 	}
 	check := func(expression *ast.Node) {
 		for _, branch := range branches(expression) {
-			if ast.IsObjectLiteralExpression(branch) && len(branch.AsObjectLiteralExpression().Properties.Nodes) > 0 && !identifierShorthandBag(branch) && !utils.HasCallableProperty(ctx.TypeChecker, ctx.TypeChecker.GetTypeAtLocation(branch), branch) {
-				report(branch)
+			if !ast.IsObjectLiteralExpression(branch) {
+				continue
+			}
+			tag, tagged := tagValue(branch)
+			if tagged && !utils.HasCallableProperty(ctx.TypeChecker, ctx.TypeChecker.GetTypeAtLocation(branch), branch) {
+				report(branch, tag)
 			}
 		}
 	}
@@ -104,42 +103,32 @@ func branches(n *ast.Node) []*ast.Node {
 	}
 	return []*ast.Node{n}
 }
-func tagValue(n *ast.Node) string {
+func tagValue(n *ast.Node) (string, bool) {
 	for _, property := range n.AsObjectLiteralExpression().Properties.Nodes {
 		if !ast.IsPropertyAssignment(property) || propertyName(property) != "_tag" {
 			continue
 		}
 		value := unwrap(property.AsPropertyAssignment().Initializer)
 		if ast.IsStringLiteralLike(value) {
-			return value.AsStringLiteral().Text
+			return value.AsStringLiteral().Text, true
 		}
 	}
-	return ""
+	return "", false
 }
 func propertyName(n *ast.Node) string {
 	name := n.Name()
-	if name != nil && ast.IsIdentifier(name) {
-		return name.AsIdentifier().Text
+	if name == nil {
+		return ""
+	}
+	if text, ok := ast.TryGetTextOfPropertyName(name); ok {
+		return text
+	}
+	if ast.IsComputedPropertyName(name) && ast.IsStringLiteralLike(unwrap(name.Expression())) {
+		return unwrap(name.Expression()).Text()
 	}
 	return ""
 }
 
-func identifierShorthandBag(n *ast.Node) bool {
-	for _, property := range n.AsObjectLiteralExpression().Properties.Nodes {
-		if ast.IsShorthandPropertyAssignment(property) {
-			continue
-		}
-		if ast.IsPropertyAssignment(property) {
-			name := propertyName(property)
-			value := unwrap(property.AsPropertyAssignment().Initializer)
-			if name != "" && ast.IsIdentifier(value) && value.AsIdentifier().Text == name {
-				continue
-			}
-		}
-		return false
-	}
-	return true
-}
 func unwrap(n *ast.Node) *ast.Node {
 	for n != nil {
 		switch n.Kind {

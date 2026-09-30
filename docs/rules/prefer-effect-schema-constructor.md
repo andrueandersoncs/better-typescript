@@ -4,12 +4,12 @@
 
 Reports two construction patterns:
 
-- non-empty raw object literals declared inside functions or returned by functions;
+- raw object literals with a string `_tag` that are declared inside functions or returned by functions;
 - `new` expressions whose constructor is an Effect Schema class.
 
-Raw object reports recommend reusing a matching Effect Schema. Schema classes must use their static `make` method for a consistent construction style. A string `_tag` makes a raw object report name that tagged variant.
+Tagged raw object reports recommend reusing a matching Effect Schema protocol variant. Schema classes must use their static `make` method for a consistent construction style.
 
-Empty object literals are allowed. Returns with a foreign return contract are allowed. Identifier-shorthand bags of already-bound values and runtime records with callable properties are allowed. Ordinary classes may still use `new`.
+Untagged object literals are allowed because structural fixtures, API option objects, and transient accumulators do not by themselves establish an Effect Schema contract. Returns with a foreign return contract and runtime records with callable properties are also allowed. Ordinary classes may still use `new`.
 
 ## When to use it
 
@@ -18,8 +18,13 @@ Use it when modeled data must be constructed consistently through Effect Schema 
 ## Conformant
 
 ```ts
-function makeEmpty() {
-  return {}
+function makeFixture() {
+  return { name: "Ada", attempts: 2 }
+}
+
+function makeTransient(score: number) {
+  const candidate = { score, selected: score > 0 }
+  return candidate
 }
 ```
 
@@ -58,7 +63,7 @@ const refresh = Refresh.make()
 
 ```ts
 function makeUser() {
-  return { name: "Ada" }
+  return { _tag: "User", name: "Ada" }
 }
 ```
 
