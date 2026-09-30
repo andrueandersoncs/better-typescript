@@ -19,7 +19,42 @@ HttpClient.make((request, url, signal) => Effect.tryPromise({ try: () => fetch(u
 Effect.tryPromise((() => fetch("/wrapped")))
 Effect.tryPromise({ try() { return fetch("/method") }, catch: () => new Error("transport") })
 
+export const httpGet = (url: string): Promise<Response> => fetch(url)
+export function httpPost(url: string, body: string): Promise<Response> {
+  return fetch(url, { method: "POST", body })
+}
+
+void (function applicationFetch() { return fetch("/iife") })()
+
+class HttpFixture {
+  httpGet(): Promise<Response> {
+    return fetch("/class-method")
+  }
+}
+void HttpFixture
+
+const httpFixture = {
+  httpGet(): Promise<Response> {
+    return fetch("/object-method")
+  },
+}
+void httpFixture
+
+void (() => fetch("/anonymous"))()
+
+export function applicationLoad(url: string): Promise<Response> {
+  const request = new Request(url)
+  return fetch(request)
+}
+
 {
   const fetch = (url: string) => Promise.resolve(new Response(url))
   fetch("/shadowed")
 }
+
+export const httpPut = function (url: string): Promise<Response> {
+  return fetch(url, { method: "PUT" })
+}
+
+declare function useTransport(callback: () => Promise<Response>): void
+useTransport(() => fetch("/callback"))

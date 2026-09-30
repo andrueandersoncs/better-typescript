@@ -18,7 +18,7 @@ var message = rule.RuleMessage{
 var Rule = rule.Rule{Name: "raw-fetch-outside-adapter", Run: func(ctx rule.RuleContext, _ any) rule.RuleListeners {
 	return rule.RuleListeners{ast.KindCallExpression: func(node *ast.Node) {
 		target, ok := rawFetch(ctx, node)
-		if !ok || isAdapterPath(ctx.SourceFile.FileName()) || isTryPromiseCallback(ctx, enclosingFunction(node)) || isHttpClientAdapter(ctx, node) {
+		if !ok || isAdapterPath(ctx.SourceFile.FileName()) || isDirectNamedAdapter(node) || isTryPromiseCallback(ctx, enclosingFunction(node)) || isHttpClientAdapter(ctx, node) {
 			return
 		}
 		ctx.ReportNode(target, message)
@@ -45,6 +45,51 @@ func isAdapterPath(name string) bool {
 		}
 	}
 	return false
+}
+
+func isDirectNamedAdapter(call *ast.Node) bool {
+	function := enclosingFunction(call)
+	if function == nil || topLevelBindingName(function) == "" {
+		return false
+	}
+	body := function.BodyData().Body
+	if body == nil {
+		return false
+	}
+	if !ast.IsBlock(body) {
+		return unwrap(body) == call
+	}
+	statements := body.AsBlock().Statements.Nodes
+	if len(statements) != 1 || !ast.IsReturnStatement(statements[0]) {
+		return false
+	}
+	return unwrap(statements[0].AsReturnStatement().Expression) == call
+}
+
+func topLevelBindingName(function *ast.Node) string {
+	if ast.IsFunctionDeclaration(function) && function.Parent != nil && ast.IsSourceFile(function.Parent) {
+		if name := function.Name(); name != nil {
+			text, _ := ast.TryGetTextOfPropertyName(name)
+			return text
+		}
+		return ""
+	}
+	if !ast.IsArrowFunction(function) && !ast.IsFunctionExpression(function) {
+		return ""
+	}
+	current, parent := transparentFunctionParent(function)
+	if parent == nil || !ast.IsVariableDeclaration(parent) || parent.AsVariableDeclaration().Initializer != current {
+		return ""
+	}
+	statement := parent.Parent
+	if statement != nil {
+		statement = statement.Parent
+	}
+	if statement == nil || !ast.IsVariableStatement(statement) || statement.Parent == nil || !ast.IsSourceFile(statement.Parent) {
+		return ""
+	}
+	name, _ := ast.TryGetTextOfPropertyName(parent.Name())
+	return name
 }
 
 func isHttpClientAdapter(ctx rule.RuleContext, node *ast.Node) bool {

@@ -2,7 +2,7 @@
 
 ## What it does
 
-Reports non-ambient function declarations and expressions, arrow functions, method declarations and signatures, call signatures, and selected function-type annotations that return `void` and accept a callable parameter. It does not check accessors or constructors.
+Reports non-ambient function declarations and expressions, arrow functions, method declarations and signatures, call signatures, and selected function-type annotations that return `void` and accept a callable parameter. It does not check accessors, constructors, or inline function implementations passed directly to a call or `new` expression. Those inline functions implement an existing callback contract; this rule checks callback-style API declarations rather than required consumer implementations.
 
 ## When to use it
 
@@ -16,6 +16,10 @@ export function apply(callback: Handler): number {
   callback()
   return 1
 }
+
+const promised = new Promise<void>((resolve) => {
+  resolve()
+})
 ```
 
 ## Non-conformant

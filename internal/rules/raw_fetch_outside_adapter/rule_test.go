@@ -11,6 +11,12 @@ func TestRule(t *testing.T) {
 	ruletest.Assert(t, "testdata", Rule, []analysis.Violation{
 		{RuleName: "raw-fetch-outside-adapter", Level: "error", Message: "Keep raw fetch in an adapter. Move raw fetch behind a named adapter boundary or use Effect HttpClient.", FilePath: "index.ts", Line: 9, Column: 1},
 		{RuleName: "raw-fetch-outside-adapter", Level: "error", Message: "Keep raw fetch in an adapter. Move raw fetch behind a named adapter boundary or use Effect HttpClient.", FilePath: "index.ts", Line: 15, Column: 26},
+		{RuleName: "raw-fetch-outside-adapter", Level: "error", Message: "Keep raw fetch in an adapter. Move raw fetch behind a named adapter boundary or use Effect HttpClient.", FilePath: "index.ts", Line: 27, Column: 44},
+		{RuleName: "raw-fetch-outside-adapter", Level: "error", Message: "Keep raw fetch in an adapter. Move raw fetch behind a named adapter boundary or use Effect HttpClient.", FilePath: "index.ts", Line: 31, Column: 12},
+		{RuleName: "raw-fetch-outside-adapter", Level: "error", Message: "Keep raw fetch in an adapter. Move raw fetch behind a named adapter boundary or use Effect HttpClient.", FilePath: "index.ts", Line: 38, Column: 12},
+		{RuleName: "raw-fetch-outside-adapter", Level: "error", Message: "Keep raw fetch in an adapter. Move raw fetch behind a named adapter boundary or use Effect HttpClient.", FilePath: "index.ts", Line: 43, Column: 13},
+		{RuleName: "raw-fetch-outside-adapter", Level: "error", Message: "Keep raw fetch in an adapter. Move raw fetch behind a named adapter boundary or use Effect HttpClient.", FilePath: "index.ts", Line: 47, Column: 10},
+		{RuleName: "raw-fetch-outside-adapter", Level: "error", Message: "Keep raw fetch in an adapter. Move raw fetch behind a named adapter boundary or use Effect HttpClient.", FilePath: "index.ts", Line: 60, Column: 20},
 	})
 }
 

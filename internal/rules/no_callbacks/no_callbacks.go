@@ -74,7 +74,7 @@ func parameterIsFunction(ctx rule.RuleContext, parameter *ast.Node) bool {
 }
 
 func checkDeclaration(ctx rule.RuleContext, node *ast.Node) {
-	if !isCallbackStyleCandidate(node) || isInAmbientContext(node) {
+	if !isCallbackStyleCandidate(node) || isInAmbientContext(node) || isInlineCallbackImplementation(node) {
 		return
 	}
 	signature := ctx.TypeChecker.GetSignatureFromDeclaration(node)
@@ -91,6 +91,35 @@ func checkDeclaration(ctx rule.RuleContext, node *ast.Node) {
 			return
 		}
 	}
+}
+
+func isInlineCallbackImplementation(node *ast.Node) bool {
+	if !ast.IsArrowFunction(node) && !ast.IsFunctionExpression(node) {
+		return false
+	}
+	current := node
+	parent := current.Parent
+	for parent != nil && (ast.IsParenthesizedExpression(parent) || ast.IsAsExpression(parent) || ast.IsSatisfiesExpression(parent) || parent.Kind == ast.KindTypeAssertionExpression || ast.IsNonNullExpression(parent)) {
+		current = parent
+		parent = current.Parent
+	}
+	if parent == nil {
+		return false
+	}
+	var arguments []*ast.Node
+	if ast.IsCallExpression(parent) {
+		arguments = parent.AsCallExpression().Arguments.Nodes
+	} else if ast.IsNewExpression(parent) && parent.AsNewExpression().Arguments != nil {
+		arguments = parent.AsNewExpression().Arguments.Nodes
+	} else {
+		return false
+	}
+	for _, argument := range arguments {
+		if argument == current {
+			return true
+		}
+	}
+	return false
 }
 
 func listener(ctx rule.RuleContext) func(*ast.Node) {

@@ -26,6 +26,8 @@ Recursive and generic-inference-guiding annotations are retained. Effect Schema 
 
 Statement spacing separates different syntax kinds. Single-line declarations inside functions stay contiguous only within the same kind; multiline statements retain their surrounding separators.
 
+`parameter-bag` is limited to same-file implemented seams and does not reinterpret cross-module or ambient option contracts. `prefer-effect-schema-constructor` applies raw-literal guidance only to string-tagged protocol variants while retaining Effect Schema class construction checks. `no-callbacks` distinguishes callback-style API declarations from inline callback implementations, and `no-inline-closures` accepts callback arguments whose callee resolves exclusively to external declarations, including standard-library APIs. `raw-fetch-outside-adapter` recognizes direct, sole `fetch` returns from named top-level function bindings while retaining findings for anonymous, nested, method-owned, and multi-statement application calls.
+
 See [Engineering principles](./engineering-principles.md) for ownership, validation, concurrency, and compatibility boundaries.
 
 - [`boundary-schema-decode`](./rules/boundary-schema-decode.md)
