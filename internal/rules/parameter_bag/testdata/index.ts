@@ -17,3 +17,7 @@ const Other = {
   Struct(fields: BookFields): BookFields { return fields }
 }
 export const stillBad = Other.Struct({ title: "Dune" })
+interface OverloadedOptions { value: string }
+function runOverload(options: OverloadedOptions): string
+function runOverload(options: unknown): string { return (options as OverloadedOptions).value }
+export const overloadedBad = runOverload({ value: "required" })

@@ -2,9 +2,9 @@
 
 ## What it does
 
-Reports an object literal created directly at a call site when the matching parameter has a named model type. It checks named functions, methods, arrow functions, and function expressions.
+Reports an object literal created directly at a call site when the matching parameter has a named model type and the called implementation is declared in the same source file. It checks named functions, methods, arrow functions, and function expressions. Calls across module or ambient API boundaries are outside the rule because their object parameters are established contracts rather than evidence of a shallow local seam.
 
-The rule allows an existing model value to cross the call seam. Tested limits also allow calls to an anonymous default function, parameters whose object type is inferred instead of named, object literals passed to `make`, `create`, `build`, or `construct`, and field maps passed to `Schema.Struct`, `Schema.TaggedStruct`, and the other Schema record combinators.
+The rule allows an existing model value to cross a local call seam. Tested limits also allow calls to an anonymous default function, parameters whose object type is inferred instead of named, object literals passed to `make`, `create`, `build`, or `construct`, and field maps passed to `Schema.Struct`, `Schema.TaggedStruct`, and the other Schema record combinators.
 
 ## When to use it
 

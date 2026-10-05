@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-const description = "Avoid arrow functions outside naming, currying, and third-party callback positions. Name this function as a top-level const and pass it by reference, currying it when it needs values from the enclosing scope. Inline arrows are permitted only as arguments to third-party functions. When the expression sequences several steps, prefer a generator over nesting functions."
+const description = "Avoid arrow functions outside naming, currying, and external API callback positions. Name this function as a top-level const and pass it by reference, currying it when it needs values from the enclosing scope. Inline arrows are permitted only as arguments to externally declared functions and constructors. When the expression sequences several steps, prefer a generator over nesting functions."
 
 var message = rule.RuleMessage{Id: "no-inline-closures", Description: description}
 var Rule = rule.Rule{Name: "no-inline-closures", Run: run}
@@ -17,7 +17,7 @@ func run(ctx rule.RuleContext, _ any) rule.RuleListeners {
 		if parent != nil && (parent.Kind == ast.KindVariableDeclaration || parent.Kind == ast.KindArrowFunction) {
 			return
 		}
-		if isExternalPackageArgument(ctx, node) {
+		if isExternalContractArgument(ctx, node) {
 			return
 		}
 		ctx.ReportNode(node.AsArrowFunction().EqualsGreaterThanToken, message)
@@ -30,7 +30,7 @@ func effectiveParent(node *ast.Node) *ast.Node {
 	}
 	return parent
 }
-func isExternalPackageArgument(ctx rule.RuleContext, node *ast.Node) bool {
+func isExternalContractArgument(ctx rule.RuleContext, node *ast.Node) bool {
 	call := argumentCall(node)
 	if call == nil {
 		return false
@@ -47,18 +47,19 @@ func isExternalPackageArgument(ctx rule.RuleContext, node *ast.Node) bool {
 	if symbol.Flags&ast.SymbolFlagsAlias != 0 {
 		symbol = ctx.TypeChecker.GetAliasedSymbol(symbol)
 	}
+	external := false
 	for _, declaration := range symbol.Declarations {
 		file := ast.GetSourceFileOfNode(declaration)
 		if file == nil {
 			continue
 		}
 		name := strings.ReplaceAll(file.FileName(), "\\", "/")
-		base := name[strings.LastIndex(name, "/")+1:]
-		if strings.Contains(name, "/node_modules/") && !(strings.HasPrefix(base, "lib.") && strings.HasSuffix(base, ".d.ts")) {
-			return true
+		if !file.IsDeclarationFile && !strings.Contains(name, "/node_modules/") {
+			return false
 		}
+		external = true
 	}
-	return false
+	return external
 }
 func argumentCall(node *ast.Node) *ast.Node {
 	parent := node.Parent

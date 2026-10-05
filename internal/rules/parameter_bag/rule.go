@@ -2,6 +2,8 @@ package parameter_bag
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
 	"github.com/andrueandersoncs/typescript-go/ast"
 )
@@ -11,7 +13,7 @@ var Rule = rule.Rule{
 	Run: func(ctx rule.RuleContext, _ any) rule.RuleListeners {
 		return rule.RuleListeners{ast.KindCallExpression: func(node *ast.Node) {
 			call := node.AsCallExpression()
-			functionName, parameters := calledFunction(ctx, call.Expression)
+			functionName, parameters := calledFunction(ctx, node)
 			if functionName == "" || functionName == "build" || functionName == "construct" || functionName == "create" || functionName == "make" || schemaFieldMapCall(call) {
 				return
 			}
@@ -30,8 +32,8 @@ var Rule = rule.Rule{
 	},
 }
 
-func calledFunction(ctx rule.RuleContext, expression *ast.Node) (string, []*ast.Node) {
-	expression = unwrap(expression)
+func calledFunction(ctx rule.RuleContext, node *ast.Node) (string, []*ast.Node) {
+	expression := unwrap(node.AsCallExpression().Expression)
 	target := expression
 	if ast.IsPropertyAccessExpression(expression) {
 		target = expression.AsPropertyAccessExpression().Name()
@@ -43,29 +45,48 @@ func calledFunction(ctx rule.RuleContext, expression *ast.Node) (string, []*ast.
 	if symbol == nil {
 		return "", nil
 	}
+	functionName := ""
 	for _, declaration := range symbol.Declarations {
 		name, named := declarationName(declaration)
-		if ast.IsFunctionDeclaration(declaration) && named {
-			return name, declaration.AsFunctionDeclaration().Parameters.Nodes
+		if ast.IsFunctionDeclaration(declaration) && named && localImplementation(ctx, declaration) {
+			functionName = name
+			break
 		}
-		if ast.IsMethodDeclaration(declaration) && named {
-			return name, declaration.AsMethodDeclaration().Parameters.Nodes
+		if ast.IsMethodDeclaration(declaration) && named && localImplementation(ctx, declaration) {
+			functionName = name
+			break
 		}
-		if ast.IsVariableDeclaration(declaration) && named {
+		if ast.IsVariableDeclaration(declaration) && named && localImplementation(ctx, declaration) {
 			initializer := declaration.AsVariableDeclaration().Initializer
 			if initializer == nil {
 				continue
 			}
 			initializer = unwrap(initializer)
-			if ast.IsArrowFunction(initializer) {
-				return name, initializer.AsArrowFunction().Parameters.Nodes
-			}
-			if ast.IsFunctionExpression(initializer) {
-				return name, initializer.AsFunctionExpression().Parameters.Nodes
+			if ast.IsArrowFunction(initializer) || ast.IsFunctionExpression(initializer) {
+				functionName = name
+				break
 			}
 		}
 	}
-	return "", nil
+	if functionName == "" {
+		return "", nil
+	}
+	signature := ctx.TypeChecker.GetResolvedSignature(node)
+	if signature == nil || signature.Declaration() == nil {
+		return "", nil
+	}
+	return functionName, signature.Declaration().Parameters()
+}
+
+func localImplementation(ctx rule.RuleContext, declaration *ast.Node) bool {
+	file := ast.GetSourceFileOfNode(declaration)
+	if file == nil || file != ctx.SourceFile || file.IsDeclarationFile || strings.Contains(strings.ReplaceAll(file.FileName(), "\\", "/"), "/node_modules/") {
+		return false
+	}
+	if ast.IsVariableDeclaration(declaration) {
+		return declaration.AsVariableDeclaration().Initializer != nil
+	}
+	return declaration.BodyData().Body != nil
 }
 
 func declarationName(node *ast.Node) (string, bool) {
