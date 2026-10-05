@@ -57,21 +57,21 @@ Labeling:
 
 Splits: `train` (GEPA reflection), `val` (GEPA selection), `test` (held out). Split by host and contrast pair; never split a pair. Planted cases follow their snippet's pair. Grow `val` until its noise floor is below the smallest gain worth keeping (Gall's law: grow a working small eval).
 
-Location: `internal/semanticlint/testdata/evals/`. One `cases/<policy>.jsonl` per policy; sources in `files/<policy>/`; real hosts in `hosts/` (provenance in `hosts/sources.txt`). `go test ./internal/semanticlint` validates every case: policy and glob match, labels, pairs, gold bounds, and leak words in authored text.
+Location: `internal/semanticlint/testdata/evals/`. One `cases/<policy>.jsonl` per policy; sources in `files/<policy>/`; real hosts in `hosts/` and sampled real files in `real/` (provenance in each `sources.txt`). `go test ./internal/semanticlint` validates every case: policy and glob match, labels, pairs, gold bounds, and leak words in authored text.
 
 ```json
 {"id":"performance/avoid-repeated-linear-lookups/pair-3-violates","policy":"performance/avoid-repeated-linear-lookups","path":"src/billing/reconcile.ts","file":"files/performance/avoid-repeated-linear-lookups/pair-3-violates.ts","label":"violates","goldLines":[[9,14]],"origin":"contrast","pair":"performance/avoid-repeated-linear-lookups/pair-3-complies","split":"val","labels":{"author":"violates","blind":"violates"}}
 {"id":"performance/avoid-repeated-linear-lookups/planted-test-middle","policy":"performance/avoid-repeated-linear-lookups","path":"packages/tools/docgen/src/Core.ts","plant":{"host":"hosts/docgen-Core.ts","parts":[{"file":"files/performance/avoid-repeated-linear-lookups/pair-5-violates.ts","at":0.5}]},"label":"violates","origin":"planted","split":"test","labels":{"author":"violates"}}
 ```
 
-### v0 corpus
+### Corpus
 
-- 20 policies, 350 cases: 244 `contrast`, 68 `planted`, 38 `real` (host-only). 6 `ambiguous`.
-- Scored: `train` 79, `val` 172, `test` 93.
-- Blind agreement on 280 non-planted cases: violates-vs-not 98.2% (κ 0.96); three-way 86.8% (κ 0.80).
-- Lowest violates-vs-not κ: `readability/name-things-by-their-purpose` 0.72.
-- Three-way misses are mostly `complies` vs `not-applicable` (testing and `keep-pure-calculations-pure` κ 0.36–0.59). Treat `applicabilityAuroc` gold as weaker than violation gold.
-- Both labelers are Claude agents; a human pass and a second model family are still open.
+- 20 policies, 434 cases: 244 `contrast`, 68 `planted`, 122 `real` (38 host cases, 84 sampled pairs). 15 `ambiguous`.
+- Scored: `train` 103, `val` 194, `test` 122.
+- Synthetic labels: two Claude agents; violates-vs-not κ 0.96, three-way κ 0.80.
+- Sampled real pairs (24 Effect files, seeded by SHA-256): Claude agents vs GPT-6.1-Sol, blind. Violates-vs-not 75/84 (κ 0.47), three-way 71/84 (κ 0.73). Disagreements are `ambiguous` until a human decides.
+- Policies below κ 0.6 (rewrite candidates, not prompt tuning): `effect/keep-pure-calculations-pure`, `testing-enforcement/avoid-fixed-test-waits`, `testing-enforcement/control-test-nondeterminism`, `typescript-contracts/use-strict-runtime-specific-tsconfig-files`.
+- Human tiebreak queue: `label-review.md`.
 
 ## Accuracy eval
 
@@ -180,6 +180,7 @@ Baselines, noise, and workload: `issues/01-run-baselines.md`.
 - Issue 02: request cap 32,000 → 64,000. Accuracy unchanged; workload requests 3,947 → 3,024, tokens 20.6 M → 21.4 M because 156 more file-policy pairs now fit one final request. Pairing it with the GEPA prompt leaves that prompt at 2.2× workload cost (46.5 M).
 - Issue 05, cost-gated GEPA (gate 1.2× estimated workload cost): two runs, 66 iterations, 39 candidates; none beat the seed prompt. Recall gains from the candidate prompt came with broader selection, which is the cost.
 - Landed (maintainer decision): the 889-byte GEPA candidate prompt is the default. Current baseline: `val` score 0.872, silent misses 8.3%; workload 46.5 M tokens. Use `{val,test}-gepa-cap-*` and `workload-gepa-cap` as the seed reports for the next comparison or cost gate.
+- Issue 04, real cases added (3 runs per split): real clean files score 0.94; real violations are few (8 scored) and about half surface, so real-code recall is still unmeasured. Both real `replace-unexplained-values-with-meaningful-names` violations are candidate misses in every run. New seed reports: `{val,test}-real-{1,2,3}.json`.
 
 ## Anti-gaming (Goodhart's law)
 

@@ -1,0 +1,31 @@
+Copied unchanged from this repository's vendored Effect source (MIT, see repos/effect/LICENSE),
+as of better-typescript commit ccca9dd6f.
+
+AtomRpc.test-030a2f.ts           repos/effect/packages/effect/test/reactivity/AtomRpc.test.ts
+BrowserCrypto-08c2c5.ts          repos/effect/packages/platform/browser/src/BrowserCrypto.ts
+DenoClusterSocket-0a4814.ts      repos/effect/packages/platform/deno/src/DenoClusterSocket.ts
+HttpClient.test-02bf0e.ts        repos/effect/packages/effect/test/HttpClient.test.ts
+OpenAiClientGenerated-062b2d.ts  repos/effect/packages/ai/openai/src/OpenAiClientGenerated.ts
+OpenAiError-0a7e1c.ts            repos/effect/packages/ai/openai-compat/src/OpenAiError.ts
+Optic-0644e2.ts                  repos/effect/packages/effect/benchmark/schema/Optic.ts
+OtelMetrics.test-01fcba.ts       repos/effect/packages/opentelemetry/test/OtelMetrics.test.ts
+PostProcess-06c3be.ts            repos/effect/packages/tools/ai-codegen/src/PostProcess.ts
+Redacted-04892c.ts               repos/effect/packages/effect/src/Redacted.ts
+RpcServer.test-01f8d2.ts         repos/effect/packages/effect/test/rpc/RpcServer.test.ts
+Scheduler-061ce2.ts              repos/effect/packages/effect/src/Scheduler.ts
+SqliteMigrator-02fcd6.ts         repos/effect/packages/sql/sqlite-node/src/SqliteMigrator.ts
+Sse.test-01a170.ts               repos/effect/packages/effect/test/unstable/encoding/Sse.test.ts
+StandardSchema-025faf.ts         repos/effect/packages/effect/src/StandardSchema.ts
+Transferable-08d351.ts           repos/effect/packages/effect/src/unstable/workers/Transferable.ts
+UndefinedOr.test-0312aa.ts       repos/effect/packages/effect/test/UndefinedOr.test.ts
+WorkflowProxy-00ee62.ts          repos/effect/packages/effect/src/unstable/workflow/WorkflowProxy.ts
+config-006481.ts                 repos/effect/packages/effect/src/unstable/cli/internal/config.ts
+mcpProtocolRegistry-09a262.ts    repos/effect/packages/effect/src/unstable/ai/internal/mcpProtocolRegistry.ts
+regenerate-020d5c.ts             repos/effect/packages/sql/pg/test/fixtures/regenerate.ts
+toCodec-070a83.ts                repos/effect/packages/effect/src/internal/schema/toCodec.ts
+toEncoderXml-0b25e6.ts           repos/effect/packages/effect/src/internal/schema/toEncoderXml.ts
+tsconfig-038c9b.json             repos/effect/packages/platform/browser/tsconfig.json
+tsconfig-06dd11.json             repos/effect/packages/ai/openai-compat/tsconfig.json
+tsconfig-10a6b6.json             repos/effect/packages/tools/oxc/tsconfig.json
+tsconfig-1ba186.json             repos/effect/packages/tools/bundle/tsconfig.json
+v3-v4.test-025414.ts             repos/effect/packages/effect/test/schema/v3-v4.test.ts

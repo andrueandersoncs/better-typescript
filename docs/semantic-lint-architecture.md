@@ -117,7 +117,7 @@ The default violation threshold is `0.70`; applicability uses a fixed `0.70` gat
 
 Evals score prompt variants so they can be optimized without guessing.
 
-- Corpus: `testdata/evals/cases/<policy>.jsonl`. Each case is one file, one policy, a gold label, and gold lines. `planted` cases insert a violation into a large real host from `testdata/evals/hosts/`.
+- Corpus: `testdata/evals/cases/<policy>.jsonl`. Each case is one file, one policy, a gold label, and gold lines. `planted` cases insert a violation into a large real host from `testdata/evals/hosts/`; `real` cases judge unchanged files from `testdata/evals/hosts/` or `testdata/evals/real/`. Cases whose labelers disagree are `ambiguous` and unscored until a human decides.
 - `go test ./internal/semanticlint` validates the corpus offline.
 - Live runs use build tag `semanticeval` and need `TYPESAFE_API_KEY` or a full replay cache. `eval_live_test.go` lists the commands and inputs.
 - Each request carries an unsent `scope` naming its stage (`candidate`, `evidence`, `final`), its round, and its source window or blocks. Evals read it to attribute misses, tokens, and rounds to a stage.
