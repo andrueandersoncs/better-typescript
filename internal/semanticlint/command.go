@@ -103,7 +103,7 @@ func Run(ctx context.Context, root string, args []string, output io.Writer) (int
 		questionCount += len(applicable)
 	}
 	if options.DryRun {
-		plan, err := dryRunPlan(evaluations, options.Model)
+		plan, err := dryRunPlan(evaluations, options.requestSettings())
 		if err != nil {
 			return 2, err
 		}
@@ -182,11 +182,10 @@ func parseOptions(args []string) (Options, bool, error) {
 	return options, help, nil
 }
 
-func dryRunPlan(evaluations []sourceEvaluation, model string) (DryRunPlan, error) {
-	model = modelOrDefault(model)
-	plan := DryRunPlan{Kind: "dry-run-plan", Model: model, Files: make([]DryRunFile, len(evaluations))}
+func dryRunPlan(evaluations []sourceEvaluation, settings requestSettings) (DryRunPlan, error) {
+	plan := DryRunPlan{Kind: "dry-run-plan", Model: settings.model, Files: make([]DryRunFile, len(evaluations))}
 	for index, evaluation := range evaluations {
-		file, err := dryRunFile(evaluation.source, evaluation.rules, model)
+		file, err := dryRunFile(evaluation.source, evaluation.rules, settings)
 		if err != nil {
 			return DryRunPlan{}, err
 		}

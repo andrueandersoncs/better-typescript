@@ -9,19 +9,30 @@ import (
 )
 
 const (
-	candidateQuestionPrefix         = "Could the `file` segment provide concrete evidence that the complete file violates the following rule? Answer yes for plausible evidence or necessary context, not merely related code. Answer no if the rule cannot apply to this segment.\n\nRule:\n"
-	finalQuestionPrefix             = "Do the selected source spans in `file`, considered together, establish a concrete violation of the following rule? Answer yes if they demonstrate a violation even when other code complies. Answer no if the shown behavior follows the rule or omitted context is needed to decide.\n\nRule:\n"
-	applicabilityQuestionPrefix     = "Is the subject of this rule present in `file`? Answer yes for any covered operation, even one that complies. Do not decide whether the rule is violated.\n\nRule:\n"
 	candidateSelectionThreshold     = 0.4
 	minimumApplicabilityProbability = 0.7
 	maximumSegmentBytes             = 4_000
 	maximumWindowOverlapBytes       = 2_000
 	maximumConcurrentEvaluations    = 8
+	applicabilityGateReason         = "policy applicability not established"
 )
 
-var applicabilityCriteria = map[string]string{
-	"true":  "The source contains an operation of the kind this policy governs, whether it complies or violates.",
-	"false": "The source has no operation of the kind this policy governs.",
+// stage names the pipeline step that issued a request.
+type stage string
+
+const (
+	stageCandidate stage = "candidate"
+	stageEvidence  stage = "evidence"
+	stageFinal     stage = "final"
+)
+
+// requestScope identifies a request's stage, its round of concurrent requests within one file, and
+// the source window or evidence blocks it judges.
+type requestScope struct {
+	stage  stage
+	round  int
+	window sourceWindow
+	blocks []sourceWindow
 }
 
 type sourceWindow struct {
@@ -34,6 +45,7 @@ type requestPartition struct {
 	rules    []Rule
 	window   sourceWindow
 	windowed bool
+	blocks   []sourceWindow
 }
 
 type partitionResult struct {
@@ -41,30 +53,17 @@ type partitionResult struct {
 	err      error
 }
 
-func questionForCandidate(rule Rule) question {
-	return question{Type: "noul", Instructions: candidateQuestionPrefix + rule.Source}
-}
-
-func questionForFinal(rule Rule) question {
-	return question{Type: "noul", Instructions: finalQuestionPrefix + rule.Source}
-}
-
-func applicabilityQuestion(rule Rule) question {
-	return question{Type: "noul", Instructions: applicabilityQuestionPrefix + rule.Source, Criteria: applicabilityCriteria}
-}
-
-func buildRequestPartitions(source Source, rules []Rule, model string, maximumBytes int) ([]requestPartition, error) {
+func buildRequestPartitions(source Source, rules []Rule, settings requestSettings, maximumBytes int) ([]requestPartition, error) {
 	if len(rules) == 0 {
 		return nil, nil
 	}
-	model = modelOrDefault(model)
-	windows, err := sourceWindows(source, rules, model, maximumBytes)
+	windows, err := sourceWindows(source, rules, settings, maximumBytes)
 	if err != nil {
 		return nil, err
 	}
 	var partitions []requestPartition
 	for _, window := range windows {
-		windowPartitions, err := partitionWindow(source, window, rules, model, maximumBytes, len(windows) > 1)
+		windowPartitions, err := partitionWindow(source, window, rules, settings, maximumBytes, len(windows) > 1)
 		if err != nil {
 			return nil, err
 		}
@@ -73,24 +72,24 @@ func buildRequestPartitions(source Source, rules []Rule, model string, maximumBy
 	return partitions, nil
 }
 
-func singleRuleRequest(path, sourceText string, rule Rule, model string) evaluationRequest {
+func singleRuleRequest(path, sourceText string, rule Rule, settings requestSettings) evaluationRequest {
 	return evaluationRequest{
 		State:     map[string]string{"path": path, "file": sourceText},
-		Questions: map[string]question{rule.ID: questionForCandidate(rule)},
-		Model:     model,
+		Questions: map[string]question{rule.ID: settings.prompts.candidateQuestion(rule)},
+		Model:     settings.model,
 	}
 }
 
-func partitionWindow(source Source, window sourceWindow, rules []Rule, model string, maximumBytes int, windowed bool) ([]requestPartition, error) {
+func partitionWindow(source Source, window sourceWindow, rules []Rule, settings requestSettings, maximumBytes int, windowed bool) ([]requestPartition, error) {
 	state := map[string]string{"path": source.Path, "file": source.Text[window.start:window.end]}
 	var partitions []requestPartition
 	current := requestPartition{
-		request:  evaluationRequest{State: state, Questions: make(map[string]question, len(rules)), Model: model},
+		request:  evaluationRequest{State: state, Questions: make(map[string]question, len(rules)), Model: settings.model},
 		window:   window,
 		windowed: windowed,
 	}
 	for _, rule := range rules {
-		ruleQuestion := questionForCandidate(rule)
+		ruleQuestion := settings.prompts.candidateQuestion(rule)
 		current.request.Questions[rule.ID] = ruleQuestion
 		if requestSize(current.request) <= maximumBytes {
 			current.rules = append(current.rules, rule)
@@ -100,7 +99,7 @@ func partitionWindow(source Source, window sourceWindow, rules []Rule, model str
 		if len(current.rules) > 0 {
 			partitions = append(partitions, current)
 		}
-		single := evaluationRequest{State: state, Questions: map[string]question{rule.ID: ruleQuestion}, Model: model}
+		single := evaluationRequest{State: state, Questions: map[string]question{rule.ID: ruleQuestion}, Model: settings.model}
 		if requestSize(single) > maximumBytes {
 			return nil, fmt.Errorf("file %s bytes %d:%d with rule %s exceeds the %d-byte TypeSafe request limit", source.Path, window.start, window.end, rule.Path, maximumBytes)
 		}
@@ -112,11 +111,11 @@ func partitionWindow(source Source, window sourceWindow, rules []Rule, model str
 	return partitions, nil
 }
 
-func sourceWindows(source Source, rules []Rule, model string, maximumBytes int) ([]sourceWindow, error) {
+func sourceWindows(source Source, rules []Rule, settings requestSettings, maximumBytes int) ([]sourceWindow, error) {
 	largestRule := rules[0]
-	largestEmptyRequest := requestSize(singleRuleRequest(source.Path, "", largestRule, model))
+	largestEmptyRequest := requestSize(singleRuleRequest(source.Path, "", largestRule, settings))
 	for _, rule := range rules[1:] {
-		size := requestSize(singleRuleRequest(source.Path, "", rule, model))
+		size := requestSize(singleRuleRequest(source.Path, "", rule, settings))
 		if size > largestEmptyRequest {
 			largestRule = rule
 			largestEmptyRequest = size
@@ -136,7 +135,7 @@ func sourceWindows(source Source, rules []Rule, model string, maximumBytes int) 
 		if end < len(source.Text) {
 			end = preferLineEnd(source.Text, start, end)
 		}
-		for end > start && requestSize(singleRuleRequest(source.Path, source.Text[start:end], largestRule, model)) > maximumBytes {
+		for end > start && requestSize(singleRuleRequest(source.Path, source.Text[start:end], largestRule, settings)) > maximumBytes {
 			_, width := utf8.DecodeLastRuneInString(source.Text[start:end])
 			end -= width
 		}
@@ -224,7 +223,13 @@ func requestSize(request evaluationRequest) int {
 	return len(encoded)
 }
 
-func evaluatePartitions(ctx context.Context, partitions []requestPartition, evaluator evaluator) []partitionResult {
+// nextRound scopes the next wave of concurrent requests for this file; evals count waves as latency.
+func (report *FindingReport) nextRound(step stage) requestScope {
+	report.rounds++
+	return requestScope{stage: step, round: report.rounds}
+}
+
+func evaluatePartitions(ctx context.Context, scope requestScope, partitions []requestPartition, evaluator evaluator) []partitionResult {
 	results := make([]partitionResult, len(partitions))
 	jobs := make(chan int)
 	var workers sync.WaitGroup
@@ -233,7 +238,10 @@ func evaluatePartitions(ctx context.Context, partitions []requestPartition, eval
 		go func() {
 			defer workers.Done()
 			for index := range jobs {
-				results[index].response, results[index].err = evaluator.Evaluate(ctx, partitions[index].request)
+				request := partitions[index].request
+				request.scope = scope
+				request.scope.window, request.scope.blocks = partitions[index].window, partitions[index].blocks
+				results[index].response, results[index].err = evaluator.Evaluate(ctx, request)
 			}
 		}()
 	}
@@ -291,7 +299,7 @@ func candidateRanges(source Source, windows []sourceWindow) []CandidateRange {
 	return ranges
 }
 
-func finalRequest(source Source, rule Rule, windows []sourceWindow, ranges []CandidateRange, model string) evaluationRequest {
+func finalRequest(source Source, rule Rule, windows []sourceWindow, ranges []CandidateRange, settings requestSettings) evaluationRequest {
 	var text strings.Builder
 	for index, window := range windows {
 		if index > 0 {
@@ -303,21 +311,22 @@ func finalRequest(source Source, rule Rule, windows []sourceWindow, ranges []Can
 	return evaluationRequest{
 		State: map[string]string{"path": source.Path, "file": text.String()},
 		Questions: map[string]question{
-			rule.ID:              questionForFinal(rule),
-			rule.ID + "_applies": applicabilityQuestion(rule),
+			rule.ID:              settings.prompts.finalQuestion(rule),
+			rule.ID + "_applies": settings.prompts.applicabilityQuestion(rule),
 		},
-		Model: modelOrDefault(model),
+		Model: settings.model,
 	}
 }
 
 func evaluateSource(ctx context.Context, source Source, rules []Rule, options Options, evaluator evaluator) (FindingReport, error) {
-	partitions, err := buildRequestPartitions(source, rules, options.Model, maximumRequestBytes)
+	settings := options.requestSettings()
+	partitions, err := buildRequestPartitions(source, rules, settings, maximumRequestBytes)
 	if err != nil {
 		return FindingReport{}, err
 	}
 	report := FindingReport{Source: source.Path, ViolationProbabilityThreshold: options.Threshold, Findings: make([]Finding, 0, len(rules))}
 	selected := make(map[string][]sourceWindow, len(rules))
-	for index, result := range evaluatePartitions(ctx, partitions, evaluator) {
+	for index, result := range evaluatePartitions(ctx, report.nextRound(stageCandidate), partitions, evaluator) {
 		if err := addResponse(&report, source.Path, result, index); err != nil {
 			return FindingReport{}, err
 		}
@@ -332,48 +341,47 @@ func evaluateSource(ctx context.Context, source Source, rules []Rule, options Op
 		}
 	}
 
+	evidence, err := selectEvidence(ctx, source, rules, selected, settings, evaluator, &report)
+	if err != nil {
+		return FindingReport{}, err
+	}
 	finalPartitions := make([]requestPartition, 0, len(rules))
 	finalIndexes := make(map[string]int, len(rules))
 	for _, rule := range rules {
 		finding := Finding{RulePath: rule.Path, RuleTitle: rule.Title}
-		windows := selected[rule.ID]
-		if len(windows) == 0 {
+		windows := evidence[rule.ID]
+		switch {
+		case len(selected[rule.ID]) == 0:
 			finding.Classification = "inconclusive"
 			finding.Reason = "no candidate evidence selected"
-		} else {
-			windows, err = selectEvidence(ctx, source, rule, windows, options.Model, evaluator, &report)
-			if err != nil {
-				return FindingReport{}, err
+		case len(windows) == 0:
+			finding.Classification = "inconclusive"
+			finding.Reason = "no evidence selected"
+		default:
+			finding.CandidateRanges = candidateRanges(source, windows)
+			finding.EvidenceScope = "localized"
+			if len(windows) == 1 && windows[0].start == 0 && windows[0].end == len(source.Text) {
+				finding.EvidenceScope = "file"
 			}
-			if len(windows) == 0 {
+			selectedBytes := 0
+			for _, candidate := range finding.CandidateRanges {
+				selectedBytes += candidate.EndByte - candidate.StartByte
+			}
+			var request evaluationRequest
+			if selectedBytes < maximumRequestBytes {
+				request = finalRequest(source, rule, windows, finding.CandidateRanges, settings)
+			}
+			if selectedBytes >= maximumRequestBytes || requestSize(request) > maximumRequestBytes {
 				finding.Classification = "inconclusive"
-				finding.Reason = "no evidence selected"
+				finding.Reason = "selected context exceeds the TypeSafe request limit"
 			} else {
-				finding.CandidateRanges = candidateRanges(source, windows)
-				finding.EvidenceScope = "localized"
-				if len(windows) == 1 && windows[0].start == 0 && windows[0].end == len(source.Text) {
-					finding.EvidenceScope = "file"
-				}
-				selectedBytes := 0
-				for _, candidate := range finding.CandidateRanges {
-					selectedBytes += candidate.EndByte - candidate.StartByte
-				}
-				var request evaluationRequest
-				if selectedBytes < maximumRequestBytes {
-					request = finalRequest(source, rule, windows, finding.CandidateRanges, options.Model)
-				}
-				if selectedBytes >= maximumRequestBytes || requestSize(request) > maximumRequestBytes {
-					finding.Classification = "inconclusive"
-					finding.Reason = "selected context exceeds the TypeSafe request limit"
-				} else {
-					finalIndexes[rule.ID] = len(report.Findings)
-					finalPartitions = append(finalPartitions, requestPartition{request: request, rules: []Rule{rule}})
-				}
+				finalIndexes[rule.ID] = len(report.Findings)
+				finalPartitions = append(finalPartitions, requestPartition{request: request, rules: []Rule{rule}})
 			}
 		}
 		report.Findings = append(report.Findings, finding)
 	}
-	for index, result := range evaluatePartitions(ctx, finalPartitions, evaluator) {
+	for index, result := range evaluatePartitions(ctx, report.nextRound(stageFinal), finalPartitions, evaluator) {
 		if err := addResponse(&report, source.Path, result, index); err != nil {
 			return FindingReport{}, err
 		}
@@ -390,7 +398,7 @@ func evaluateSource(ctx context.Context, source Source, rules []Rule, options Op
 		finding.ApplicabilityProbability = &applicability
 		if probability > maximumPassProbability && applicability < minimumApplicabilityProbability {
 			finding.Classification = "inconclusive"
-			finding.Reason = "policy applicability not established"
+			finding.Reason = applicabilityGateReason
 			continue
 		}
 		finding.ViolationProbability = &probability
@@ -409,8 +417,8 @@ func classifyProbability(probability, threshold float64) string {
 	return "pass"
 }
 
-func dryRunFile(source Source, rules []Rule, model string) (DryRunFile, error) {
-	partitions, err := buildRequestPartitions(source, rules, model, maximumRequestBytes)
+func dryRunFile(source Source, rules []Rule, settings requestSettings) (DryRunFile, error) {
+	partitions, err := buildRequestPartitions(source, rules, settings, maximumRequestBytes)
 	if err != nil {
 		return DryRunFile{}, err
 	}

@@ -1,0 +1,16 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/editor" },
+    { "path": "./packages/worker" }
+  ],
+  "watchOptions": {
+    "watchFile": "useFsEvents",
+    "watchDirectory": "useFsEvents",
+    "fallbackPolling": "dynamicPriority"
+  },
+  "compileOnSave": false,
+  "typeAcquisition": {
+    "enable": false
+  }
+}

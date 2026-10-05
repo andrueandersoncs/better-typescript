@@ -101,9 +101,9 @@ func TestSemanticViolationLocatesEvidenceWithinCandidateSpan(t *testing.T) {
 	source := prefix + "export const parseArgs = (args: string[]) => args.indexOf('--')\n"
 	evaluate := evaluatorFunc(func(_ context.Context, request evaluationRequest) (evaluationResponse, error) {
 		answers := make(map[string]answer, len(request.Questions))
-		for id, question := range request.Questions {
-			if question.Type == "choice" {
-				answers[id] = testRouteAnswer(request, "parseArgs")
+		for id := range request.Questions {
+			if strings.HasPrefix(id, "block_") {
+				answers[id] = testEvidenceAnswer(request, id, "parseArgs")
 				continue
 			}
 			value := 0.1
@@ -134,15 +134,9 @@ func TestDistantDeclarationsRemainTogetherInEvidenceSet(t *testing.T) {
 		"export const Service = Layer.succeed(Service, { run() {} })\n"
 	evaluate := evaluatorFunc(func(_ context.Context, request evaluationRequest) (evaluationResponse, error) {
 		answers := make(map[string]answer, len(request.Questions))
-		for id, question := range request.Questions {
-			if question.Type == "choice" {
-				route := testRouteAnswer(request, "interface Service", "const Service")
-				if route.Choice == "both" {
-					route.Choice = "left"
-					route.Probabilities = map[string]float64{"left": 0.44, "right": 0.44, "both": 0.08, "neither": 0.04}
-					route.Confidence = 0.4
-				}
-				answers[id] = route
+		for id := range request.Questions {
+			if strings.HasPrefix(id, "block_") {
+				answers[id] = testEvidenceAnswer(request, id, "interface Service", "const Service")
 				continue
 			}
 			text := request.State["file"]
@@ -168,33 +162,31 @@ func TestDistantDeclarationsRemainTogetherInEvidenceSet(t *testing.T) {
 	}
 }
 
-func TestSearchRejectsIncompleteChoiceDistribution(t *testing.T) {
+func TestEvidenceRejectsOmittedBlockAnswer(t *testing.T) {
 	rule := testRule(t, "comment-evidence", "Explain the -- parsing invariant where it matters.")
 	evaluate := evaluatorFunc(func(_ context.Context, request evaluationRequest) (evaluationResponse, error) {
 		answers := make(map[string]answer, len(request.Questions))
-		for id, question := range request.Questions {
-			if question.Type == "choice" {
-				answers[id] = answer{Type: "choice", Choice: "left", Probabilities: map[string]float64{"left": 0.9, "right": 0.1}}
-			} else {
+		for id := range request.Questions {
+			if id != "block_2" {
 				answers[id] = answer{Type: "noul", Noul: 0.9}
 			}
 		}
 		return evaluationResponse{Model: "jev-test", Answers: answers}, nil
 	})
 	_, err := evaluateSource(context.Background(), Source{Path: "src/args.ts", Text: strings.Repeat("// unrelated code\n", 95)}, []Rule{rule}, Options{Threshold: 0.7}, evaluate)
-	if err == nil || !strings.Contains(err.Error(), "Choice") {
-		t.Fatalf("incomplete Choice distribution: %v", err)
+	if err == nil || !strings.Contains(err.Error(), "evidence answer") {
+		t.Fatalf("omitted block answer: %v", err)
 	}
 }
 
-func TestSearchAbstainsWhenNeitherBranchCanContribute(t *testing.T) {
+func TestEvidenceAbstainsWhenNoBlockCanContribute(t *testing.T) {
 	rule := testRule(t, "comment-evidence", "Explain the -- parsing invariant where it matters.")
 	source := Source{Path: "src/args.ts", Text: strings.Repeat("// unrelated code\n", 95)}
 	evaluate := evaluatorFunc(func(_ context.Context, request evaluationRequest) (evaluationResponse, error) {
 		answers := make(map[string]answer, len(request.Questions))
-		for id, question := range request.Questions {
-			if question.Type == "choice" {
-				answers[id] = testRouteAnswer(request, "parseArgs")
+		for id := range request.Questions {
+			if strings.HasPrefix(id, "block_") {
+				answers[id] = testEvidenceAnswer(request, id, "parseArgs")
 			} else {
 				answers[id] = answer{Type: "noul", Noul: 0.9}
 			}

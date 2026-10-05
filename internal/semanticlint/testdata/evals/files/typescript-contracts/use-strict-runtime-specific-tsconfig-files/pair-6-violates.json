@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "types": []
+  },
+  "include": ["packages/catalog/src/**/*.ts"],
+  "exclude": ["dist", "generated"],
+  "references": [],
+  "compileOnSave": false
+}

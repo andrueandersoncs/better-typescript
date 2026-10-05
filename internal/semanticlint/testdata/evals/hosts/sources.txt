@@ -1,0 +1,7 @@
+Copied unchanged from this repository's vendored Effect source (MIT, see repos/effect/LICENSE),
+as of better-typescript commit 0cc7fe3d3 (repos/effect last changed in 039914008).
+
+api-diff-Diff.ts   repos/effect/packages/tools/api-diff/src/Diff.ts
+docgen-Core.ts     repos/effect/packages/tools/docgen/src/Core.ts
+Formatter.test.ts  repos/effect/packages/effect/test/Formatter.test.ts
+Optic.test.ts      repos/effect/packages/effect/test/Optic.test.ts

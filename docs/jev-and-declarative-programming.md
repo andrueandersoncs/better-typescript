@@ -415,13 +415,15 @@ For reproducibility:
 
 ## `semanticlint`: staged evidence selection
 
-`internal/semanticlint` has two judgment stages:
+`internal/semanticlint` has three judgment stages:
 
 ```text
 complete file → overlapping source spans
               → Applicative: ask candidate Nouls per span and policy
               → pure: merge selected spans with original source ranges
-              → Monad: build one final request per policy from selected spans
+              → Monad: cut selected spans into blocks; ask one Noul per block
+              → pure: merge selected blocks into an evidence set
+              → Monad: build one final request per policy from that evidence
               → Applicative: ask independent final Nouls
               → pure: classify final answers
 ```

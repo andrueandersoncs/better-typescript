@@ -143,9 +143,9 @@ func TestRunSelectsCandidateSpansBeforeFinalJudgment(t *testing.T) {
 			probability = 0.9
 		}
 		answers := make(map[string]answer, len(received.Questions))
-		for id, q := range received.Questions {
-			if q.Type == "choice" {
-				answers[id] = testRouteAnswer(received, "VIOLATION")
+		for id := range received.Questions {
+			if strings.HasPrefix(id, "block_") {
+				answers[id] = testEvidenceAnswer(received, id, "VIOLATION")
 			} else {
 				answers[id] = answer{Type: "noul", Noul: probability}
 			}
@@ -195,6 +195,9 @@ func TestRunSelectsCandidateSpansBeforeFinalJudgment(t *testing.T) {
 	}
 	foundFinal := false
 	for _, received := range requests {
+		if _, evidence := received.State["policy"]; evidence {
+			continue
+		}
 		if len(received.Questions) < 1 || len(received.Questions) > 2 {
 			t.Fatalf("questions = %#v", received.Questions)
 		}
@@ -222,9 +225,9 @@ func TestRunRecomposesDistantCandidateSpans(t *testing.T) {
 			return
 		}
 		answers := make(map[string]answer, len(received.Questions))
-		for id, q := range received.Questions {
-			if q.Type == "choice" {
-				answers[id] = testRouteAnswer(received, "VIOLATION_A", "VIOLATION_B")
+		for id := range received.Questions {
+			if strings.HasPrefix(id, "block_") {
+				answers[id] = testEvidenceAnswer(received, id, "VIOLATION_A", "VIOLATION_B")
 				continue
 			}
 			probability := 0.1
@@ -350,7 +353,7 @@ func TestRunReportsNoCandidateAsInconclusiveWithoutFinalJudgment(t *testing.T) {
 
 func TestRunDoesNotJudgeTruncatedCandidateContext(t *testing.T) {
 	root := newSemanticTestRepository(t)
-	source := strings.Repeat("export const relevant = true;\n", 1_400)
+	source := strings.Repeat("export const relevant = true;\n", 2_800)
 	writeTestFile(t, root, "src/example.ts", source)
 	var calls atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
@@ -430,24 +433,14 @@ func TestParseOptionsRejectsRemovedPipelines(t *testing.T) {
 	}
 }
 
-func testRouteAnswer(request evaluationRequest, markers ...string) answer {
-	left, right := false, false
+// testEvidenceAnswer selects an evidence block when its text contains any marker.
+func testEvidenceAnswer(request evaluationRequest, key string, markers ...string) answer {
 	for _, marker := range markers {
-		left = left || strings.Contains(request.State["left"], marker)
-		right = right || strings.Contains(request.State["right"], marker)
+		if strings.Contains(request.State[key], marker) {
+			return answer{Type: "noul", Noul: 0.9}
+		}
 	}
-	choice := "neither"
-	switch {
-	case left && right:
-		choice = "both"
-	case left:
-		choice = "left"
-	case right:
-		choice = "right"
-	}
-	probabilities := map[string]float64{"left": 0.02, "right": 0.02, "both": 0.02, "neither": 0.02}
-	probabilities[choice] = 0.94
-	return answer{Type: "choice", Choice: choice, Probabilities: probabilities, Confidence: 0.94}
+	return answer{Type: "noul", Noul: 0.1}
 }
 
 func newSemanticTestRepository(t *testing.T) string {

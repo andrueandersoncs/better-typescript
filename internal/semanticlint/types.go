@@ -12,7 +12,7 @@ const (
 	defaultModel           = "jev-latest"
 	defaultThreshold       = 0.7
 	maximumPassProbability = 0.4
-	maximumRequestBytes    = 32_000
+	maximumRequestBytes    = 64_000
 	defaultHTTPTimeout     = 10 * time.Second
 	maximumHTTPRetries     = 2
 )
@@ -40,6 +40,7 @@ type Options struct {
 	AllFiles       bool
 	JSON           bool
 	DryRun         bool
+	prompts        prompts
 }
 
 type Source struct {
@@ -85,6 +86,7 @@ type FindingReport struct {
 	ViolationProbabilityThreshold float64   `json:"violationProbabilityThreshold"`
 	Findings                      []Finding `json:"findings"`
 	Usage                         Usage     `json:"usage"`
+	rounds                        int
 }
 
 type DryRunPlan struct {
@@ -120,14 +122,13 @@ type evaluationRequest struct {
 	State     map[string]string   `json:"state"`
 	Questions map[string]question `json:"questions"`
 	Model     string              `json:"model,omitempty"`
+	// scope tells evaluators which step issued the request; it is never sent.
+	scope requestScope
 }
 
 type answer struct {
-	Type          string             `json:"type"`
-	Noul          float64            `json:"noul"`
-	Choice        string             `json:"choice,omitempty"`
-	Probabilities map[string]float64 `json:"probabilities,omitempty"`
-	Confidence    float64            `json:"confidence,omitempty"`
+	Type string  `json:"type"`
+	Noul float64 `json:"noul"`
 }
 
 type evaluationResponse struct {

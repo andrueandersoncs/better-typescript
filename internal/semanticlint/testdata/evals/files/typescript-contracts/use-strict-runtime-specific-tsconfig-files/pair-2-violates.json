@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2021",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": false,
+    "exactOptionalPropertyTypes": true,
+    "types": []
+  },
+  "include": ["client/**/*.ts", "client/**/*.tsx"],
+  "exclude": ["build", "vendor"],
+  "references": []
+}

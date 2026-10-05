@@ -127,27 +127,8 @@ func validateResponse(response evaluationResponse) error {
 		return fmt.Errorf("TypeSafe returned an invalid response")
 	}
 	for _, answer := range response.Answers {
-		switch answer.Type {
-		case "noul":
-			if !validProbability(answer.Noul) {
-				return fmt.Errorf("TypeSafe returned an invalid Noul answer")
-			}
-		case "choice":
-			if !validProbability(answer.Confidence) || len(answer.Probabilities) == 0 {
-				return fmt.Errorf("TypeSafe returned an invalid Choice answer")
-			}
-			total := 0.0
-			for _, probability := range answer.Probabilities {
-				if !validProbability(probability) {
-					return fmt.Errorf("TypeSafe returned an invalid Choice answer")
-				}
-				total += probability
-			}
-			if _, ok := answer.Probabilities[answer.Choice]; !ok || total < 0.95 || total > 1.05 {
-				return fmt.Errorf("TypeSafe returned an invalid Choice answer")
-			}
-		default:
-			return fmt.Errorf("TypeSafe returned an invalid answer type")
+		if answer.Type != "noul" || !validProbability(answer.Noul) {
+			return fmt.Errorf("TypeSafe returned an invalid Noul answer")
 		}
 	}
 	return nil

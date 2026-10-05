@@ -4,134 +4,103 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
-	"unicode/utf8"
 )
 
-const (
-	minimumLeafBytes     = 400
-	strongNeitherScore   = 0.8
-	plausibleBranchRatio = 0.5
-)
+// minimumBlockBytes sets evidence granularity: blocks hold whole lines and at least this many bytes.
+const minimumBlockBytes = 400
 
-const routeQuestionPrefix = "Which parts of `left` and `right` might contain evidence or necessary context for deciding whether the original file violates this rule? Select both when the relationship between parts matters. Select neither only if neither part can contribute.\n\nRule:\n"
-
-type branchPair struct {
-	left  sourceWindow
-	right sourceWindow
-}
-
-func routeRequest(source Source, rule Rule, pair branchPair, model string) evaluationRequest {
-	return evaluationRequest{
-		State: map[string]string{
-			"path":  source.Path,
-			"left":  source.Text[pair.left.start:pair.left.end],
-			"right": source.Text[pair.right.start:pair.right.end],
-		},
-		Questions: map[string]question{rule.ID: {
-			Type:         "choice",
-			Instructions: routeQuestionPrefix + rule.Source,
-			Criteria: map[string]string{
-				"left":    "Only the left part may be relevant.",
-				"right":   "Only the right part may be relevant.",
-				"both":    "Both parts may be relevant, including jointly.",
-				"neither": "Neither part can provide evidence or necessary context.",
-			},
-		}},
-		Model: modelOrDefault(model),
-	}
-}
-
-func splitWindow(text string, window sourceWindow) (branchPair, bool) {
-	if window.end-window.start <= minimumLeafBytes {
-		return branchPair{}, false
-	}
-	center := window.start + (window.end-window.start)/2
-	split := center
-	if offset := strings.IndexByte(text[center:window.end], '\n'); offset >= 0 && center+offset+1 < window.end {
-		split = center + offset + 1
-	} else if offset := strings.LastIndexByte(text[window.start:center], '\n'); offset >= 0 {
-		split = window.start + offset + 1
-	} else {
-		for split > window.start && !utf8.RuneStart(text[split]) {
-			split--
+// evidenceBlocks splits a window into consecutive whole-line blocks of at least minimumBlockBytes.
+func evidenceBlocks(text string, window sourceWindow) []sourceWindow {
+	var blocks []sourceWindow
+	for start := window.start; start < window.end; {
+		end := min(window.end, start+minimumBlockBytes)
+		if newline := strings.IndexByte(text[end:window.end], '\n'); newline >= 0 {
+			end += newline + 1
+		} else {
+			end = window.end
 		}
+		blocks = append(blocks, sourceWindow{start: start, end: end})
+		start = end
 	}
-	if split <= window.start || split >= window.end {
-		return branchPair{}, false
-	}
-	return branchPair{left: sourceWindow{start: window.start, end: split}, right: sourceWindow{start: split, end: window.end}}, true
+	return blocks
 }
 
-func routeBranches(response evaluationResponse, rule Rule) (bool, bool, error) {
-	result, ok := response.Answers[rule.ID]
-	if !ok || result.Type != "choice" || len(result.Probabilities) != 4 {
-		return false, false, fmt.Errorf("TypeSafe omitted a Choice answer for %s", rule.Path)
-	}
-	for _, name := range []string{"left", "right", "both", "neither"} {
-		if !validProbability(result.Probabilities[name]) {
-			return false, false, fmt.Errorf("TypeSafe returned an invalid Choice answer for %s", rule.Path)
-		}
-		if _, exists := result.Probabilities[name]; !exists {
-			return false, false, fmt.Errorf("TypeSafe omitted Choice option %s for %s", name, rule.Path)
-		}
-	}
-	if result.Probabilities["neither"] >= strongNeitherScore {
-		return false, false, nil
-	}
-	left := result.Probabilities["left"] + result.Probabilities["both"]
-	right := result.Probabilities["right"] + result.Probabilities["both"]
-	if left == 0 && right == 0 {
-		return false, false, nil
-	}
-	return left >= right*plausibleBranchRatio, right >= left*plausibleBranchRatio, nil
+func blockKey(position int) string {
+	return "block_" + strconv.Itoa(position+1)
 }
 
-func selectEvidence(ctx context.Context, source Source, rule Rule, candidates []sourceWindow, model string, evaluator evaluator, report *FindingReport) ([]sourceWindow, error) {
-	frontier := candidates
-	var leaves []sourceWindow
-	for len(frontier) > 0 {
-		var partitions []requestPartition
-		var pairs []branchPair
-		for _, window := range frontier {
-			if window.start == window.end {
-				continue
+// evidenceRequest states the policy once and asks one short Noul per block.
+func evidenceRequest(source Source, rule Rule, blocks []sourceWindow, settings requestSettings) evaluationRequest {
+	state := make(map[string]string, len(blocks)+2)
+	state["path"], state["policy"] = source.Path, rule.Source
+	questions := make(map[string]question, len(blocks))
+	for position, block := range blocks {
+		key := blockKey(position)
+		state[key] = source.Text[block.start:block.end]
+		questions[key] = settings.prompts.evidenceQuestion(key)
+	}
+	return evaluationRequest{State: state, Questions: questions, Model: settings.model}
+}
+
+// selectEvidence keeps the blocks of each policy's candidate spans that could support a verdict.
+// Every policy's block questions go out in one round. A span of one block is already as narrow as
+// evidence gets, and a block too large to ask about stays whole.
+func selectEvidence(ctx context.Context, source Source, rules []Rule, candidates map[string][]sourceWindow, settings requestSettings, evaluator evaluator, report *FindingReport) (map[string][]sourceWindow, error) {
+	selected := make(map[string][]sourceWindow, len(candidates))
+	var partitions []requestPartition
+	for _, rule := range rules {
+		var pending []sourceWindow
+		for _, span := range candidates[rule.ID] {
+			if blocks := evidenceBlocks(source.Text, span); len(blocks) == 1 {
+				selected[rule.ID] = append(selected[rule.ID], blocks[0])
+			} else {
+				pending = append(pending, blocks...)
 			}
-			pair, split := splitWindow(source.Text, window)
-			if !split {
-				leaves = append(leaves, window)
-				continue
+		}
+		for len(pending) > 0 {
+			count := 1
+			for count < len(pending) && requestSize(evidenceRequest(source, rule, pending[:count+1], settings)) <= maximumRequestBytes {
+				count++
 			}
-			request := routeRequest(source, rule, pair, model)
+			request := evidenceRequest(source, rule, pending[:count], settings)
 			if requestSize(request) > maximumRequestBytes {
-				leaves = append(leaves, window)
+				selected[rule.ID] = append(selected[rule.ID], pending[0])
+				pending = pending[1:]
 				continue
 			}
-			partitions = append(partitions, requestPartition{request: request, rules: []Rule{rule}})
-			pairs = append(pairs, pair)
+			partitions = append(partitions, requestPartition{request: request, rules: []Rule{rule}, blocks: pending[:count]})
+			pending = pending[count:]
 		}
-		var next []sourceWindow
-		for index, result := range evaluatePartitions(ctx, partitions, evaluator) {
-			if err := addResponse(report, source.Path, result, index); err != nil {
-				return nil, err
-			}
-			left, right, err := routeBranches(result.response, rule)
-			if err != nil {
-				return nil, err
-			}
-			if left {
-				next = append(next, pairs[index].left)
-			}
-			if right {
-				next = append(next, pairs[index].right)
-			}
-		}
-		frontier = next
 	}
-	sort.Slice(leaves, func(i, j int) bool { return leaves[i].start < leaves[j].start })
-	var selected []sourceWindow
-	for _, leaf := range leaves {
-		selected = mergeCandidate(selected, leaf)
+	for index, result := range evaluatePartitions(ctx, report.nextRound(stageEvidence), partitions, evaluator) {
+		if err := addResponse(report, source.Path, result, index); err != nil {
+			return nil, err
+		}
+		rule := partitions[index].rules[0]
+		for position, block := range partitions[index].blocks {
+			answer, ok := result.response.Answers[blockKey(position)]
+			if !ok || answer.Type != "noul" || !validProbability(answer.Noul) {
+				return nil, fmt.Errorf("TypeSafe omitted an evidence answer for %s", rule.Path)
+			}
+			if answer.Noul > candidateSelectionThreshold {
+				selected[rule.ID] = append(selected[rule.ID], block)
+			}
+		}
+	}
+	for id, blocks := range selected {
+		selected[id] = mergeWindows(blocks)
 	}
 	return selected, nil
+}
+
+// mergeWindows sorts windows and merges overlapping or adjacent ones; it reorders its argument.
+func mergeWindows(windows []sourceWindow) []sourceWindow {
+	sort.Slice(windows, func(i, j int) bool { return windows[i].start < windows[j].start })
+	var merged []sourceWindow
+	for _, window := range windows {
+		merged = mergeCandidate(merged, window)
+	}
+	return merged
 }

@@ -1,0 +1,16 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./services/api" },
+    { "path": "./services/web" },
+    { "path": "./packages/schema" }
+  ],
+  "watchOptions": {
+    "synchronousWatchDirectory": true,
+    "excludeDirectories": ["**/node_modules", "**/.git"]
+  },
+  "compileOnSave": false,
+  "typeAcquisition": {
+    "include": []
+  }
+}
