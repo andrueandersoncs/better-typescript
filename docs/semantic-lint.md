@@ -101,7 +101,7 @@ Use `--all` for every eligible current file:
 npx better-typescript semantic --all
 ```
 
-`--all` lists tracked and non-ignored untracked files from Git in the current directory, then keeps supported extensions, including `.ts` and `.tsx`. Its dry run lists every selected file even if no policy matches it. `--files` narrows that same Git-visible file set; it does not include ignored files.
+`--all` lists tracked and non-ignored untracked files from Git in the current directory, skips files deleted from the working tree, then keeps supported extensions, including `.ts` and `.tsx`. Its dry run lists every selected file even if no policy matches it. `--files` narrows that same Git-visible file set; it does not include ignored files.
 
 Use `--rules` to limit policies:
 

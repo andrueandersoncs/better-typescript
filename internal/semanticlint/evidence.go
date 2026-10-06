@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -52,9 +53,19 @@ func gitSnapshot(ctx context.Context, root, commitRange string) (repositorySnaps
 	if err != nil {
 		return repositorySnapshot{}, fmt.Errorf("could not read repository files: %w", err)
 	}
+	deleted, err := gitOutput(ctx, root, "ls-files", "--deleted", "-z")
+	if err != nil {
+		return repositorySnapshot{}, fmt.Errorf("could not read deleted files: %w", err)
+	}
+	missing := make(map[string]bool)
+	for _, path := range nullSeparatedPaths(deleted) {
+		missing[path] = true
+	}
 	return repositorySnapshot{
-		changedPaths:    uniquePaths(append(nullSeparatedPaths(tracked), nullSeparatedPaths(untracked)...)),
-		repositoryPaths: uniquePaths(nullSeparatedPaths(repository)),
+		changedPaths: uniquePaths(append(nullSeparatedPaths(tracked), nullSeparatedPaths(untracked)...)),
+		repositoryPaths: slices.DeleteFunc(uniquePaths(nullSeparatedPaths(repository)), func(path string) bool {
+			return missing[path]
+		}),
 	}, nil
 }
 

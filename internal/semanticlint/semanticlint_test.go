@@ -90,6 +90,36 @@ func TestRangeReadsEndpointWholeFilesAndSkipsDeletedFiles(t *testing.T) {
 	}
 }
 
+func TestWorkingTreeSkipsUnstagedDeletedFiles(t *testing.T) {
+	root := newSemanticTestRepository(t)
+	writeTestFile(t, root, "src/keep.ts", "const value = 'start';\n")
+	runGit(t, root, "add", ".")
+	runGit(t, root, "commit", "-qm", "keep")
+	writeTestFile(t, root, "src/keep.ts", "const value = 'working tree';\n")
+	if err := os.Remove(filepath.Join(root, "src/example.ts")); err != nil {
+		t.Fatal(err)
+	}
+
+	changes, err := gitSnapshot(context.Background(), root, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	all, err := selectCurrentFiles(root, changes, nil, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []Source{{Path: "src/keep.ts", Text: "const value = 'working tree';\n"}}
+	for name, snapshot := range map[string]repositorySnapshot{"changes": changes, "all": all} {
+		sources, err := loadSelectedSources(context.Background(), root, snapshot)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if !reflect.DeepEqual(sources, want) {
+			t.Fatalf("%s: sources = %#v, want %#v", name, sources, want)
+		}
+	}
+}
+
 func TestClassifyProbabilityUsesPassReviewAndViolationBoundaries(t *testing.T) {
 	cases := map[float64]string{0: "pass", 0.4: "pass", 0.4001: "review", 0.6999: "review", 0.7: "violation", 1: "violation"}
 	for probability, want := range cases {
