@@ -24,8 +24,4 @@ mcpProtocolRegistry-09a262.ts    repos/effect/packages/effect/src/unstable/ai/in
 regenerate-020d5c.ts             repos/effect/packages/sql/pg/test/fixtures/regenerate.ts
 toCodec-070a83.ts                repos/effect/packages/effect/src/internal/schema/toCodec.ts
 toEncoderXml-0b25e6.ts           repos/effect/packages/effect/src/internal/schema/toEncoderXml.ts
-tsconfig-038c9b.json             repos/effect/packages/platform/browser/tsconfig.json
-tsconfig-06dd11.json             repos/effect/packages/ai/openai-compat/tsconfig.json
-tsconfig-10a6b6.json             repos/effect/packages/tools/oxc/tsconfig.json
-tsconfig-1ba186.json             repos/effect/packages/tools/bundle/tsconfig.json
 v3-v4.test-025414.ts             repos/effect/packages/effect/test/schema/v3-v4.test.ts

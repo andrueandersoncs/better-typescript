@@ -66,12 +66,12 @@ Location: `internal/semanticlint/testdata/evals/`. One `cases/<policy>.jsonl` pe
 
 ### Corpus
 
-- 20 policies, 434 cases: 244 `contrast`, 68 `planted`, 122 `real` (38 host cases, 84 sampled pairs). 15 `ambiguous`.
-- Scored: `train` 103, `val` 194, `test` 122.
+- 19 policies, 414 cases: 228 `contrast`, 68 `planted`, 118 `real` (36 host cases, 82 sampled pairs). None `ambiguous`.
+- Scored: `train` 100, `val` 191, `test` 123.
 - Synthetic labels: two Claude agents; violates-vs-not κ 0.96, three-way κ 0.80.
-- Sampled real pairs (24 Effect files, seeded by SHA-256): Claude agents vs GPT-6.1-Sol, blind. Violates-vs-not 75/84 (κ 0.47), three-way 71/84 (κ 0.73). Disagreements are `ambiguous` until a human decides.
-- Policies below κ 0.6 (rewrite candidates, not prompt tuning): `effect/keep-pure-calculations-pure`, `testing-enforcement/avoid-fixed-test-waits`, `testing-enforcement/control-test-nondeterminism`, `typescript-contracts/use-strict-runtime-specific-tsconfig-files`.
-- Human tiebreak queue: `label-review.md`.
+- Sampled real pairs (24 Effect files, seeded by SHA-256): Claude agents vs GPT-6.1-Sol, blind. Violates-vs-not 75/84 (κ 0.47), three-way 71/84 (κ 0.73).
+- Human tiebreak (issue 04): every disagreement resolved; `labels.human` records it. `complies` vs `not-applicable` uses the broad reading: if the file has anything the policy could govern (a test, a pure function, a loop, a literal), a clean file `complies`.
+- `typescript-contracts/use-strict-runtime-specific-tsconfig-files` was removed by maintainer decision; its evidence often sits in an extended base file.
 
 ## Accuracy eval
 

@@ -146,11 +146,11 @@ func validateEvalCorpus(directory string, cases []evalCase, policies map[string]
 		if item.Plant != nil && (item.Label != "violates" || len(item.GoldLines) > 0 || len(item.Plant.Parts) == 0) {
 			report(item, "planted cases need parts, violate, and compute their gold lines")
 		}
-		if item.Plant == nil && (item.Label == "violates" || item.Origin == "contrast" && item.Label == "complies") && len(item.GoldLines) == 0 {
+		if item.Plant == nil && (item.Label == "violates" || item.Pair != "" && item.Label == "complies") && len(item.GoldLines) == 0 {
 			report(item, "gold lines are required")
 		}
-		if item.Origin == "contrast" && (item.Label == "violates" || item.Label == "complies") && item.Pair == "" {
-			report(item, "contrast cases need a pair")
+		if item.Origin == "contrast" && item.Label == "violates" && item.Pair == "" {
+			report(item, "contrast violations need a pair")
 		}
 		source, gold, err := caseSource(directory, item)
 		if err != nil {

@@ -131,6 +131,7 @@ Retired selectors have no aliases. Update `--rules` and semantic-mode `better-ty
 | `simplicity/name-things-so-their-purpose-is-clear` | `readability/name-things-by-their-purpose` |
 | `simplicity/prefer-obvious-code-over-clever-code` | `readability/prefer-straightforward-code-over-clever-code` |
 | `switch-case/prefer-switch-for-multiple-branches` | `switch-case/prefer-match-for-multiple-branches` |
+| `typescript-contracts/use-strict-runtime-specific-tsconfig-files` | Removed; no replacement |
 
 ## Committed ranges
 
