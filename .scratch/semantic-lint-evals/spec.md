@@ -66,13 +66,14 @@ Location: `internal/semanticlint/testdata/evals/`. One `cases/<policy>.jsonl` pe
 
 ### Corpus
 
-- 34 policies, 698 cases: 408 `contrast`, 72 `planted`, 218 `real`. None `ambiguous`.
-- Scored: `train` 180, `val` 300, `test` 218.
+- 108 policies, 1,493 cases: 1,197 `contrast`, 72 `planted`, 224 `real`. None `ambiguous`. 25 of 133 policies have no cases.
+- Scored: `train` 393, `val` 647, `test` 453.
 - Synthetic labels: two Claude agents; violates-vs-not κ 0.96, three-way κ 0.80.
 - Sampled real pairs (24 Effect files, seeded by SHA-256): Claude agents vs GPT-6.1-Sol, blind. Violates-vs-not 75/84 (κ 0.47), three-way 71/84 (κ 0.73).
 - Human tiebreak (issue 04): every disagreement resolved; `labels.human` records it. `complies` vs `not-applicable` uses the broad reading: if the file has anything the policy could govern (a test, a pure function, a loop, a literal), a clean file `complies`.
 - `typescript-contracts/use-strict-runtime-specific-tsconfig-files` was removed by maintainer decision; its evidence often sits in an extended base file.
 - Issue 07 split policies to one invariant each; the 11 split corpus policies' cases moved to 26 child policies. Labels: `labels.derived` (from a not-applicable parent or a planted snippet), else Claude vs GPT-6.1-Sol (κ 0.94 violates-vs-not) with `labels.human` tiebreaks.
+- Issue 08 added 251 authored files (one contrast pair per successor of each split policy that had no cases). Labels: author vs GPT-6.1-Sol (κ 0.79), with a blind Claude `labels.reviewer` breaking violation disagreements by majority. Authored files may violate without a pair when both twins break a policy.
 
 ## Accuracy eval
 
@@ -183,6 +184,7 @@ Baselines, noise, and workload: `issues/01-run-baselines.md`.
 - Landed (maintainer decision): the 889-byte GEPA candidate prompt is the default. Current baseline: `val` score 0.872, silent misses 8.3%; workload 46.5 M tokens. Use `{val,test}-gepa-cap-*` and `workload-gepa-cap` as the seed reports for the next comparison or cost gate.
 - Issue 04, real cases added (3 runs per split): real clean files score 0.94; real violations are few (8 scored) and about half surface, so real-code recall is still unmeasured. Both real `replace-unexplained-values-with-meaningful-names` violations are candidate misses in every run. New seed reports: `{val,test}-real-{1,2,3}.json`.
 - Issue 07, one invariant per policy (95 → 140 policies): on 187 files of split policies, confident violation flags 47.7% → 56.4% (95% +2.9 to +15.2 pts); silent misses 26.7% → 22.6% and false violations 1.9% → 2.5%, both within noise; unchanged-policy control flat. Workload 46.5 M → 55.9 M tokens (+20%). Seed reports: `{val,test}-split-{1,2,3}.json`, `workload-split.json`.
+- Issue 08: project rules own overlapping invariants (140 → 133 policies, candidate questions −7%). Rewording `separate-service-interfaces-from-layer-construction` to name its reportable shapes took it from 0% to 100% of violations surfaced. Across the 39 previously unmeasured splits (233 files): surfaced 63% → 83%, silent misses 37% → 17%, false violations unchanged, `review` on clean files 5% → 16%. Seed reports: `{val,test}-clean-{1,2,3}.json`, `c-after-{1,2,3}.json`.
 
 ## Anti-gaming (Goodhart's law)
 

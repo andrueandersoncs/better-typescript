@@ -115,7 +115,7 @@ Rule names are Markdown basenames without `.md`. Catalog-relative paths also wor
 
 The embedded policies distinguish shared behavior from similar-looking code, keep pure calculations outside Effect, and avoid copying a growing accumulator with one-pass construction. Converting already decoded data into a result stays a plain function, even when its caller uses Effect. Local mutable builders require explicit exclusions from the mutation rules. Suitable tagged multiway decisions use Effect `Match`, not forbidden `switch` statements.
 
-Each embedded policy states one invariant: one property a file either keeps or breaks. Policies that combined several invariants were split; invariants that several policies repeated now have one owner.
+Each embedded policy states one invariant: one property a file either keeps or breaks. Policies that combined several invariants were split; an invariant that several policies repeated has one owner, and where a top-level project rule (`if-statements`, `mutability`, `function-naming`, `expression-complexity`, `avoid-repetition`) overlapped an imported policy, the project rule owns it.
 
 Retired selectors have no aliases. Update `--rules` and semantic-mode `better-typescript.json` commands:
 
@@ -127,9 +127,9 @@ Retired selectors have no aliases. Update `--rules` and semantic-mode `better-ty
 | `modularity/test-modules-through-their-contracts`, `simplicity/test-behavior-rather-than-implementation-details` | `abstraction/test-observable-guarantees-not-private-structure` |
 | `modularity/give-every-module-one-clear-purpose`, `readability/give-each-function-one-coherent-responsibility` | `simplicity/give-each-function-or-module-one-coherent-responsibility` |
 | `simplicity/separate-complicated-decision-making-from-external-operations` | `modularity/separate-decision-making-from-external-effects` |
-| `readability/make-dependencies-and-side-effects-visible` | `modularity/make-dependencies-explicit`, `simplicity/do-not-mutate-inputs-unexpectedly`, `abstraction/make-important-consequences-apparent` |
-| `readability/make-failure-behavior-explicit` | `simplicity/handle-errors-explicitly-and-close-to-the-right-boundary`, `typescript-contracts/decode-external-data-at-the-boundary`, `simplicity/keep-each-fact-in-one-authoritative-place`, `simplicity/preserve-failure-context`, `simplicity/do-not-swallow-failures` |
-| `readability/make-the-normal-flow-easy-to-follow` | `simplicity/keep-control-flow-shallow` |
+| `readability/make-dependencies-and-side-effects-visible` | `modularity/make-dependencies-explicit`, `mutability`, `abstraction/make-important-consequences-apparent` |
+| `readability/make-failure-behavior-explicit` | `simplicity/handle-errors-explicitly-and-close-to-the-right-boundary` |
+| `readability/make-the-normal-flow-easy-to-follow` | `if-statements` |
 | `simplicity/name-things-so-their-purpose-is-clear` | `readability/name-things-by-their-purpose` |
 | `simplicity/prefer-obvious-code-over-clever-code` | `readability/prefer-straightforward-code-over-clever-code` |
 | `switch-case/prefer-switch-for-multiple-branches` | `switch-case/prefer-match-for-multiple-branches` |
@@ -138,15 +138,25 @@ Retired selectors have no aliases. Update `--rules` and semantic-mode `better-ty
 | `abstraction/give-each-abstraction-one-coherent-responsibility` | `simplicity/give-each-function-or-module-one-coherent-responsibility`, `readability/keep-each-function-at-a-consistent-level-of-detail` |
 | `abstraction/hide-implementation-decisions-not-important-consequences` | `abstraction/make-the-public-interface-as-small-as-the-contract-allows`, `abstraction/make-important-consequences-apparent` |
 | `abstraction/keep-dependencies-and-ownership-explicit` | `modularity/make-dependencies-explicit`, `abstraction/give-each-resource-an-owner-that-releases-it` |
+| `abstraction/separate-stable-behavior-from-required-variation` | `avoid-repetition` |
 | `effect-errors` | `effect/model-expected-failures-with-specific-types`, `effect/keep-expected-failures-out-of-the-defect-channel`, `effect/keep-pure-calculations-pure`, `effect/convert-thrown-exceptions-at-external-boundaries`, `effect/adapt-promises-once-at-integration-boundaries` |
 | `effect/give-runtimes-resources-and-background-tasks-an-owner` | `effect/acquire-application-dependencies-once`, `abstraction/give-each-resource-an-owner-that-releases-it`, `effect/give-background-tasks-an-owner` |
+| `file-code-organization/group-similar-code-entities` | `file-code-organization/keep-variants-of-one-thing-together` |
+| `file-code-organization/simplify-code-organization` | `file-code-organization/avoid-pass-through-files` |
+| `modularity/do-not-return-mutable-internal-state` | `mutability` |
+| `modularity/give-each-piece-of-mutable-state-a-clear-owner` | `mutability` |
 | `modularity/keep-public-interfaces-small-explicit-and-task-focused` | `modularity/minimize-back-and-forth-communication-between-modules`, `modularity/specify-inputs-outputs-errors-and-side-effects`, `modularity/do-not-require-a-secret-call-order` |
 | `modularity/make-dependencies-explicit-and-narrow` | `modularity/make-dependencies-explicit`, `modularity/depend-on-narrow-collaborators` |
 | `modularity/split-or-merge-based-on-cohesion-and-coupling-not-line-counts` | `simplicity/give-each-function-or-module-one-coherent-responsibility`, `modularity/merge-modules-that-change-together` |
+| `modularity/use-abstractions-at-meaningful-boundaries-not-everywhere` | `simplicity/let-abstractions-emerge-from-concrete-needs` |
 | `readability/make-tests-readable-examples-of-behavior` | `readability/name-tests-after-condition-and-outcome`, `readability/separate-test-setup-action-and-assertions`, `readability/use-test-data-that-makes-behavior-obvious` |
+| `readability/name-complicated-conditions-and-intermediate-results` | `expression-complexity` |
 | `readability/remove-distractions` | `readability/delete-dead-code`, `readability/keep-comments-current`, `simplicity/do-not-add-speculative-extension-points` |
-| `simplicity/make-inputs-dependencies-and-side-effects-explicit` | `modularity/make-dependencies-explicit`, `simplicity/do-not-mutate-inputs-unexpectedly`, `abstraction/make-important-consequences-apparent` |
-| `simplicity/minimize-mutable-and-duplicated-state` | `modularity/give-each-piece-of-mutable-state-a-clear-owner`, `simplicity/keep-each-fact-in-one-authoritative-place` |
+| `simplicity/do-not-mutate-inputs-unexpectedly` | `mutability` |
+| `simplicity/keep-control-flow-shallow` | `if-statements` |
+| `simplicity/make-inputs-dependencies-and-side-effects-explicit` | `modularity/make-dependencies-explicit`, `mutability`, `abstraction/make-important-consequences-apparent` |
+| `simplicity/minimize-maintainer-cognitive-load` | `simplicity/prefer-direct-calls-over-hidden-dispatch` |
+| `simplicity/minimize-mutable-and-duplicated-state` | `mutability`, `simplicity/keep-each-fact-in-one-authoritative-place` |
 | `testing-enforcement/do-not-focus-or-silently-exclude-tests` | `testing-enforcement/do-not-commit-focused-tests`, `testing-enforcement/justify-skipped-and-expected-failure-tests` |
 
 These policies kept their names but now cover one invariant. Their other invariants moved to the listed policies, which a command naming only the old policy no longer covers:
@@ -156,7 +166,6 @@ These policies kept their names but now cover one invariant. Their other invaria
 | `abstraction/make-correct-use-straightforward-and-invalid-use-difficult` | `typescript-contracts/decode-external-data-at-the-boundary`, `modularity/do-not-require-a-secret-call-order`, `abstraction/provide-defaults-only-when-safe` |
 | `abstraction/make-the-public-interface-as-small-as-the-contract-allows` | `abstraction/do-not-force-variation-through-flags`, `abstraction/do-not-import-another-modules-internal-files` |
 | `abstraction/preserve-the-controls-callers-genuinely-need` | `simplicity/do-not-add-speculative-extension-points` |
-| `abstraction/separate-stable-behavior-from-required-variation` | `abstraction/do-not-force-variation-through-flags` |
 | `abstraction/test-observable-guarantees-not-private-structure` | `abstraction/test-promised-laws-against-their-equivalence`, `abstraction/test-behavior-boundaries-failures-and-integrations`, `abstraction/keep-core-behavior-testable-in-isolation`, `abstraction/avoid-redundant-test-cases`, `abstraction/keep-test-utilities-simpler-than-what-they-support` |
 | `effect/adapt-promises-once-at-integration-boundaries` | `effect/construct-effects-lazily`, `effect/model-expected-failures-with-specific-types`, `simplicity/preserve-failure-context` |
 | `effect/bound-retries-by-attempts-and-time` | `effect/retry-only-transient-failures`, `effect/retry-writes-only-when-safe-to-repeat` |
@@ -164,16 +173,14 @@ These policies kept their names but now cover one invariant. Their other invaria
 | `effect/keep-pure-calculations-pure` | `effect/do-not-wrap-pure-utilities-in-services` |
 | `effect/model-expected-failures-with-specific-types` | `effect/keep-expected-failures-out-of-the-defect-channel`, `simplicity/do-not-swallow-failures`, `effect/translate-failures-only-at-the-presentation-boundary` |
 | `effect/separate-service-interfaces-from-layer-construction` | None; its capabilities-not-clients invariant was removed |
-| `modularity/do-not-expose-internal-representations-unnecessarily` | `modularity/do-not-return-mutable-internal-state` |
-| `modularity/give-each-piece-of-mutable-state-a-clear-owner` | `simplicity/keep-each-fact-in-one-authoritative-place` |
+| `modularity/do-not-expose-internal-representations-unnecessarily` | `mutability` |
 | `readability/keep-related-code-close-together` | `readability/declare-variables-near-their-first-use` |
 | `readability/make-important-distinctions-visible-in-names` | `readability/name-booleans-as-conditions` |
-| `readability/name-complicated-conditions-and-intermediate-results` | `readability/avoid-temporaries-that-merely-repeat-an-expression` |
-| `readability/name-things-by-their-purpose` | `readability/avoid-obscure-abbreviations-and-redundant-prefixes`, `readability/avoid-temporaries-that-merely-repeat-an-expression` |
+| `readability/make-interfaces-understandable-at-the-call-site` | `abstraction/do-not-force-variation-through-flags` |
+| `readability/name-things-by-their-purpose` | `readability/avoid-obscure-abbreviations-and-redundant-prefixes`, `readability/avoid-temporaries-that-merely-repeat-an-expression`, `function-naming` |
 | `readability/prefer-straightforward-code-over-clever-code` | `readability/avoid-temporaries-that-merely-repeat-an-expression` |
 | `readability/write-comments-that-explain-what-the-code-cannot` | `readability/do-not-narrate-obvious-code`, `readability/keep-comments-current` |
 | `simplicity/handle-errors-explicitly-and-close-to-the-right-boundary` | `typescript-contracts/decode-external-data-at-the-boundary`, `simplicity/keep-each-fact-in-one-authoritative-place`, `simplicity/preserve-failure-context`, `simplicity/do-not-swallow-failures` |
-| `simplicity/keep-control-flow-shallow` | `abstraction/make-important-consequences-apparent`, `readability/prefer-straightforward-code-over-clever-code` |
 | `testing-enforcement/avoid-fixed-test-waits` | `testing-enforcement/assert-absence-only-after-the-operation-completes` |
 | `testing-enforcement/control-test-nondeterminism` | `testing-enforcement/preserve-replay-data-for-generated-failures` |
 | `testing-enforcement/isolate-state-for-each-generated-case` | `testing-enforcement/preserve-original-generated-inputs` |
