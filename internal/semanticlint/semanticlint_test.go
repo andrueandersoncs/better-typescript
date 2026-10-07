@@ -121,7 +121,7 @@ func TestWorkingTreeSkipsUnstagedDeletedFiles(t *testing.T) {
 }
 
 func TestClassifyProbabilityUsesPassReviewAndViolationBoundaries(t *testing.T) {
-	cases := map[float64]string{0: "pass", 0.4: "pass", 0.4001: "review", 0.6999: "review", 0.7: "violation", 1: "violation"}
+	cases := map[float64]string{0: "pass", 0.55: "pass", 0.5501: "review", 0.6999: "review", 0.7: "violation", 1: "violation"}
 	for probability, want := range cases {
 		if got := classifyProbability(probability, 0.7); got != want {
 			t.Fatalf("classifyProbability(%v) = %q, want %q", probability, got, want)

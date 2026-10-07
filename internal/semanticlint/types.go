@@ -11,7 +11,7 @@ import (
 const (
 	defaultModel           = "jev-latest"
 	defaultThreshold       = 0.7
-	maximumPassProbability = 0.4
+	maximumPassProbability = 0.55
 	maximumRequestBytes    = 64_000
 	defaultHTTPTimeout     = 10 * time.Second
 	maximumHTTPRetries     = 2

@@ -92,11 +92,11 @@ type evaluator interface {
 | --- | --- |
 | No candidate, no evidence block selected, or selected context exceeds one request | `inconclusive` (no final probability) |
 | Applicability < 0.70 for a potential finding | `inconclusive` (no violation probability) |
-| Final `≤ 0.40` | `pass` |
-| Final `> 0.40` and below `--threshold`, with applicability ≥ 0.70 | `review` |
+| Final `≤ 0.55` | `pass` |
+| Final `> 0.55` and below `--threshold`, with applicability ≥ 0.70 | `review` |
 | Final at or above `--threshold`, with applicability ≥ 0.70 | `violation` |
 
-The default violation threshold is `0.70`; applicability uses a fixed `0.70` gate. `evidenceScope` is `file` only for a single range covering every source byte; otherwise selected ranges are `localized`. It is absent when no context was selected. Candidate ranges may be distant and are leads, not proven defects or generated rationales. Inconclusive findings do not fail the run; reviews are informational and only violations fail.
+The default violation threshold is `0.70`; applicability uses a fixed `0.70` gate. The `0.55` review floor was set from eval reports: reviews scoring `0.40`–`0.55` were real violations 31–43% of the time, those above `0.55` 64–70%. `evidenceScope` is `file` only for a single range covering every source byte; otherwise selected ranges are `localized`. It is absent when no context was selected. Candidate ranges may be distant and are leads, not proven defects or generated rationales. Inconclusive findings do not fail the run; reviews are informational and only violations fail.
 
 ## File map
 

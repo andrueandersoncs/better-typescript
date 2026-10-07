@@ -247,9 +247,9 @@ Final requests depend on live selection answers, so they are not included in the
 | Outcome | Classification | Fails a live run |
 | --- | --- | --- |
 | No candidate, no evidence block selected, or selected context too large | `inconclusive` (no final probability) | No |
-| Final probability `> 0.40`, but applicability below `0.70` | `inconclusive` (no violation probability) | No |
-| Final probability `≤ 0.40` | `pass` | No |
-| Final probability `> 0.40` and below `--threshold`, with applicability at least `0.70` | `review` | No |
+| Final probability `> 0.55`, but applicability below `0.70` | `inconclusive` (no violation probability) | No |
+| Final probability `≤ 0.55` | `pass` | No |
+| Final probability `> 0.55` and below `--threshold`, with applicability at least `0.70` | `review` | No |
 | Final probability at or above `--threshold`, with applicability at least `0.70` | `violation` | Yes |
 
 Text output marks whole-file selections as `[file-wide context]` instead of displaying a full-file line range. Partial selections appear as `[context lines N-M]`; these are leads to inspect, not precise defect locations. JSON findings retain candidate byte and line ranges and add `evidenceScope`: `file` when the selected range covers every source byte, `localized` when it does not, or omitted when no context was selected. They also include applicability probability when evaluated, the final violation probability when available, and a reason for inconclusive results. Candidate and evidence selection are not verdicts. The default violation threshold is `0.70`; the applicability gate stays at `0.70` when `--threshold` changes.
