@@ -15,8 +15,8 @@ func TestEvaluateSourceDoesNotReportViolationWhenPolicyDoesNotApply(t *testing.T
 		applicability float64
 	}{
 		{"no service or Layer", "effect/separate-service-interfaces-from-layer-construction", "export const text = (input: string) => input.trim()\n", 0.1},
-		{"pure calculation", "effect-errors", "export const verifyOutcome = (passed: boolean) => ({ passed })\n", 0.1},
-		{"uncertain applicability", "effect-errors", "export const verifyOutcome = (passed: boolean) => ({ passed })\n", 0.69},
+		{"pure calculation", "effect/convert-thrown-exceptions-at-external-boundaries", "export const verifyOutcome = (passed: boolean) => ({ passed })\n", 0.1},
+		{"uncertain applicability", "effect/convert-thrown-exceptions-at-external-boundaries", "export const verifyOutcome = (passed: boolean) => ({ passed })\n", 0.69},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			rules, err := loadRules(t.TempDir(), "")

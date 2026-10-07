@@ -1,0 +1,40 @@
+{
+  "cases": [
+    {
+      "id": "prune-sections-to-three-reader-questions",
+      "family": "section-level-question-coverage",
+      "prompt": "Focus handbook.md in place using the question-driven pruning workflow. Write the ten candidate questions and selected top three to questions.txt. Delete every substantive section that answers none of the selected questions; do not add facts.",
+      "files": {
+        "handbook.md": "# Incident handoff\n\nUse this note to transfer an active incident between responders.\n\n## Current impact\n\nCheckout requests are failing in eu-west-1.\n\n## Actions already taken\n\nThe primary restarted checkout-api at 09:15 UTC.\n\n## Next action\n\nThe incoming responder should inspect the payment dependency.\n\n## Office move\n\nThe team moves to the fourth floor next month.\n\n## Lunch poll\n\nVote for tacos or noodles by Friday.\n"
+      },
+      "checks": [
+        {
+          "path": "handbook.md",
+          "contains": [
+            "## Current impact",
+            "## Actions already taken",
+            "## Next action"
+          ],
+          "absent": [
+            "## Office move",
+            "fourth floor",
+            "## Lunch poll",
+            "tacos or noodles"
+          ]
+        },
+        {
+          "path": "questions.txt",
+          "contains": [
+            "1.",
+            "10.",
+            "Top 3"
+          ]
+        }
+      ],
+      "allowedChanges": [
+        "handbook.md",
+        "questions.txt"
+      ]
+    }
+  ]
+}

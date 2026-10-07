@@ -4,6 +4,6 @@ globs:
 ---
 # Adapt Promises once at integration boundaries
 
-Wrap each Promise-based SDK in one dedicated adapter. Start the SDK call inside `Effect.tryPromise`, map expected rejection to a specific failure, and preserve the original cause.
+Wrap each Promise-based SDK in one dedicated adapter, and let workflows consume the adapter's Effect instead of repeatedly converting between Promises and Effects. Run Effects only at executable and test boundaries.
 
-Workflows must consume the adapter's Effect instead of repeatedly converting between Promises and Effects. Report only when this file starts the Promise before adaptation, loses expected failure information, or performs repeated Effect-to-Promise round trips away from an integration boundary.
+Report only when this file performs repeated Effect-to-Promise round trips, or runs an Effect, away from an integration, executable, or test boundary.

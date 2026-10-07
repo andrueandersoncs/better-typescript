@@ -446,7 +446,7 @@ func TestRemovedSemanticPolicySelectorsRejectStaleConfiguration(t *testing.T) {
 		})
 	}
 	for _, selector := range []string{
-		"abstraction/abstract-shared-meaning-not-merely-similar-code",
+		"abstraction/do-not-force-variation-through-flags",
 		"switch-case/prefer-match-for-multiple-branches",
 	} {
 		if _, err := selectSemanticRules(rules, []string{selector}); err != nil {

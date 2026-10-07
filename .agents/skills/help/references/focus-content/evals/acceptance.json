@@ -1,0 +1,34 @@
+{
+  "cases": [
+    {
+      "id": "prune-items-inside-mixed-content",
+      "family": "item-level-question-coverage",
+      "prompt": "Focus runbook.md in place around the three most important questions it is meant to answer. Delete unmatched sections, bullets, and table rows rather than rewriting them. Preserve supported operational facts and commands.",
+      "files": {
+        "runbook.md": "# Cache purge runbook\n\nThis runbook tells an operator when, how, and by whom the cache may be purged.\n\n## Preconditions\n\n- Confirm stale responses exceed 15 minutes.\n- Check that the incident commander approved the purge.\n- Remember that the team mascot is an otter.\n\n## Procedure\n\nRun `cachectl purge --region us-east-1`.\n\n## Ownership\n\n| Role | Responsibility |\n| --- | --- |\n| Incident commander | Approves the purge |\n| Operator | Runs and records the command |\n| Social chair | Orders Thursday snacks |\n\n## Office trivia\n\nThe oldest conference room is named Cedar.\n"
+      },
+      "checks": [
+        {
+          "path": "runbook.md",
+          "contains": [
+            "stale responses exceed 15 minutes",
+            "incident commander approved the purge",
+            "`cachectl purge --region us-east-1`",
+            "| Incident commander | Approves the purge |",
+            "| Operator | Runs and records the command |"
+          ],
+          "absent": [
+            "team mascot",
+            "Social chair",
+            "Thursday snacks",
+            "Office trivia",
+            "conference room"
+          ]
+        }
+      ],
+      "allowedChanges": [
+        "runbook.md"
+      ]
+    }
+  ]
+}

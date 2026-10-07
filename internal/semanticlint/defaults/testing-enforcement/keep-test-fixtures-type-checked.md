@@ -5,6 +5,6 @@ globs:
 ---
 # Keep test fixtures type checked
 
-Valid fixtures, fakes, and builders must satisfy their declared types without broad escape casts. Deliberately malformed input must enter through the real untrusted-input boundary instead of masquerading as a valid domain value.
+Valid fixtures, fakes, and builders must satisfy their declared types without broad escape casts.
 
 Narrow casts that model an unavoidable external boundary require a specific justification.

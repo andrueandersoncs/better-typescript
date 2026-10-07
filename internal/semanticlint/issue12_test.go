@@ -226,7 +226,7 @@ func TestAllDryRunIncludesTrackedTypeScriptAlongsidePackageJSON(t *testing.T) {
 	runGit(t, root, "add", "package.json")
 	runGit(t, root, "commit", "-qm", "add package")
 	var output bytes.Buffer
-	code, err := Run(context.Background(), root, []string{"--all", "--dry-run", "--rules", "effect-errors"}, &output)
+	code, err := Run(context.Background(), root, []string{"--all", "--dry-run", "--rules", "convert-thrown-exceptions-at-external-boundaries"}, &output)
 	if err != nil || code != 0 {
 		t.Fatalf("dry-run code=%d err=%v", code, err)
 	}

@@ -7,6 +7,6 @@ globs:
 ---
 # Keep test resources hermetic
 
-Tests that use databases, files, ports, queues, accounts, or external services must allocate isolated resources and guarantee cleanup after failure. Production access and inherited developer credentials must be impossible unless a test explicitly declares and contains that external dependency.
+Tests that use databases, files, ports, queues, accounts, or external services must allocate isolated resources.
 
 Shared read-only resources are allowed when tests cannot mutate them or depend on execution order.
