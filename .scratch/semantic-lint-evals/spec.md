@@ -66,8 +66,8 @@ Location: `internal/semanticlint/testdata/evals/`. One `cases/<policy>.jsonl` pe
 
 ### Corpus
 
-- 133 policies (every policy), 1,674 cases: 1,378 `contrast`, 72 `planted`, 224 `real`. None `ambiguous`.
-- Scored: `train` 448, `val` 725, `test` 501.
+- 133 policies (every policy), 1,830 cases: 1,534 `contrast`, 72 `planted`, 224 `real`. 1 `ambiguous`.
+- Scored: `train` 603, `val` 725, `test` 501.
 - Synthetic labels: two Claude agents; violates-vs-not κ 0.96, three-way κ 0.80.
 - Sampled real pairs (24 Effect files, seeded by SHA-256): Claude agents vs GPT-6.1-Sol, blind. Violates-vs-not 75/84 (κ 0.47), three-way 71/84 (κ 0.73).
 - Human tiebreak (issue 04): every disagreement resolved; `labels.human` records it. `complies` vs `not-applicable` uses the broad reading: if the file has anything the policy could govern (a test, a pure function, a loop, a literal), a clean file `complies`.
@@ -75,6 +75,7 @@ Location: `internal/semanticlint/testdata/evals/`. One `cases/<policy>.jsonl` pe
 - Issue 07 split policies to one invariant each; the 11 split corpus policies' cases moved to 26 child policies. Labels: `labels.derived` (from a not-applicable parent or a planted snippet), else Claude vs GPT-6.1-Sol (κ 0.94 violates-vs-not) with `labels.human` tiebreaks.
 - Issue 08 added 251 authored files (one contrast pair per successor of each split policy that had no cases). Labels: author vs GPT-6.1-Sol (κ 0.79), with a blind Claude `labels.reviewer` breaking violation disagreements by majority. Authored files may violate without a pair when both twins break a policy.
 - Issue 10 audit: all non-planted cases of the 61 weakest policies relabeled blind by Claude and GPT-6.1-Sol against current policy text; 20 labels overturned where both auditors agreed (`labels.auditClaude`, `labels.auditGpt`).
+- Issue 10 attempt 4 added 156 `train` contrast cases (2 pairs for each of 39 weak policies), authored from policy text only. Labels: author vs a blind Claude labeler on renamed copies (`labels.blind`; κ 0.987 violates-vs-not); the one disagreement is `ambiguous`.
 
 ## Accuracy eval
 

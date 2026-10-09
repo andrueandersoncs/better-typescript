@@ -7,6 +7,11 @@ globs:
 ---
 # Keep test resources hermetic
 
-Report a test using a database, file, port, queue, account, or external service when its resource identity is shared so tests can mutate it or depend on execution order. Examples include a fixed database name, port `3000`, or shared account used by multiple tests.
+Apply this policy to tests and test configuration that create, write, bind, or mutate a database, directory or file, network port, queue, account, or external service. Each run must get its own resource identity, as in `dir = await mkdtemp(join(tmpdir(), "prefix-"))`, `server.listen(0)` followed by reading the assigned port, or a database name generated per test. Test files run in parallel workers and concurrent CI jobs, so a hard-coded identity collides across runs even when one file uses it and cleans up afterward. Report any of these shapes:
 
-Do not report a shared read-only resource when tests cannot mutate it or depend on execution order.
+- a fixed path for a writable directory or file, such as `dir = join(tmpdir(), "fixed-name")` or `"/tmp/out"`, instead of a unique temporary directory;
+- listening on or connecting to a hard-coded port, such as `server.listen(4000)` or a config `port: 4000`, instead of port `0` or an allocated free port;
+- a fixed database, schema, bucket, queue, or topic name that tests write to;
+- a shared account, user, or record that several tests mutate or whose state depends on test order.
+
+Do not report a shared read-only resource that tests cannot mutate, identities produced by a helper that generates unique names, or missing cleanup of an otherwise unique resource.
