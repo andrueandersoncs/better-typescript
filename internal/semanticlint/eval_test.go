@@ -458,14 +458,16 @@ type evalStageUsage struct {
 }
 
 // evalEfficiency is the production cost of one evaluation. In totals, Rounds is the maximum.
+// BilledInputTokens counts only requests sent to TypeSafe, not replay-cache hits.
 type evalEfficiency struct {
-	InputTokens      int                      `json:"inputTokens"`
-	Requests         int                      `json:"requests"`
-	RequestBytes     int                      `json:"requestBytes"`
-	CachedRequests   int                      `json:"cachedRequests"`
-	Rounds           int                      `json:"rounds"`
-	WallMilliseconds int64                    `json:"wallMilliseconds"`
-	ByStage          map[stage]evalStageUsage `json:"byStage"`
+	InputTokens       int                      `json:"inputTokens"`
+	BilledInputTokens int                      `json:"billedInputTokens"`
+	Requests          int                      `json:"requests"`
+	RequestBytes      int                      `json:"requestBytes"`
+	CachedRequests    int                      `json:"cachedRequests"`
+	Rounds            int                      `json:"rounds"`
+	WallMilliseconds  int64                    `json:"wallMilliseconds"`
+	ByStage           map[stage]evalStageUsage `json:"byStage"`
 }
 
 func measureEfficiency(entries []evalTraceEntry, wall time.Duration) evalEfficiency {
@@ -483,6 +485,8 @@ func measureEfficiency(entries []evalTraceEntry, wall time.Duration) evalEfficie
 		efficiency.RequestBytes += entry.bytes
 		if entry.cached {
 			efficiency.CachedRequests++
+		} else {
+			efficiency.BilledInputTokens += entry.response.Usage.InputTokens
 		}
 		rounds[entry.request.scope.round] = true
 	}
@@ -494,6 +498,7 @@ func sumEfficiency(items []evalEfficiency) evalEfficiency {
 	total := evalEfficiency{ByStage: map[stage]evalStageUsage{}}
 	for _, item := range items {
 		total.InputTokens += item.InputTokens
+		total.BilledInputTokens += item.BilledInputTokens
 		total.Requests += item.Requests
 		total.RequestBytes += item.RequestBytes
 		total.CachedRequests += item.CachedRequests
@@ -515,6 +520,7 @@ type evalOracle struct {
 	Violation     float64 `json:"violation"`
 	Applicability float64 `json:"applicability"`
 	InputTokens   int     `json:"inputTokens"`
+	Cached        bool    `json:"cached,omitempty"`
 }
 
 type evalCaseResult struct {
@@ -554,7 +560,9 @@ type evalCasesReport struct {
 	Errors            int                 `json:"errors"`
 	Efficiency        evalEfficiency      `json:"efficiency"`
 	OracleInputTokens int                 `json:"oracleInputTokens"`
-	Cases             []evalCaseResult    `json:"cases"`
+	// BilledInputTokens is what this run cost: pipeline and oracle requests sent to TypeSafe.
+	BilledInputTokens int              `json:"billedInputTokens"`
+	Cases             []evalCaseResult `json:"cases"`
 }
 
 // evalRun evaluates cases with one model, prompt variant, and evaluator.
@@ -608,6 +616,9 @@ func (run evalRun) runCases(ctx context.Context, cases []evalCase, split string)
 		efficiencies = append(efficiencies, result.Efficiency)
 		if result.Oracle != nil {
 			report.OracleInputTokens += result.Oracle.InputTokens
+			if !result.Oracle.Cached {
+				report.BilledInputTokens += result.Oracle.InputTokens
+			}
 		}
 		if result.ReturnedModel != "" && !models[result.ReturnedModel] {
 			models[result.ReturnedModel] = true
@@ -621,6 +632,7 @@ func (run evalRun) runCases(ctx context.Context, cases []evalCase, split string)
 	}
 	sort.Strings(report.ReturnedModels)
 	report.Efficiency = sumEfficiency(efficiencies)
+	report.BilledInputTokens += report.Efficiency.BilledInputTokens
 	for _, metric := range evalMetrics {
 		if value, ok := metric.value(scored); ok {
 			report.Accuracy[metric.name] = &value
@@ -722,7 +734,7 @@ func (run evalRun) oracle(ctx context.Context, source Source, target Rule, gold 
 	if err != nil {
 		return nil, err
 	}
-	return &evalOracle{Violation: violation, Applicability: applicability, InputTokens: response.Usage.InputTokens}, nil
+	return &evalOracle{Violation: violation, Applicability: applicability, InputTokens: response.Usage.InputTokens, Cached: tracer.entries[0].cached}, nil
 }
 
 // caseFeedback explains each component's contribution to one case for GEPA's reflection model.

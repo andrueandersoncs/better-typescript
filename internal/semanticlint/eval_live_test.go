@@ -55,7 +55,7 @@ func TestSemanticEvalCases(t *testing.T) {
 	if value := report.Accuracy["score"]; value != nil {
 		score = fmt.Sprintf("%.4f", *value)
 	}
-	t.Logf("%d cases, %d errors, score %s, %d input tokens", len(report.Cases), report.Errors, score, report.Efficiency.InputTokens)
+	t.Logf("%d cases, %d errors, score %s, %d production input tokens, %d billed input tokens", len(report.Cases), report.Errors, score, report.Efficiency.InputTokens, report.BilledInputTokens)
 }
 
 // SEMANTIC_EVAL_OUT=/tmp/workload.json go test -tags semanticeval -run '^TestSemanticEvalWorkload$' -count=1 -timeout 0 ./internal/semanticlint
@@ -71,7 +71,7 @@ func TestSemanticEvalWorkload(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeEvalReport(t, output, report)
-	t.Logf("%d files, %d input tokens, %d requests", len(report.Files), report.Efficiency.InputTokens, report.Efficiency.Requests)
+	t.Logf("%d files, %d input tokens, %d billed input tokens, %d requests", len(report.Files), report.Efficiency.InputTokens, report.Efficiency.BilledInputTokens, report.Efficiency.Requests)
 }
 
 // Each side takes comma-separated reports of repeated runs; metrics are averaged over a side's runs.

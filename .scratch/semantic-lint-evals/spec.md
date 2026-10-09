@@ -136,7 +136,7 @@ Per-case GEPA objective: `efficiency = log2(baselineTokens ÷ variantTokens)`. 0
 - Pin `jev-1.13.0`. Comparisons refuse different models or corpus digests; variants and packing may differ.
 - Replay cache (`SEMANTIC_EVAL_CACHE`): request SHA-256 → response. Unchanged requests replay exactly and free; only changed requests go live. Disable it for noise-floor repeats.
 - Decision rule (measured in issue 01): ≥3 runs per side, metrics averaged over a side's runs, paired bootstrap over cases. `score` and `efficiency` use 95% intervals; gates use 99%. On identical prompts this gave `no-change` in 10 of 10 three-vs-three splits but a false verdict in 3 of 15 single-run pairs.
-- Cost with the landed candidate prompt: a `val` run ≈ 1.2 M tokens ($0.05); a packed `val` run ≈ 47.3 M ($2.00); the workload ≈ 46.5 M ($1.95). With the earlier prompt: 1.0 M, 22.6 M, and 21.4 M. A GEPA run (1,500 metric calls) took about 17 min.
+- Cost: read `billedInputTokens` in each report (pipeline plus oracle, excluding replay hits); the log line prints it. On 2026-10-09 one run billed `train` 1.15 M, `val` 3.09 M, `test` 2.29 M tokens; the oracle is about 30% of that. A 3-vs-3 comparison on all splits ≈ 39 M tokens (about $1.65 at the earlier $0.042/M rate). Earlier figures (before issue 07): a `val` run ≈ 1.2 M tokens ($0.05); a packed `val` run ≈ 47.3 M ($2.00); the workload ≈ 46.5 M ($1.95). A GEPA run (1,500 metric calls) took about 17 min.
 
 ```sh
 # One labeled split (val by default); SEMANTIC_EVAL_CASES=<ids> for a GEPA minibatch

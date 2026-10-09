@@ -1,6 +1,7 @@
 package semanticlint
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -138,5 +139,50 @@ func TestCompareEvalReportsRequiresConfidentImprovement(t *testing.T) {
 	mixed.Variant = "sha256:other"
 	if _, err := compareEvalReports([]evalCasesReport{report(0.5, 0.5), mixed}, baseline); err == nil {
 		t.Fatal("averaged runs of different variants")
+	}
+}
+
+func TestEvalRunBillsOnlyRequestsSentToTypeSafe(t *testing.T) {
+	rules, err := loadRules(t.TempDir(), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases, err := loadEvalCorpus(evalDirectory, rules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var item evalCase
+	for _, candidate := range cases {
+		if candidate.Label == "violates" && candidate.Origin == "contrast" {
+			item = candidate
+			break
+		}
+	}
+	sent := 0
+	run := evalRun{directory: evalDirectory, rules: rules, cache: t.TempDir(), options: Options{Threshold: defaultThreshold, Model: evalModel, prompts: defaultPrompts},
+		next: evaluatorFunc(func(_ context.Context, request evaluationRequest) (evaluationResponse, error) {
+			sent++
+			answers := make(map[string]answer, len(request.Questions))
+			for id := range request.Questions {
+				answers[id] = answer{Type: "noul", Noul: 0.9}
+			}
+			return evaluationResponse{Model: evalModel, Answers: answers, Usage: Usage{InputTokens: 100}}, nil
+		})}
+
+	fresh, err := run.runCases(context.Background(), []evalCase{item}, "cases")
+	if err != nil || fresh.Errors != 0 {
+		t.Fatalf("fresh run: %v, %d errors", err, fresh.Errors)
+	}
+	if fresh.OracleInputTokens == 0 || fresh.BilledInputTokens != 100*sent || fresh.BilledInputTokens != fresh.Efficiency.InputTokens+fresh.OracleInputTokens {
+		t.Fatalf("fresh run billed %d for %d requests (pipeline %d, oracle %d)", fresh.BilledInputTokens, sent, fresh.Efficiency.InputTokens, fresh.OracleInputTokens)
+	}
+
+	sent = 0
+	replayed, err := run.runCases(context.Background(), []evalCase{item}, "cases")
+	if err != nil || sent != 0 {
+		t.Fatalf("replay sent %d requests: %v", sent, err)
+	}
+	if replayed.BilledInputTokens != 0 || replayed.Efficiency.InputTokens != fresh.Efficiency.InputTokens {
+		t.Fatalf("replay billed %d with production tokens %d, want 0 and %d", replayed.BilledInputTokens, replayed.Efficiency.InputTokens, fresh.Efficiency.InputTokens)
 	}
 }
