@@ -5,6 +5,12 @@ globs:
 ---
 # Preserve replay data for generated failures
 
-Report a generated-test failure path that discards the seed or other replay data needed to reproduce the failure. For example, catching a property-check error and throwing a new error without its seed, or logging only `property failed`.
+Apply this policy only to tests whose checked input is generated: drawn from a property-test generator or from a random source such as `Math.random()` or `crypto.getRandomValues(...)`. Tests whose inputs are all literals, and nondeterminism that is not generated data (such as reading the current clock), cannot violate it.
 
-Do not report a failure path that retains the seed or equivalent replay data needed to reproduce the generated case.
+When a generated value decides whether the test passes, its failure must carry the seed or the generated value so the case can be replayed. Report any of these shapes:
+
+- an unseeded random draw that feeds an asserted outcome, where the failure reports neither seed nor drawn value, such as `const i = Math.floor(Math.random() * items.length)` followed by `if (items[i] !== expected) throw new Error("mismatch")`;
+- catching a property-check error and rethrowing or logging a new error without its seed, path, or counterexample, such as `catch { throw new Error("property failed") }`;
+- running a generator manually in a loop and failing with a fixed message that omits the generated input.
+
+Do not report a failure path that includes the seed, the counterexample, or the drawn value; a draw derived from a constant, explicit seed (such as `createRng(42)`); or a random value used only as an opaque unique identifier that cannot change whether any assertion passes.

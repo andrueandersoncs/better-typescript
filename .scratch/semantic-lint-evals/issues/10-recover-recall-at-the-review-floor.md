@@ -15,6 +15,7 @@ Raising the review floor to 0.55 (issue 09) cut file-level surfaced violations o
 
 1. GEPA on the final prompt (GPT-6.1-Sol reflection; 3,000 metric calls, 21 candidates, selection on 104 `val` cases): selection score 0.917 → 0.925, but full `val` and `test` (3 vs 3) showed no metric changed and efficiency worse (+2%). Rejected; general instructions do not move the verdict.
 2. Blind rewording of the 61 policies into explicit violation tests (agents saw policy text only, never eval cases; one batch decision): false `violation` on their clean files 2.0% → 0.5% (better), surfaced 51.3% → 49.7% (no change), oracle 0.58 → 0.56; unchanged-policy control flat. Kept for precision.
+3. Case-informed rewording of the 22 weak policies with missed `train` violations (agents read only `train` cases; no case text copied; one batch). 3 vs 3 runs against a fresh `jev-1.13.0` baseline. Held-out `val` + `test`: target policies surfaced 42.1% → 67.5% (38 violations), false `violation` 0% → 0%, `review` on clean 0% → 0.6%; other policies flat (78.7% → 79.3%); all policies 73.9% → 77.8%. Compare verdicts: `test` score better (92.3 → 93.2), `val` no metric changed, `train` better (overfit expected); input tokens +3–4%, which alone makes every verdict `worse`. Accepted for recall.
 
 ## State after this round
 
@@ -22,7 +23,7 @@ All splits, 3 runs: surfaced 73.5% (`violation` 64.9%), silent misses 26.5%, fal
 
 ## Next levers
 
-- A newer Jev model, if `jev-latest` is newer than the pinned `jev-1.13.0`: unchecked, because TypeSafe credits ran out (402).
+- A newer Jev model: checked 2026-10-09, none available. `jev-preview` requests return `returnedModel: jev-1.13.0`; 3 runs per side on `val` and `test` match the pinned model within run noise (surfaced 78.0% vs 78.0% `val`, 66.7% vs 66.0% `test`). Recheck when `GET /v1/models` lists a new release.
 
 ## Offline findings (no TypeSafe credits)
 
@@ -31,5 +32,6 @@ All splits, 3 runs: surfaced 73.5% (`violation` 64.9%), silent misses 26.5%, fal
 - Discrimination: weak-policy AUROC 0.876 against 0.993 for the other 72 policies; their violations score a median 0.56 (quartiles 0.29–0.83) against 0.87. Lowering their cutoff to 0.45 would surface 61% (from 51%) but flag 5% of clean cases (from 2%): the same trade the 0.55 floor removed. Per-policy thresholds are not a fix.
 - Case-informed rewording per policy, as for `separate-service-interfaces-from-layer-construction` (0% → 100%): tune on `train`, confirm on `val`/`test`, accept one batch.
 - Label audit of the ~200 weak-policy violations: where the oracle and a second model both read a case as borderline, the label may be stricter than the policy text.
+- Long-context check: a 10-line `while` loop planted at the start, middle, or end of 1K–30K-token Effect source scores 0.97–0.99 on `jev-1.13.0`; without it, 0.01–0.02. Jev does not lose details in long requests (Clef-Flash does), so request size does not explain the recall gap.
 
-Reports: `~/.cache/better-typescript-evals/2026-10-02/base10-*`, `gf-*`, `compare-gf-*`, `rw-*`, `gepa-final-1/`.
+Reports: `~/.cache/better-typescript-evals/2026-10-02/base10-*`, `gf-*`, `compare-gf-*`, `rw-*`, `gepa-final-1/`; `2026-10-09/base-*`, `prev-*` (pinned vs `jev-preview`), `rw2-*`, `compare-rw2-*` (attempt 3).

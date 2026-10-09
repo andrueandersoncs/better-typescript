@@ -4,4 +4,11 @@ globs:
 ---
 # Give each resource an owner that releases it
 
-Report an acquired runtime or resource when this file leaves its owner unclear or allows it to outlive cleanup. Examples: `const server = createServer()` with no enclosing `server.close()`, or `new Runtime()` returned without a release path. Do not report values that need no acquisition, or a resource whose creator, owner, and release are explicit and scoped, such as `Effect.acquireRelease(acquire, release)` or `try { ... } finally { resource.close() }`.
+Apply this policy only to code that acquires a resource or runtime with a `close`, `release`, `dispose`, or `end` operation. A file that only transforms plain data cannot violate it.
+
+The code that acquires a resource must attach its release. Report any of these shapes:
+
+- an exported function or Effect that hands an open handle to its caller with no finalizer, such as `(): Effect.Effect<Handle, OpenError> => Effect.try({ try: () => connect(), catch: toError })` or `Effect.sync(() => connect())`; nothing in it ever calls `handle.close()`;
+- a function that returns or stores a fresh resource, such as `createServer()` or `new Runtime()`, with no release path.
+
+Do not report acquisition tied to its release, such as `Effect.acquireRelease`, `Effect.acquireUseRelease(acquire, use, release)`, `Layer.scoped`, `using`, or `try { ... } finally { resource.close() }`. Declaring a type with a `close` method is not acquisition.
