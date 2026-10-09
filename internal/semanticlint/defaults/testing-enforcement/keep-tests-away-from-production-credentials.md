@@ -7,4 +7,6 @@ globs:
 ---
 # Keep tests away from production credentials
 
-Production access and inherited developer credentials must be impossible in tests unless a test explicitly declares and contains that external dependency.
+Report a test that can reach production or use inherited developer credentials unless it explicitly declares and contains that external dependency. Examples include a test client silently reading `AWS_PROFILE` or default production environment credentials.
+
+Do not report a test whose production access or inherited credential dependency is explicitly declared and contained as its external dependency.

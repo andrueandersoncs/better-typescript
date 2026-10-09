@@ -4,4 +4,4 @@ globs:
 ---
 # Do not swallow failures
 
-Do not silently swallow failures or replace them with success-shaped defaults unless that is intentional and clear.
+Report handling that silently discards a failure or turns it into a success-shaped default without clear intent, such as `try { ... } catch { return [] }` or `Effect.catchAll(() => Effect.succeed([]))`. Do not report explicit, intentional recovery whose returned default and purpose are clear.

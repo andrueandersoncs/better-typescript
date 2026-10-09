@@ -4,6 +4,4 @@ globs:
 ---
 # Do not nest if statements
 
-Never place an `if` statement inside another `if` branch. Prefer sequential guard
-clauses with early returns. Independent guard clauses and a single two-way
-`if`/`else` are compliant.
+Report an `if` statement inside either branch of another `if`, such as `if (ready) { if (isAdmin) allow() }`. Prefer sequential guard clauses with early returns. Do not report independent guard clauses or one two-way `if`/`else`.

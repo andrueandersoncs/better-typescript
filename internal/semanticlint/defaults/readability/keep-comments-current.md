@@ -4,4 +4,4 @@ globs:
 ---
 # Keep comments current
 
-Update or remove comments when behavior changes; do not leave stale comments.
+Report a comment that describes behavior the code no longer performs, such as `// Retries three times` above `Effect.retry(task, { times: 1 })`, or a comment left unchanged after its described behavior changes. Do not report a comment that remains accurate, even when it describes simple code.

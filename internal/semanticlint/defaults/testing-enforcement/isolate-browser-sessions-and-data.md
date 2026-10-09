@@ -5,6 +5,6 @@ globs:
 ---
 # Isolate browser sessions and data
 
-Browser tests must not depend on another test's cookies, storage, authenticated session, or mutable server data. Reusable authentication setup is allowed only when each test receives an isolated context and cannot observe mutations from another test.
+Report browser tests that share cookies, storage, an authenticated session, or mutable server data when another test can observe a mutation or execution order can change behavior. Examples include reusing one `page` while tests modify storage, or updating the same server-side user in parallel.
 
-Report shared state only when it can affect behavior or execution order.
+Do not report reusable authentication setup when every test receives an isolated context and cannot observe another test's mutations. Do not report shared state that cannot affect behavior or execution order.

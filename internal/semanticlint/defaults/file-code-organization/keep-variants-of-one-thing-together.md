@@ -4,4 +4,4 @@ globs:
 ---
 # Keep variants of one thing together
 
-Keep variants of one thing together in a file: the overloads of a function, the cases and handlers of one union or enum, the routes of one router, and the tests of one subject. Do not scatter them among unrelated declarations.
+Report a file that separates variants of one thing with unrelated declarations: for example, overloads of `lookupUser`, handlers for one `UserEvent` union, routes from one router, or tests of `parseOrder` placed in distant sections. Do not report adjacent unrelated declarations, or variants already kept together.

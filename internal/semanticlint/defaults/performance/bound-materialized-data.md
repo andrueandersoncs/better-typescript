@@ -4,6 +4,4 @@ globs:
 ---
 # Bound materialized data
 
-Whole-body reads, collection-to-array conversions, deep clones, JSON serialization, and stream collection must have an enforced byte bound when their input can grow beyond the operation's memory or request budget. Use streaming or chunking when the complete value is not required at once.
-
-Do not report small fixed configuration or protocol values. Report only when this file fully materializes variable-size data without a demonstrated bound.
+Report a whole-body read, collection-to-array conversion, deep clone, JSON serialization, or stream collection that fully materializes data whose size can grow beyond the operation's memory or request budget without an enforced byte bound. Examples: `await response.arrayBuffer()`, `Array.from(records)`, `structuredClone(payload)`, `JSON.stringify(body)`, or `Stream.runCollect(stream)` on variable-size input. Do not report small fixed configuration or protocol values, bounded input, or code that streams or chunks when the complete value is not required at once.

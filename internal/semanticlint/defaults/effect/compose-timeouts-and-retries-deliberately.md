@@ -4,6 +4,4 @@ globs:
 ---
 # Compose timeouts and retries deliberately
 
-Make wrapper order deliberate: an overall timeout around retries has different semantics from a separate timeout for every attempt. State the resulting budget.
-
-Report only when this file composes operational policies in an order that contradicts the intended budget.
+Report an operational-policy composition whose wrapper order contradicts its stated intended budget. For example, `Effect.timeout(Effect.retry(operation, schedule), total)` gives all retries one overall budget, while `Effect.retry(Effect.timeout(operation, perAttempt), schedule)` gives every attempt its own timeout; the resulting budget must be stated. Do not report either ordering merely because it differs from the other, or when its stated budget matches its ordering.

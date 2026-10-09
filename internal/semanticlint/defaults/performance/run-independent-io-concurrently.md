@@ -4,6 +4,4 @@ globs:
 ---
 # Do not serialize independent I-O
 
-Independent I-O operations should not form a sequential `await` or `yield*` waterfall. Operations are independent only when later work does not need an earlier result or side effect and concurrent execution preserves ordering, failure, transaction, and rate-limit requirements.
-
-Do not report intentional sequencing or loops whose operations must remain ordered. Report only when this file shows that independent operations wait on one another without a required semantic constraint.
+Report sequential `await` or `yield*` I-O operations that are independent: later work needs neither an earlier result nor side effect, and concurrent execution preserves ordering, failure, transaction, and rate-limit requirements. Examples: `await fetchUsers(); await fetchOrders()` or `yield* loadUsers; yield* loadOrders` when the calls have no dependency. Do not report intentional sequencing or loops whose operations must remain ordered. Report only when this file shows independent operations waiting on one another without a required semantic constraint.

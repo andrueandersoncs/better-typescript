@@ -4,13 +4,4 @@ globs:
 ---
 # Avoid copying a growing accumulator
 
-Do not rebuild a growing array or object on every iteration with spread,
-concatenation, or an equivalent full copy. Prefer one-pass non-mutating library
-construction (such as mapping or grouping) when intermediate accumulator
-identities are not observable. Use a locally owned mutable builder only if
-truly necessary and explicitly excluded by project policy from `no-mutation`
-and, for array methods, `no-mutable-array-methods`.
-
-Do not report fixed small inputs or code that must preserve immutable
-intermediate snapshots. Report only when each iteration copies values
-accumulated by earlier iterations and the work grows with input size.
+Report a loop over growing input that copies its prior accumulated array or object on every iteration, such as `acc = [...acc, item]`, `acc = acc.concat(item)`, or `acc = { ...acc, [key]: value }`. Prefer one-pass non-mutating construction such as mapping or grouping when intermediate accumulator identities are not observable. Use a locally owned mutable builder only when truly necessary and explicitly excluded by project policy from `no-mutation` and, for arrays, `no-mutable-array-methods`. Do not report fixed small inputs, required immutable intermediate snapshots, or code that does not copy prior accumulation each iteration.

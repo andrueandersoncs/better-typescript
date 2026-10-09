@@ -82,7 +82,18 @@ COST_STAGES = ("candidate", "evidence", "final")
 
 # GEPA's default template asks for every niche fact from the examples, which invites memorizing them.
 # GEPA discards rejected proposals without showing the reason, so the harness limits are stated here.
-REFLECTION_TEMPLATE = """I use the instruction below as the start of a yes/no question about code. The text of one policy
+REFLECTION_REQUIREMENTS = """Write an improved instruction. Requirements; an instruction that breaks one is discarded unseen:
+- At most {limit} bytes of plain ASCII.
+- One instruction serves every policy: testing, security, performance, Effect, readability, and more.
+  Give general guidance on {guidance}. No per-policy sections.
+- Do not quote or paraphrase the examples: no identifiers, string literals, paths, policy titles, or
+  details specific to these cases. They are a small sample and will not recur.
+- Start with a sentence and end with the line `Rule:`, because the policy text is appended after it.
+{cost}
+Provide the new instruction within ``` blocks."""
+
+REFLECTION_TEMPLATES = {
+    "candidate": """I use the instruction below as the start of a yes/no question about code. The text of one policy
 follows it directly, and a model answers with the probability of yes for one source segment (`file`)
 of a larger file at `path`. Yes selects the segment as candidate evidence for a later, separate
 violation verdict. A missed segment loses its violation for good; each needless selection costs review work.
@@ -97,15 +108,26 @@ Segments judged with the current instruction, with feedback:
 <side_info>
 ```
 
-Write an improved instruction. Requirements; an instruction that breaks one is discarded unseen:
-- At most {limit} bytes of plain ASCII.
-- One instruction serves every policy: testing, security, performance, Effect, readability, and more.
-  Give general guidance on what makes a segment evidence or necessary context. No per-policy sections.
-- Do not quote or paraphrase the examples: no identifiers, string literals, paths, policy titles, or
-  details specific to these cases. They are a small sample and will not recur.
-- Start with a sentence and end with the line `Rule:`, because the policy text is appended after it.
-{cost}
-Provide the new instruction within ``` blocks."""
+""" + REFLECTION_REQUIREMENTS.replace("{guidance}", "what makes a segment evidence or necessary context"),
+    "final": """I use the instruction below as the start of a yes/no question about code. The text of one policy
+follows it directly, and a model answers with the probability of yes given the selected source spans of
+one file (`file`, at `path`); the spans are the whole file or several excerpts. The answer is the
+violation verdict: at least 0.70 reports a violation and fails the run, 0.55 to 0.70 asks for review,
+and anything lower passes. A real violation scored at or below 0.55 is lost silently; a clean file
+scored at or above 0.70 is a false alarm.
+
+Current instruction:
+```
+<curr_param>
+```
+
+Files judged with the current instruction, with feedback:
+```
+<side_info>
+```
+
+""" + REFLECTION_REQUIREMENTS.replace("{guidance}", "deciding whether the shown code breaks the policy"),
+}
 
 COST_TEMPLATE = """- Cost: the instruction repeats in every question, and every selected segment triggers more review
   requests. Variants estimated above {limit}x the original cost are discarded. Each 100 bytes beyond
@@ -159,7 +181,7 @@ class CostGate:
 
 
 class SemanticLintAdapter:
-    propose_new_texts = None  # use GEPA's default reflective proposer with REFLECTION_TEMPLATE
+    propose_new_texts = None  # use GEPA's default reflective proposer with REFLECTION_TEMPLATES
 
     def __init__(self, cases, seed_tokens, seed, gate=None):
         self.cases = cases
@@ -249,7 +271,7 @@ def optimize(reflection_lm, components=("candidate",), max_metric_calls=1200, mi
     templates = {}
     for component, text in seed.items():
         cost = gate.reflection_note() if gate is not None and component == "candidate" else ""
-        templates[component] = REFLECTION_TEMPLATE.replace("{limit}", str(PROMPT_GROWTH * len(text.encode()) - 1)).replace("{cost}", cost)
+        templates[component] = REFLECTION_TEMPLATES[component].replace("{limit}", str(PROMPT_GROWTH * len(text.encode()) - 1)).replace("{cost}", cost)
     adapter = SemanticLintAdapter(cases, seed_tokens, seed, gate)
     result = gepa.optimize(
         seed_candidate=seed, trainset=train, valset=val, adapter=adapter,

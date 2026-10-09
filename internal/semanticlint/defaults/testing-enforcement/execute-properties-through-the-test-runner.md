@@ -5,6 +5,6 @@ globs:
 ---
 # Execute properties through the test runner
 
-Property tests must execute and propagate their result to the test runner. Await asynchronous property execution. When an API returns failure details instead of throwing, inspect those details and fail the test explicitly.
+Report a property test that constructs, samples, or checks a property without propagating its pass-or-fail result to the test runner. This includes `void fc.assertAsync(...)`, an unawaited asynchronous check, or `const result = fc.check(...)` whose failure details are ignored.
 
-Constructing, sampling, or checking a property without propagating failure is not evidence of correctness.
+Do not report a property execution that is returned or awaited, or a result whose failure details are inspected and cause the test to fail explicitly.

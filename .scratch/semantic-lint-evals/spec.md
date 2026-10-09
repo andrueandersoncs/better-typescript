@@ -74,6 +74,7 @@ Location: `internal/semanticlint/testdata/evals/`. One `cases/<policy>.jsonl` pe
 - `typescript-contracts/use-strict-runtime-specific-tsconfig-files` was removed by maintainer decision; its evidence often sits in an extended base file.
 - Issue 07 split policies to one invariant each; the 11 split corpus policies' cases moved to 26 child policies. Labels: `labels.derived` (from a not-applicable parent or a planted snippet), else Claude vs GPT-6.1-Sol (κ 0.94 violates-vs-not) with `labels.human` tiebreaks.
 - Issue 08 added 251 authored files (one contrast pair per successor of each split policy that had no cases). Labels: author vs GPT-6.1-Sol (κ 0.79), with a blind Claude `labels.reviewer` breaking violation disagreements by majority. Authored files may violate without a pair when both twins break a policy.
+- Issue 10 audit: all non-planted cases of the 61 weakest policies relabeled blind by Claude and GPT-6.1-Sol against current policy text; 20 labels overturned where both auditors agreed (`labels.auditClaude`, `labels.auditGpt`).
 
 ## Accuracy eval
 
@@ -186,6 +187,7 @@ Baselines, noise, and workload: `issues/01-run-baselines.md`.
 - Issue 07, one invariant per policy (95 → 140 policies): on 187 files of split policies, confident violation flags 47.7% → 56.4% (95% +2.9 to +15.2 pts); silent misses 26.7% → 22.6% and false violations 1.9% → 2.5%, both within noise; unchanged-policy control flat. Workload 46.5 M → 55.9 M tokens (+20%). Seed reports: `{val,test}-split-{1,2,3}.json`, `workload-split.json`.
 - Issue 08: project rules own overlapping invariants (140 → 133 policies, candidate questions −7%). Rewording `separate-service-interfaces-from-layer-construction` to name its reportable shapes took it from 0% to 100% of violations surfaced. Across the 39 previously unmeasured splits (233 files): surfaced 63% → 83%, silent misses 37% → 17%, false violations unchanged, `review` on clean files 5% → 16%. Seed reports: `{val,test}-clean-{1,2,3}.json`, `c-after-{1,2,3}.json`.
 - Issue 09: the review floor moved 0.40 → 0.55 (reviews at 0.40–0.55 were real violations 31–43% of the time); file-level `review` on clean files 15.9% → 5.7%. All 133 policies now have cases; new-case baseline surfaced 83%, false violations 6%, with 7 weak policies listed in the issue. Live workload 55.9 M → 50.9 M tokens (+9.5% over the pre-split catalog). Seed reports: `new-cases-{1,2,3}.json`, `workload-cleanup.json`.
+- Issue 10 (recall at the 0.55 floor): misses now come mostly from the final judgment (27% of violation outcomes) rather than selection (7%). GEPA on the final prompt changed nothing on `val`/`test`; blind rewording of 61 weak policies cut false violations 1.5% → 0.8% but left recall flat (surfaced 73.5%). Seed reports: `rw-{train,val,test}-{1,2,3}.json`.
 
 ## Anti-gaming (Goodhart's law)
 

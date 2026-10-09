@@ -4,4 +4,4 @@ globs:
 ---
 # Keep each fact in one authoritative place
 
-Store each business rule, schema, default, configuration value, and other fact in one authoritative place, and derive secondary values when practical instead of synchronizing copies. Enforce each data invariant consistently in one place rather than in several modules or with repeated checks.
+Report independently maintained copies of the same business rule, schema, default, configuration value, or invariant, such as `maxOrders = 10` in two modules or validation repeated in every caller. Keep one source and derive secondary values when practical. Do not report a value merely because it appears twice when the instances are separate facts, intentionally independent, or one use is derived.

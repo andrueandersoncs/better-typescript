@@ -5,6 +5,6 @@ globs:
 ---
 # Justify skipped and expected-failure tests
 
-A skipped, todo, conditional, or expected-failure test must have a specific reason and remain appropriate for the behavior it covers.
+Report a recognized test-runner declaration that skips, marks todo, runs conditionally, or expects failure without a specific reason, or whose reason no longer fits the behavior it covers. Examples include unexplained `test.skip(...)`, `test.todo(...)`, or expected-failure declarations.
 
-Report only recognized test-runner declarations. Do not report unrelated properties named `skip` or `todo`.
+Do not report unrelated object properties such as `job.skip` or `task.todo`.

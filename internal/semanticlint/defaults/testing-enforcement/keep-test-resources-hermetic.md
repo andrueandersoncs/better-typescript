@@ -7,6 +7,6 @@ globs:
 ---
 # Keep test resources hermetic
 
-Tests that use databases, files, ports, queues, accounts, or external services must allocate isolated resources.
+Report a test using a database, file, port, queue, account, or external service when its resource identity is shared so tests can mutate it or depend on execution order. Examples include a fixed database name, port `3000`, or shared account used by multiple tests.
 
-Shared read-only resources are allowed when tests cannot mutate them or depend on execution order.
+Do not report a shared read-only resource when tests cannot mutate it or depend on execution order.

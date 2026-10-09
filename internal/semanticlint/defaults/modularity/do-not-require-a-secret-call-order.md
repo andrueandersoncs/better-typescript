@@ -4,4 +4,4 @@ globs:
 ---
 # Do not require a secret call order
 
-Avoid unnecessary call-order requirements: callers must not need to know the “correct secret order” of method calls.
+Report an API whose operation works only after another call in an order callers must discover, such as requiring `client.connect()` before `client.send()`. Do not report independent operations or a required sequence that is inherent and made explicit by the API.

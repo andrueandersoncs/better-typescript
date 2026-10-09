@@ -5,6 +5,6 @@ globs:
 ---
 # Control test nondeterminism
 
-Control clocks, randomness, locale, timezone, generated identifiers, and scheduling when they affect test expectations.
+Report a test whose expectation depends on an uncontrolled clock, random value, locale, timezone, generated identifier, or scheduling order. Examples include asserting `Date.now()`, `Math.random()`, or a timer race without controlling it.
 
-Do not report randomness used only to allocate isolated resource names or inputs that cannot affect the asserted behavior.
+Do not report `crypto.randomUUID()` used only to allocate an isolated database or temporary-file name, or random input that cannot affect the asserted behavior.

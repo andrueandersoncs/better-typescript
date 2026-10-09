@@ -4,4 +4,4 @@ globs:
 ---
 # Avoid temporaries that merely repeat an expression
 
-Do not introduce temporary variables that merely rename or repeat an already-obvious expression without clarifying it.
+Report a temporary variable that merely renames or repeats an already-obvious expression without clarifying it, such as `const userName = user.name;` used only as `send(userName)`. Do not report a temporary whose name clarifies a non-obvious calculation, representation, or domain role.

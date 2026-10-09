@@ -5,4 +5,6 @@ globs:
 ---
 # State the law property tests enforce
 
-A property test must express a justified law over a defined domain, such as preservation, ordering, idempotence, conservation, or round-trip equivalence. Do not invent a law from an implementation detail merely to use generated testing.
+Report a property test that does not express a justified law over a defined domain, or that invents a law from an implementation detail merely to use generated testing. A law can state preservation, ordering, idempotence, conservation, or round-trip equivalence, such as `decode(encode(order))` over defined orders.
+
+Do not report a property that enforces such a justified law over its defined domain.

@@ -5,4 +5,6 @@ globs:
 ---
 # Send malformed input through the real boundary
 
-Deliberately malformed test input must enter through the real untrusted-input boundary instead of masquerading as a valid domain value.
+Report a test that deliberately creates malformed input and passes it off as a valid domain value instead of sending it through the real untrusted-input boundary. For example, `const order = malformed as Order; process(order)` bypasses the decoder, request handler, or message consumer.
+
+Do not report valid domain input, or malformed input supplied through the actual untrusted-input boundary.
