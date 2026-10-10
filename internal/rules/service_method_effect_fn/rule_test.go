@@ -10,8 +10,5 @@ import (
 func TestRule(t *testing.T) {
 	ruletest.Assert(t, "testdata", ServiceMethodEffectFnRule, []analysis.Violation{
 		{RuleName: "service-method-effect-fn", Level: "error", Message: "Wrap public Effect service operations with a named Effect.fn. Name the operation Domain.operation and keep the generator body focused on its workflow.", FilePath: "violation.ts", Line: 2, Column: 14},
-		{RuleName: "service-method-effect-fn", Level: "error", Message: "Wrap public Effect service operations with a named Effect.fn. Name the operation Domain.operation and keep the generator body focused on its workflow.", FilePath: "violation.ts", Line: 3, Column: 10},
-		{RuleName: "service-method-effect-fn", Level: "error", Message: "Wrap public Effect service operations with a named Effect.fn. Name the operation Domain.operation and keep the generator body focused on its workflow.", FilePath: "violation.ts", Line: 4, Column: 7},
-		{RuleName: "service-method-effect-fn", Level: "error", Message: "Wrap public Effect service operations with a named Effect.fn. Name the operation Domain.operation and keep the generator body focused on its workflow.", FilePath: "violation.ts", Line: 5, Column: 7},
 	})
 }

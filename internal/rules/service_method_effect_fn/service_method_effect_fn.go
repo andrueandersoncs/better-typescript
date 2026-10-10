@@ -3,7 +3,6 @@ package service_method_effect_fn
 import (
 	"github.com/andrueandersoncs/better-typescript/internal/rule"
 	"github.com/andrueandersoncs/typescript-go/ast"
-	"github.com/andrueandersoncs/typescript-go/checker"
 	"path"
 	"regexp"
 	"strings"
@@ -45,53 +44,21 @@ func returnsEffect(ctx rule.RuleContext, imports apiImports, node *ast.Node) boo
 		return false
 	})
 }
-
-// alwaysReturnsEffect reports whether a non-generator, non-async function's
-// declared or inferred return type is an Effect on every path.
-func alwaysReturnsEffect(ctx rule.RuleContext, fn *ast.Node) bool {
-	if fn == nil || (fn.Kind != ast.KindFunctionDeclaration && fn.Kind != ast.KindArrowFunction && fn.Kind != ast.KindFunctionExpression) || fn.Body() == nil || fn.BodyData().AsteriskToken != nil || ast.HasSyntacticModifier(fn, ast.ModifierFlagsAsync) {
-		return false
-	}
-	signature := ctx.TypeChecker.GetSignatureFromDeclaration(fn)
-	if signature == nil {
-		return false
-	}
-	returned := checker.Checker_getReturnTypeOfSignature(ctx.TypeChecker, signature)
-	if returned == nil {
-		return false
-	}
-	members := []*checker.Type{returned}
-	if returned.IsUnion() {
-		members = returned.Types()
-	}
-	for _, member := range members {
-		if !strings.HasPrefix(ctx.TypeChecker.TypeToString(member), "Effect<") {
-			return false
-		}
-	}
-	return true
-}
-func constVariable(node *ast.Node) bool {
-	return node.Parent != nil && node.Parent.Kind == ast.KindVariableDeclarationList && node.Parent.Flags&ast.NodeFlagsConst != 0
+func exportedVariable(node *ast.Node) bool {
+	return node.Parent != nil && node.Parent.Parent != nil && node.Parent.Parent.Kind == ast.KindVariableStatement && ast.HasSyntacticModifier(node.Parent.Parent, ast.ModifierFlagsExport)
 }
 
 var ServiceMethodEffectFnRule = rule.Rule{Name: "service-method-effect-fn", Run: func(ctx rule.RuleContext, _ any) rule.RuleListeners {
 	imports := collectAPIImports(ctx.SourceFile.Text())
 	checkVariable := func(node *ast.Node) {
 		initializer := node.AsVariableDeclaration().Initializer
-		if node.Name() == nil || initializer == nil || hasNamedEffectFn(imports, initializer) || hasEffectGen(imports, initializer) {
-			return
-		}
-		if !constVariable(node) || !alwaysReturnsEffect(ctx, skipTransparent(initializer)) {
+		if !exportedVariable(node) || node.Name() == nil || initializer == nil || hasNamedEffectFn(imports, initializer) || hasEffectGen(imports, initializer) || !returnsEffect(ctx, imports, initializer) {
 			return
 		}
 		ctx.ReportNode(node.Name(), message)
 	}
 	checkFunction := func(node *ast.Node) {
-		if node.Name() == nil || hasEffectGen(imports, node) {
-			return
-		}
-		if !alwaysReturnsEffect(ctx, node) {
+		if !ast.HasSyntacticModifier(node, ast.ModifierFlagsExport) || node.Name() == nil || hasEffectGen(imports, node) || !returnsEffect(ctx, imports, node) {
 			return
 		}
 		ctx.ReportNode(node.Name(), message)
