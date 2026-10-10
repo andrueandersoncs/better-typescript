@@ -4,21 +4,20 @@ globs:
 ---
 # Use whitespace to separate logical steps
 
-Apply this policy to function bodies with several statements. Keep the statements of one small task together (a guard with the value it checks, an accumulator with the loop that fills it), then put one blank line before the next task:
+Apply this policy to function bodies with several statements. Deterministic rules already require a blank line between statements of different kinds and around multi-line statements, and forbid blank lines between same-kind single-line declarations. Judge only what they cannot: where one task ends and the next begins inside a run of single-line expression statements (calls and assignments).
 
 ```ts
-const input = parse(body)
-if (!input.ok) return fail(input.error)
+validate(input)
+audit.record(input.id)
 
-const record = await store.save(input.value)
-return created(record.id)
+cache.invalidate(input.id)
+events.publish(updated(input.id))
 ```
 
 Report any of these shapes:
 
-- the closing `}` of a guard block that returns or throws, followed directly by a statement starting the next step, such as `if (!found) { return notFound() }` then `const next = await load(id)` on the next line;
-- a body where validating, loading, writing, and responding run as one unbroken run of statements;
-- a blank line that splits one task, such as between `const groups = new Map()` and the loop that fills it, or blank lines between every statement of a short loop or callback body;
+- a run of expression statements that mixes separate tasks, such as validating, writing, and notifying, with no blank line between tasks;
+- a blank line that splits one task inside a run of same-kind expression statements, such as blank lines between every call in a short loop or callback body;
 - two or more consecutive blank lines.
 
-Do not report a compact group that accomplishes one small task, including consecutive statements where each feeds the next, or one blank line after a group of dependency lookups.
+Do not report a blank line, or its absence, that the deterministic blank-line rules decide: a boundary between different statement kinds, a boundary next to a multi-line statement, or a gap between same-kind single-line declarations. Do not report a compact group that accomplishes one small task, including consecutive statements where each feeds the next.
