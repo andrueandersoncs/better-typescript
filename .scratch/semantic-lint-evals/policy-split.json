@@ -198,7 +198,7 @@
    "testing-enforcement/explain-the-law-and-domain-of-property-tests"
   ],
   "testing-enforcement/use-test-layers-instead-of-global-module-mocks": [
-   "testing-enforcement/use-test-layers-instead-of-global-module-mocks",
+   "no-module-mocking",
    "testing-enforcement/avoid-fixed-test-waits",
    "testing-enforcement/test-resource-lifecycle-behavior"
   ],

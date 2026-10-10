@@ -4,10 +4,14 @@ abstraction/hide-implementation-decisions-not-important-consequences
 abstraction/keep-dependencies-and-ownership-explicit
 abstraction/separate-stable-behavior-from-required-variation
 effect-errors
+effect/define-effect-returning-functions-with-effect-fn
 effect/give-runtimes-resources-and-background-tasks-an-owner
+expression-complexity
+file-code-organization/avoid-pass-through-files
 file-code-organization/eliminate-all-duplication
 file-code-organization/group-similar-code-entities
 file-code-organization/simplify-code-organization
+if-statements
 modularity/do-not-return-mutable-internal-state
 modularity/extract-shared-concepts-not-merely-similar-looking-code
 modularity/give-each-piece-of-mutable-state-a-clear-owner
@@ -18,6 +22,7 @@ modularity/make-dependencies-explicit-and-narrow
 modularity/split-or-merge-based-on-cohesion-and-coupling-not-line-counts
 modularity/test-modules-through-their-contracts
 modularity/use-abstractions-at-meaningful-boundaries-not-everywhere
+mutability
 readability/abstract-shared-concepts-not-merely-similar-looking-code
 readability/give-each-function-one-coherent-responsibility
 readability/make-dependencies-and-side-effects-visible
@@ -36,6 +41,11 @@ simplicity/name-things-so-their-purpose-is-clear
 simplicity/prefer-obvious-code-over-clever-code
 simplicity/separate-complicated-decision-making-from-external-operations
 simplicity/test-behavior-rather-than-implementation-details
+switch-case/prefer-match-for-multiple-branches
 switch-case/prefer-switch-for-multiple-branches
+switch-case/use-conditionals-for-boolean-branches
+testing-enforcement/avoid-fixed-test-waits
 testing-enforcement/do-not-focus-or-silently-exclude-tests
+testing-enforcement/execute-effects-created-by-tests
+testing-enforcement/use-test-layers-instead-of-global-module-mocks
 typescript-contracts/use-strict-runtime-specific-tsconfig-files

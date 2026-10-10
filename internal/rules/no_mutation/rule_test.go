@@ -8,7 +8,16 @@ import (
 )
 
 func TestRule(t *testing.T) {
+	violation := func(line, column int) analysis.Violation {
+		return analysis.Violation{RuleName: "no-mutation", Level: "error", Message: message.Description + " " + message.Help, FilePath: "src/cases.ts", Line: line, Column: column}
+	}
 	ruletest.Assert(t, "testdata/project", Rule, []analysis.Violation{
-		{RuleName: "no-mutation", Level: "error", Message: "Avoid mutating first-party data. Application code should derive a new value — Array.replace or Array.modify for elements, Struct.evolve for record fields, and a fresh const for rebindings. An owned library kernel may use a local mutable builder only under explicit project policy; this rule does not infer that exception. For shared state, use Ref.update or Ref.modify for pure atomic transitions, SynchronizedRef.updateEffect or SynchronizedRef.modifyEffect for effectful transitions, and Effect.tx with TxRef for atomic multi-cell transitions. Contention alone does not require SynchronizedRef. Use PubSub for subscriber sets. A local cell does not automatically require a Layer; use a Layer only for an actual resource or lifetime boundary. Never mutate built-ins (prototypes, globals). Mutating a third-party structure whose API contract requires assignment (process.exitCode, a WebSocket handler slot, a React ref cell) is permitted.", FilePath: "src/cases.ts", Line: 3, Column: 1},
+		violation(3, 1),
+		violation(6, 15),
+		violation(7, 13),
+		violation(8, 23),
+		violation(12, 1),
+		violation(16, 3),
+		violation(17, 8),
 	})
 }

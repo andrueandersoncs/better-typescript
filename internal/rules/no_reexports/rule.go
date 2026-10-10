@@ -8,7 +8,7 @@ import (
 var Rule = rule.Rule{
 	Name: "no-reexports",
 	Run: func(ctx rule.RuleContext, _ any) rule.RuleListeners {
-		imported := importedNames(ctx.SourceFile)
+		forwarded := forwardedNames(ctx.SourceFile)
 		message := rule.RuleMessage{Id: "no-reexports", Description: "Do not re-export imported bindings.", Help: "Import the dependency where it is used and expose a locally defined public interface instead."}
 		return rule.RuleListeners{
 			ast.KindExportDeclaration: func(node *ast.Node) {
@@ -37,14 +37,18 @@ var Rule = rule.Rule{
 					if specifier.PropertyName != nil {
 						local = specifier.PropertyName.Text()
 					}
-					if imported[local] {
+					if forwarded[local] {
 						ctx.ReportNode(node, message)
 					}
 				}
 			},
 			ast.KindExportAssignment: func(node *ast.Node) {
-				expression := node.AsExportAssignment().Expression
-				if ast.IsIdentifier(expression) && imported[expression.Text()] {
+				if forwardsName(node.AsExportAssignment().Expression, forwarded) {
+					ctx.ReportNode(node, message)
+				}
+			},
+			ast.KindImportEqualsDeclaration: func(node *ast.Node) {
+				if ast.HasSyntacticModifier(node, ast.ModifierFlagsExport) {
 					ctx.ReportNode(node, message)
 				}
 			},
@@ -52,32 +56,55 @@ var Rule = rule.Rule{
 	},
 }
 
-func importedNames(file *ast.SourceFile) map[string]bool {
+// forwardedNames collects top-level import bindings and the top-level const
+// aliases that point at them or at their members.
+func forwardedNames(file *ast.SourceFile) map[string]bool {
 	result := map[string]bool{}
 	for _, statement := range file.Statements.Nodes {
-		if !ast.IsImportDeclaration(statement) {
-			continue
-		}
-		clause := statement.AsImportDeclaration().ImportClause
-		if clause == nil {
-			continue
-		}
-		if clause.Name() != nil {
-			result[clause.Name().Text()] = true
-		}
-		bindings := clause.AsImportClause().NamedBindings
-		if bindings == nil {
-			continue
-		}
-		if ast.IsNamespaceImport(bindings) {
-			result[bindings.Name().Text()] = true
-			continue
-		}
-		if ast.IsNamedImports(bindings) {
-			for _, specifier := range bindings.AsNamedImports().Elements.Nodes {
-				result[specifier.Name().Text()] = true
+		switch {
+		case ast.IsImportDeclaration(statement):
+			addImportClause(result, statement.AsImportDeclaration().ImportClause)
+		case ast.IsImportEqualsDeclaration(statement):
+			result[statement.Name().Text()] = true
+		case ast.IsVariableStatement(statement):
+			list := statement.AsVariableStatement().DeclarationList
+			if list.Flags&ast.NodeFlagsConst == 0 {
+				continue
+			}
+			for _, node := range list.AsVariableDeclarationList().Declarations.Nodes {
+				declaration := node.AsVariableDeclaration()
+				if ast.IsIdentifier(declaration.Name()) && forwardsName(declaration.Initializer, result) {
+					result[declaration.Name().Text()] = true
+				}
 			}
 		}
 	}
 	return result
+}
+
+func addImportClause(result map[string]bool, clause *ast.Node) {
+	if clause == nil {
+		return
+	}
+	if clause.Name() != nil {
+		result[clause.Name().Text()] = true
+	}
+	bindings := clause.AsImportClause().NamedBindings
+	if bindings == nil {
+		return
+	}
+	if ast.IsNamespaceImport(bindings) {
+		result[bindings.Name().Text()] = true
+		return
+	}
+	if ast.IsNamedImports(bindings) {
+		for _, specifier := range bindings.AsNamedImports().Elements.Nodes {
+			result[specifier.Name().Text()] = true
+		}
+	}
+}
+
+// forwardsName reports whether expression is a forwarded name or a dotted member of one.
+func forwardsName(expression *ast.Node, forwarded map[string]bool) bool {
+	return expression != nil && ast.IsEntityNameExpression(expression) && forwarded[ast.GetFirstIdentifier(expression).Text()]
 }

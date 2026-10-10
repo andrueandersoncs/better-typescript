@@ -7,9 +7,12 @@
     "target": "ES2022",
     "paths": {
       "@effect/vitest": ["./packages/vitest/src/index.d.ts"],
+      "@sinonjs/fake-timers": ["./packages/fake-timers/index.d.ts"],
+      "delay": ["./packages/delay/index.d.ts"],
       "effect": ["./packages/effect/src/index.d.ts"],
-      "effect/testing": ["./packages/effect/src/testing/index.d.ts"]
+      "effect/testing": ["./packages/effect/src/testing/index.d.ts"],
+      "node:timers/promises": ["./packages/node/timers-promises.d.ts"]
     }
   },
-  "include": ["*.ts"]
+  "include": ["*.ts", "tests/*.ts"]
 }

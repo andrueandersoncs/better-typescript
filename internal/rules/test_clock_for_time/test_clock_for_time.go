@@ -20,11 +20,19 @@ var message = rule.RuleMessage{
 var durationLiteral = regexp.MustCompile(`^(\d+(?:\.\d+)?)\s+(?:nanos?|micros?|millis?|seconds?|minutes?|hours?|days?|weeks?)$`)
 
 var TestClockForTimeRule = rule.Rule{Name: "test-clock-for-time", Run: func(ctx rule.RuleContext, _ any) rule.RuleListeners {
-	return rule.RuleListeners{
+	listeners := rule.RuleListeners{
 		rule.ListenerOnExit(ast.KindFunctionExpression): func(node *ast.Node) {
 			checkGenerator(ctx, node)
 		},
 	}
+	if !isTestFile(ctx) {
+		return listeners
+	}
+	waits := &fixedWaits{}
+	listeners[ast.KindCallExpression] = func(node *ast.Node) { waits.visitCall(ctx, node) }
+	listeners[ast.KindNewExpression] = func(node *ast.Node) { waits.visitNew(node) }
+	listeners[ast.KindEndOfFile] = func(*ast.Node) { waits.report(ctx) }
+	return listeners
 }}
 
 func checkGenerator(ctx rule.RuleContext, generator *ast.Node) {
@@ -201,23 +209,28 @@ func isTestClockAdvance(ctx rule.RuleContext, call *ast.CallExpression) bool {
 }
 
 func isEffectMember(ctx rule.RuleContext, expression *ast.Node, wanted string) bool {
+	return effectMemberName(ctx, expression) == wanted
+}
+
+// effectMemberName returns the resolved name of an Effect library member, or "".
+func effectMemberName(ctx rule.RuleContext, expression *ast.Node) string {
 	callee := unwrap(expression)
 	if ast.IsPropertyAccessExpression(callee) {
 		callee = callee.AsPropertyAccessExpression().Name()
 	}
 	symbol := utils.ResolvedSymbol(ctx.TypeChecker, callee)
-	if symbol == nil || symbol.Name != wanted {
-		return false
+	if symbol == nil {
+		return ""
 	}
 	for _, declaration := range symbol.Declarations {
 		if file := ast.GetSourceFileOfNode(declaration); file != nil {
 			path := strings.ReplaceAll(file.FileName(), "\\", "/")
 			if strings.Contains(path, "/node_modules/effect/") || strings.Contains(path, "/packages/effect/src/") {
-				return true
+				return symbol.Name
 			}
 		}
 	}
-	return false
+	return ""
 }
 
 func isEffectVitestIt(ctx rule.RuleContext, node *ast.Node) bool {

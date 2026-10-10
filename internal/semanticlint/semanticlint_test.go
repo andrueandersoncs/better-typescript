@@ -447,7 +447,7 @@ func TestRemovedSemanticPolicySelectorsRejectStaleConfiguration(t *testing.T) {
 	}
 	for _, selector := range []string{
 		"abstraction/do-not-force-variation-through-flags",
-		"switch-case/prefer-match-for-multiple-branches",
+		"readability/name-things-by-their-purpose",
 	} {
 		if _, err := selectSemanticRules(rules, []string{selector}); err != nil {
 			t.Fatalf("replacement selector %q: %v", selector, err)

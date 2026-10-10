@@ -15,15 +15,14 @@ func run(ctx rule.RuleContext, _ any) rule.RuleListeners {
 		}
 	}}
 }
+
+// containingIf returns the nearest enclosing if statement, skipping links of an
+// else-if chain (an if that is directly another if's else statement).
 func containingIf(node *ast.Node) *ast.Node {
 	child := node
 	for parent := node.Parent; parent != nil; parent = parent.Parent {
-		switch parent.Kind {
-		case ast.KindArrowFunction, ast.KindConstructor, ast.KindFunctionDeclaration, ast.KindFunctionExpression, ast.KindGetAccessor, ast.KindMethodDeclaration, ast.KindSetAccessor:
-			return nil
-		}
 		if parent.Kind == ast.KindIfStatement {
-			if parent.AsIfStatement().ElseStatement == child {
+			if child.Kind == ast.KindIfStatement && parent.AsIfStatement().ElseStatement == child {
 				child = parent
 				continue
 			}

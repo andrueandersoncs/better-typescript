@@ -113,9 +113,9 @@ Rule names are Markdown basenames without `.md`. Catalog-relative paths also wor
 
 ## Default policy cutover
 
-The embedded policies distinguish shared behavior from similar-looking code, keep pure calculations outside Effect, and avoid copying a growing accumulator with one-pass construction. Converting already decoded data into a result stays a plain function, even when its caller uses Effect. Local mutable builders require explicit exclusions from the mutation rules. Suitable tagged multiway decisions use Effect `Match`, not forbidden `switch` statements.
+The embedded policies distinguish shared behavior from similar-looking code, keep pure calculations outside Effect, and avoid copying a growing accumulator with one-pass construction. Converting already decoded data into a result stays a plain function, even when its caller uses Effect. Local mutable builders require explicit exclusions from the mutation rules.
 
-Each embedded policy states one invariant: one property a file either keeps or breaks. Policies that combined several invariants were split; an invariant that several policies repeated has one owner, and where a top-level project rule (`if-statements`, `mutability`, `function-naming`, `expression-complexity`, `avoid-repetition`) overlapped an imported policy, the project rule owns it.
+Each embedded policy states one invariant: one property a file either keeps or breaks. Policies that combined several invariants were split; an invariant that several policies repeated has one owner, and where a top-level project rule (`function-naming`, `avoid-repetition`) overlapped an imported policy, the project rule owns it. Invariants a deterministic rule can check have no semantic policy.
 
 Retired selectors have no aliases. Update `--rules` and semantic-mode `better-typescript.json` commands:
 
@@ -127,12 +127,12 @@ Retired selectors have no aliases. Update `--rules` and semantic-mode `better-ty
 | `modularity/test-modules-through-their-contracts`, `simplicity/test-behavior-rather-than-implementation-details` | `abstraction/test-observable-guarantees-not-private-structure` |
 | `modularity/give-every-module-one-clear-purpose`, `readability/give-each-function-one-coherent-responsibility` | `simplicity/give-each-function-or-module-one-coherent-responsibility` |
 | `simplicity/separate-complicated-decision-making-from-external-operations` | `modularity/separate-decision-making-from-external-effects` |
-| `readability/make-dependencies-and-side-effects-visible` | `modularity/make-dependencies-explicit`, `mutability`, `abstraction/make-important-consequences-apparent` |
+| `readability/make-dependencies-and-side-effects-visible` | `modularity/make-dependencies-explicit`, `no-mutation`, `no-mutable-variable-declarations`, `no-mutable-array-methods` (deterministic), `abstraction/make-important-consequences-apparent` |
 | `readability/make-failure-behavior-explicit` | `simplicity/handle-errors-explicitly-and-close-to-the-right-boundary` |
-| `readability/make-the-normal-flow-easy-to-follow` | `if-statements` |
+| `readability/make-the-normal-flow-easy-to-follow` | `no-nested-if-statements` (deterministic) |
 | `simplicity/name-things-so-their-purpose-is-clear` | `readability/name-things-by-their-purpose` |
 | `simplicity/prefer-obvious-code-over-clever-code` | `readability/prefer-straightforward-code-over-clever-code` |
-| `switch-case/prefer-switch-for-multiple-branches` | `switch-case/prefer-match-for-multiple-branches` |
+| `switch-case/prefer-switch-for-multiple-branches`, `switch-case/prefer-match-for-multiple-branches`, `switch-case/use-conditionals-for-boolean-branches` | `no-switch-statements`, `prefer-effect-match`, `no-manual-tag-comparison` (deterministic) |
 | `typescript-contracts/use-strict-runtime-specific-tsconfig-files` | Removed; no replacement |
 | `abstraction/abstract-shared-meaning-not-merely-similar-code` | `avoid-repetition`, `abstraction/do-not-force-variation-through-flags`, `simplicity/give-each-function-or-module-one-coherent-responsibility` |
 | `abstraction/give-each-abstraction-one-coherent-responsibility` | `simplicity/give-each-function-or-module-one-coherent-responsibility`, `readability/keep-each-function-at-a-consistent-level-of-detail` |
@@ -142,22 +142,25 @@ Retired selectors have no aliases. Update `--rules` and semantic-mode `better-ty
 | `effect-errors` | `effect/model-expected-failures-with-specific-types`, `effect/keep-expected-failures-out-of-the-defect-channel`, `effect/keep-pure-calculations-pure`, `effect/convert-thrown-exceptions-at-external-boundaries`, `effect/adapt-promises-once-at-integration-boundaries` |
 | `effect/give-runtimes-resources-and-background-tasks-an-owner` | `effect/acquire-application-dependencies-once`, `abstraction/give-each-resource-an-owner-that-releases-it`, `effect/give-background-tasks-an-owner` |
 | `file-code-organization/group-similar-code-entities` | `file-code-organization/keep-variants-of-one-thing-together` |
-| `file-code-organization/simplify-code-organization` | `file-code-organization/avoid-pass-through-files` |
-| `modularity/do-not-return-mutable-internal-state` | `mutability` |
-| `modularity/give-each-piece-of-mutable-state-a-clear-owner` | `mutability` |
+| `file-code-organization/simplify-code-organization`, `file-code-organization/avoid-pass-through-files` | `no-reexports` (deterministic) |
+| `modularity/do-not-return-mutable-internal-state` | `no-mutation`, `no-mutable-variable-declarations`, `no-mutable-array-methods` (deterministic) |
+| `modularity/give-each-piece-of-mutable-state-a-clear-owner` | `no-mutation`, `no-mutable-variable-declarations`, `no-mutable-array-methods` (deterministic) |
 | `modularity/keep-public-interfaces-small-explicit-and-task-focused` | `modularity/minimize-back-and-forth-communication-between-modules`, `modularity/specify-inputs-outputs-errors-and-side-effects`, `modularity/do-not-require-a-secret-call-order` |
 | `modularity/make-dependencies-explicit-and-narrow` | `modularity/make-dependencies-explicit`, `modularity/depend-on-narrow-collaborators` |
 | `modularity/split-or-merge-based-on-cohesion-and-coupling-not-line-counts` | `simplicity/give-each-function-or-module-one-coherent-responsibility`, `modularity/merge-modules-that-change-together` |
 | `modularity/use-abstractions-at-meaningful-boundaries-not-everywhere` | `simplicity/let-abstractions-emerge-from-concrete-needs` |
 | `readability/make-tests-readable-examples-of-behavior` | `readability/name-tests-after-condition-and-outcome`, `readability/separate-test-setup-action-and-assertions`, `readability/use-test-data-that-makes-behavior-obvious` |
-| `readability/name-complicated-conditions-and-intermediate-results` | `expression-complexity` |
+| `readability/name-complicated-conditions-and-intermediate-results`, `expression-complexity` | `no-nested-calls`, `no-multiple-boolean-operators` (deterministic) |
 | `readability/remove-distractions` | `readability/delete-dead-code`, `readability/keep-comments-current`, `simplicity/do-not-add-speculative-extension-points` |
-| `simplicity/do-not-mutate-inputs-unexpectedly` | `mutability` |
-| `simplicity/keep-control-flow-shallow` | `if-statements` |
-| `simplicity/make-inputs-dependencies-and-side-effects-explicit` | `modularity/make-dependencies-explicit`, `mutability`, `abstraction/make-important-consequences-apparent` |
+| `simplicity/do-not-mutate-inputs-unexpectedly` | `no-mutation`, `no-mutable-array-methods` (deterministic) |
+| `simplicity/keep-control-flow-shallow` | `no-nested-if-statements` (deterministic) |
+| `simplicity/make-inputs-dependencies-and-side-effects-explicit` | `modularity/make-dependencies-explicit`, `no-mutation`, `no-mutable-variable-declarations`, `no-mutable-array-methods` (deterministic), `abstraction/make-important-consequences-apparent` |
 | `simplicity/minimize-maintainer-cognitive-load` | `simplicity/prefer-direct-calls-over-hidden-dispatch` |
-| `simplicity/minimize-mutable-and-duplicated-state` | `mutability`, `simplicity/keep-each-fact-in-one-authoritative-place` |
+| `simplicity/minimize-mutable-and-duplicated-state` | `no-mutation`, `no-mutable-variable-declarations`, `no-mutable-array-methods` (deterministic), `simplicity/keep-each-fact-in-one-authoritative-place` |
+| `testing-enforcement/avoid-fixed-test-waits` | `test-clock-for-time` (deterministic), `testing-enforcement/assert-absence-only-after-the-operation-completes` |
 | `testing-enforcement/do-not-focus-or-silently-exclude-tests` | `testing-enforcement/do-not-commit-focused-tests`, `testing-enforcement/justify-skipped-and-expected-failure-tests` |
+| `testing-enforcement/use-test-layers-instead-of-global-module-mocks` | `no-module-mocking` (deterministic), `test-clock-for-time` (deterministic), `testing-enforcement/test-resource-lifecycle-behavior` |
+| `testing-enforcement/execute-effects-created-by-tests` | `effect-test-style`, `discarded-effect-operation` (deterministic) |
 
 These policies kept their names but now cover one invariant. Their other invariants moved to the listed policies, which a command naming only the old policy no longer covers:
 
@@ -173,7 +176,7 @@ These policies kept their names but now cover one invariant. Their other invaria
 | `effect/keep-pure-calculations-pure` | `effect/do-not-wrap-pure-utilities-in-services` |
 | `effect/model-expected-failures-with-specific-types` | `effect/keep-expected-failures-out-of-the-defect-channel`, `simplicity/do-not-swallow-failures`, `effect/translate-failures-only-at-the-presentation-boundary` |
 | `effect/separate-service-interfaces-from-layer-construction` | None; its capabilities-not-clients invariant was removed |
-| `modularity/do-not-expose-internal-representations-unnecessarily` | `mutability` |
+| `modularity/do-not-expose-internal-representations-unnecessarily` | `no-mutation`, `no-mutable-variable-declarations`, `no-mutable-array-methods` (deterministic) |
 | `readability/keep-related-code-close-together` | `readability/declare-variables-near-their-first-use` |
 | `readability/make-important-distinctions-visible-in-names` | `readability/name-booleans-as-conditions` |
 | `readability/make-interfaces-understandable-at-the-call-site` | `abstraction/do-not-force-variation-through-flags` |
@@ -181,14 +184,12 @@ These policies kept their names but now cover one invariant. Their other invaria
 | `readability/prefer-straightforward-code-over-clever-code` | `readability/avoid-temporaries-that-merely-repeat-an-expression` |
 | `readability/write-comments-that-explain-what-the-code-cannot` | `readability/do-not-narrate-obvious-code`, `readability/keep-comments-current` |
 | `simplicity/handle-errors-explicitly-and-close-to-the-right-boundary` | `typescript-contracts/decode-external-data-at-the-boundary`, `simplicity/keep-each-fact-in-one-authoritative-place`, `simplicity/preserve-failure-context`, `simplicity/do-not-swallow-failures` |
-| `testing-enforcement/avoid-fixed-test-waits` | `testing-enforcement/assert-absence-only-after-the-operation-completes` |
 | `testing-enforcement/control-test-nondeterminism` | `testing-enforcement/preserve-replay-data-for-generated-failures` |
 | `testing-enforcement/isolate-state-for-each-generated-case` | `testing-enforcement/preserve-original-generated-inputs` |
 | `testing-enforcement/keep-test-fixtures-type-checked` | `testing-enforcement/send-malformed-input-through-the-real-boundary` |
 | `testing-enforcement/keep-test-resources-hermetic` | `testing-enforcement/clean-up-test-resources-after-failure`, `testing-enforcement/keep-tests-away-from-production-credentials` |
 | `testing-enforcement/reuse-expensive-test-setup` | `testing-enforcement/reset-shared-test-state-deterministically` |
 | `testing-enforcement/state-the-law-property-tests-enforce` | `testing-enforcement/explain-the-law-and-domain-of-property-tests` |
-| `testing-enforcement/use-test-layers-instead-of-global-module-mocks` | `testing-enforcement/avoid-fixed-test-waits`, `testing-enforcement/test-resource-lifecycle-behavior` |
 | `typescript-contracts/make-exported-effect-signatures-intentional` | `typescript-contracts/isolate-unsafe-type-escapes` |
 | `typescript-contracts/separate-storage-domain-and-api-representations` | `typescript-contracts/preserve-meaningful-distinctions-until-the-boundary`, `modularity/do-not-expose-internal-representations-unnecessarily`, `typescript-contracts/test-date-and-identifier-mappings` |
 | `typescript-contracts/use-schemas-for-external-contracts` | `typescript-contracts/decode-external-data-at-the-boundary` |
@@ -254,6 +255,6 @@ Final requests depend on live selection answers, so they are not included in the
 
 Text output marks whole-file selections as `[file-wide context]` instead of displaying a full-file line range. Partial selections appear as `[context lines N-M]`; these are leads to inspect, not precise defect locations. JSON findings retain candidate byte and line ranges and add `evidenceScope`: `file` when the selected range covers every source byte, `localized` when it does not, or omitted when no context was selected. They also include applicability probability when evaluated, the final violation probability when available, and a reason for inconclusive results. Candidate and evidence selection are not verdicts. The default violation threshold is `0.70`; the applicability gate stays at `0.70` when `--threshold` changes.
 
-The applicability check is a model judgment, not proof of correctness. The service/Layer policy applies only to files with a service definition or Layer construction; the Effect failure policy applies to fallible effectful operations, not pure checks. A function-local mutable builder remains subject to the immutability policy unless deterministic mutation rules are explicitly excluded for that file. Review concrete findings; use narrow semantic-mode exclusions for policies that do not apply instead of rewriting correct code to satisfy a false positive.
+The applicability check is a model judgment, not proof of correctness. The service/Layer policy applies only to files with a service definition or Layer construction; the Effect failure policy applies to fallible effectful operations, not pure checks. Review concrete findings; use narrow semantic-mode exclusions for policies that do not apply instead of rewriting correct code to satisfy a false positive.
 
 Live runs exit `0` for pass, review, or inconclusive findings without violations, `1` for violations, and `2` for arguments, Git, file, response, or TypeSafe errors. Reviews remain visible in text and JSON but do not fail a run. The API key remains in the process environment and is sent only in the TypeSafe authorization header.
