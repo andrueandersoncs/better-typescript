@@ -2,7 +2,7 @@
 
 ## What it does
 
-Reports assignment, increment, decrement, and `delete` operations that mutate first-party data. Only ECMAScript and decorator declarations in `lib.es*`, `lib.decorators*`, and `lib.d.ts` count as controlled built-in data. Other libraries, such as `lib.dom.d.ts`, are treated as uncontrolled external declarations. Targets owned only by third-party declarations are also allowed.
+Reports assignment, increment, decrement, `delete`, and `for...in`/`for...of` rebinding operations that mutate first-party data. It also reports the target of `Object.assign`, `Object.defineProperty`, `Object.defineProperties`, `Object.setPrototypeOf`, `Reflect.set`, `Reflect.defineProperty`, `Reflect.deleteProperty`, and `Reflect.setPrototypeOf`, and the receiver of `Date` setters. A fresh object literal, array literal, or `new` target, as in `Object.assign({}, value)`, is allowed. Only ECMAScript and decorator declarations in `lib.es*`, `lib.decorators*`, and `lib.d.ts` count as controlled built-in data. Other libraries, such as `lib.dom.d.ts`, are treated as uncontrolled external declarations. Targets owned only by third-party declarations are also allowed, unless they are reached through a parameter.
 
 ## When to use it
 
@@ -24,4 +24,9 @@ const updated: Counter = { ...counter, count: 1 }
 interface Counter { count: number }
 const counter: Counter = { count: 0 }
 counter.count = 1
+Object.assign(counter, { count: 2 })
+
+const rename = (element: HTMLElement) => {
+  element.id = "next"
+}
 ```

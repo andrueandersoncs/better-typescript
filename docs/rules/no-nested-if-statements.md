@@ -2,7 +2,7 @@
 
 ## What it does
 
-Reports an `if` statement contained by another `if` statement. An outer `if` does not count as containing it when traversal reaches that outer `if` through its `else` branch, including through an `else { ... }` block. A nested function starts a new boundary.
+Reports an `if` statement inside either branch of another `if` statement, including inside an `else { ... }` block and inside a nested function such as a callback. An `if` that is itself another `if`'s `else` statement (an `else if` chain) is not nested. Independent sequential guard clauses and a single two-way `if`/`else` are not reported.
 
 ## When to use it
 
@@ -13,6 +13,7 @@ Use it to keep conditions at one level. Combine related conditions or return ear
 ```ts
 declare const ready: boolean
 if (ready) console.log("ready")
+else if (!ready) console.log("waiting")
 ```
 
 ## Non-conformant
@@ -21,5 +22,9 @@ if (ready) console.log("ready")
 declare const a: boolean, b: boolean
 if (a) {
   if (b) console.log("nested")
+} else {
+  [1].forEach(() => {
+    if (b) console.log("nested in callback")
+  })
 }
 ```
