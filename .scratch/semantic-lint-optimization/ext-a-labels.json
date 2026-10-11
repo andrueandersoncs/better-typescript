@@ -1,0 +1,582 @@
+[
+  {
+    "file": "HerdProto/src/components/FunctionEditor.tsx",
+    "rulePath": "rules/abstraction/do-not-force-variation-through-flags.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "a01",
+    "labelA": "violates",
+    "labelB": "violates",
+    "truth": true
+  },
+  {
+    "file": "HerdProto/src/components/FunctionEditor.tsx",
+    "rulePath": "rules/abstraction/make-correct-use-straightforward-and-invalid-use-difficult.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a02",
+    "labelA": "complies",
+    "labelB": "complies",
+    "truth": false
+  },
+  {
+    "file": "HerdProto/src/components/FunctionEditor.tsx",
+    "rulePath": "rules/modularity/depend-on-narrow-collaborators.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a03",
+    "labelA": "complies",
+    "labelB": "complies",
+    "truth": false
+  },
+  {
+    "file": "HerdProto/src/components/FunctionEditor.tsx",
+    "rulePath": "rules/modularity/specify-inputs-outputs-errors-and-side-effects.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "a04",
+    "labelA": "violates",
+    "labelB": "violates",
+    "truth": true
+  },
+  {
+    "file": "HerdProto/src/components/FunctionEditor.tsx",
+    "rulePath": "rules/simplicity/do-not-add-speculative-extension-points.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "a05",
+    "labelA": "violates",
+    "labelB": "violates",
+    "truth": true
+  },
+  {
+    "file": "HerdProto/src/components/FunctionEditor.tsx",
+    "rulePath": "rules/web-boundaries/give-frontend-state-one-owner.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a06",
+    "labelA": "violates",
+    "labelB": "violates",
+    "truth": true
+  },
+  {
+    "file": "OpenBot/server/tests/bot-lifecycle-audit.test.ts",
+    "rulePath": "rules/abstraction/make-correct-use-straightforward-and-invalid-use-difficult.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a07",
+    "labelA": "not-applicable",
+    "labelB": "complies",
+    "truth": false
+  },
+  {
+    "file": "OpenBot/server/tests/bot-lifecycle-audit.test.ts",
+    "rulePath": "rules/effect/model-expected-failures-with-specific-types.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a08",
+    "labelA": "not-applicable",
+    "labelB": "not-applicable",
+    "truth": false
+  },
+  {
+    "file": "OpenBot/server/tests/bot-lifecycle-audit.test.ts",
+    "rulePath": "rules/readability/do-not-narrate-obvious-code.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a09",
+    "labelA": "complies",
+    "labelB": "complies",
+    "truth": false
+  },
+  {
+    "file": "OpenBot/server/tests/bot-lifecycle-audit.test.ts",
+    "rulePath": "rules/readability/name-booleans-as-conditions.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a10",
+    "labelA": "not-applicable",
+    "labelB": "not-applicable",
+    "truth": false
+  },
+  {
+    "file": "OpenBot/server/tests/bot-lifecycle-audit.test.ts",
+    "rulePath": "rules/typescript-contracts/isolate-unsafe-type-escapes.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a11",
+    "labelA": "violates",
+    "labelB": "violates",
+    "truth": true
+  },
+  {
+    "file": "OpenBot/supervisor/tests/listen-port.test.ts",
+    "rulePath": "rules/readability/name-booleans-as-conditions.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a12",
+    "labelA": "not-applicable",
+    "labelB": "not-applicable",
+    "truth": false
+  },
+  {
+    "file": "claude-skill-effect-ts/effect-ts-detectors/categories/code-style/rule-002/rule-002.detector.ts",
+    "rulePath": "rules/readability/keep-each-function-at-a-consistent-level-of-detail.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a13",
+    "labelA": "violates",
+    "labelB": "violates",
+    "truth": true
+  },
+  {
+    "file": "effect-domains/packages/effect-domains/src/resource/repository-store.ts",
+    "rulePath": "rules/readability/name-things-by-their-purpose.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a14",
+    "labelA": "complies",
+    "labelB": "complies",
+    "truth": false
+  },
+  {
+    "file": "effect-domains/test/Application.types.ts",
+    "rulePath": "rules/effect/construct-effects-lazily.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a15",
+    "labelA": "complies",
+    "labelB": "complies",
+    "truth": false
+  },
+  {
+    "file": "effect-domains/test/Application.types.ts",
+    "rulePath": "rules/readability/do-not-narrate-obvious-code.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a16",
+    "labelA": "complies",
+    "labelB": "complies",
+    "truth": false
+  },
+  {
+    "file": "effect-redux/src/reducer.ts",
+    "rulePath": "rules/simplicity/prefer-direct-calls-over-hidden-dispatch.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a17",
+    "labelA": "complies",
+    "labelB": "complies",
+    "truth": false
+  },
+  {
+    "file": "herd/packages/services/internal/identity/protocolDetection/resolve/parents/yearn/resolve.ts",
+    "rulePath": "rules/effect/separate-service-interfaces-from-layer-construction.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "a18",
+    "labelA": "not-applicable",
+    "labelB": "not-applicable",
+    "truth": false
+  },
+  {
+    "file": "herd/packages/services/internal/identity/protocolDetection/resolve/parents/yearn/resolve.ts",
+    "rulePath": "rules/readability/avoid-obscure-abbreviations-and-redundant-prefixes.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a19",
+    "labelA": "complies",
+    "labelB": "complies",
+    "truth": false
+  },
+  {
+    "file": "herd/packages/services/internal/identity/protocolDetection/resolve/parents/yearn/resolve.ts",
+    "rulePath": "rules/readability/name-booleans-as-conditions.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a20",
+    "labelA": "violates",
+    "labelB": "violates",
+    "truth": true
+  },
+  {
+    "file": "herd/packages/services/internal/identity/protocolDetection/resolve/parents/yearn/resolve.ts",
+    "rulePath": "rules/typescript-contracts/make-exported-effect-signatures-intentional.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a21",
+    "labelA": "complies",
+    "labelB": "complies",
+    "truth": false
+  },
+  {
+    "file": "mapmaker/src/server/app.ts",
+    "rulePath": "rules/readability/avoid-temporaries-that-merely-repeat-an-expression.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a22",
+    "labelA": "complies",
+    "labelB": "complies",
+    "truth": false
+  },
+  {
+    "file": "mapmaker/src/server/app.ts",
+    "rulePath": "rules/readability/keep-each-function-at-a-consistent-level-of-detail.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a23",
+    "labelA": "violates",
+    "labelB": "violates",
+    "truth": true
+  },
+  {
+    "file": "open-workflows/examples/audit-auth/src/review.ts",
+    "rulePath": "rules/readability/do-not-narrate-obvious-code.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a24",
+    "labelA": "complies",
+    "labelB": "complies",
+    "truth": false
+  },
+  {
+    "file": "open-workflows/packages/core/src/contract.test.ts",
+    "rulePath": "rules/testing-enforcement/keep-test-fixtures-type-checked.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "a25",
+    "labelA": "complies",
+    "labelB": "complies",
+    "truth": false
+  },
+  {
+    "file": "prime-agent/packages/coding-agent/src/utils/semaphore.ts",
+    "rulePath": "rules/effect/model-expected-failures-with-specific-types.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a26",
+    "labelA": "violates",
+    "labelB": "violates",
+    "truth": true
+  },
+  {
+    "file": "prime-agent/packages/coding-agent/src/utils/semaphore.ts",
+    "rulePath": "rules/function-naming.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "a27",
+    "labelA": "violates",
+    "labelB": "violates",
+    "truth": true
+  },
+  {
+    "file": "prime-agent/packages/coding-agent/src/utils/semaphore.ts",
+    "rulePath": "rules/performance/bound-pending-work.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "a28",
+    "labelA": "violates",
+    "labelB": "violates",
+    "truth": true
+  },
+  {
+    "file": "prime-agent/packages/coding-agent/test/agent-session-bus.test.ts",
+    "rulePath": "rules/abstraction/make-correct-use-straightforward-and-invalid-use-difficult.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a29",
+    "labelA": "not-applicable",
+    "labelB": "not-applicable",
+    "truth": false
+  },
+  {
+    "file": "prime-agent/packages/coding-agent/test/agent-session-bus.test.ts",
+    "rulePath": "rules/effect/model-expected-failures-with-specific-types.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a30",
+    "labelA": "not-applicable",
+    "labelB": "not-applicable",
+    "truth": false
+  },
+  {
+    "file": "prime-agent/packages/coding-agent/test/agent-session-bus.test.ts",
+    "rulePath": "rules/typescript-contracts/isolate-unsafe-type-escapes.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a31",
+    "labelA": "violates",
+    "labelB": "complies",
+    "truth": null
+  },
+  {
+    "file": "sandbox-sdk-effect/packages/sdk/src/providers/agentos/index.ts",
+    "rulePath": "rules/abstraction/make-correct-use-straightforward-and-invalid-use-difficult.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a32",
+    "labelA": "violates",
+    "labelB": "violates",
+    "truth": true
+  },
+  {
+    "file": "sandbox-sdk-effect/packages/sdk/src/providers/agentos/index.ts",
+    "rulePath": "rules/abstraction/make-the-public-interface-as-small-as-the-contract-allows.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "a33",
+    "labelA": "complies",
+    "labelB": "complies",
+    "truth": false
+  },
+  {
+    "file": "sandbox-sdk-effect/packages/sdk/src/providers/agentos/index.ts",
+    "rulePath": "rules/function-naming.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "a34",
+    "labelA": "complies",
+    "labelB": "complies",
+    "truth": false
+  },
+  {
+    "file": "sandbox-sdk-effect/packages/sdk/src/providers/agentos/index.ts",
+    "rulePath": "rules/modularity/specify-inputs-outputs-errors-and-side-effects.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "a35",
+    "labelA": "violates",
+    "labelB": "complies",
+    "truth": null
+  },
+  {
+    "file": "sandbox-sdk-effect/packages/sdk/src/providers/agentos/index.ts",
+    "rulePath": "rules/performance/bound-materialized-data.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "a36",
+    "labelA": "violates",
+    "labelB": "violates",
+    "truth": true
+  },
+  {
+    "file": "sandbox-sdk-effect/packages/sdk/src/providers/agentos/index.ts",
+    "rulePath": "rules/readability/avoid-temporaries-that-merely-repeat-an-expression.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a37",
+    "labelA": "violates",
+    "labelB": "violates",
+    "truth": true
+  },
+  {
+    "file": "sandbox-sdk-effect/packages/sdk/src/providers/agentos/index.ts",
+    "rulePath": "rules/readability/keep-each-function-at-a-consistent-level-of-detail.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a38",
+    "labelA": "violates",
+    "labelB": "violates",
+    "truth": true
+  },
+  {
+    "file": "sandbox-sdk-effect/packages/sdk/src/providers/agentos/index.ts",
+    "rulePath": "rules/readability/name-things-by-their-purpose.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a39",
+    "labelA": "violates",
+    "labelB": "violates",
+    "truth": true
+  },
+  {
+    "file": "task-based-pi/apps/task-based-pi/src/task-runtime-boundaries.test.ts",
+    "rulePath": "rules/readability/make-important-distinctions-visible-in-names.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "a40",
+    "labelA": "complies",
+    "labelB": "not-applicable",
+    "truth": false
+  },
+  {
+    "file": "task-based-pi/apps/task-based-pi/src/task-runtime-boundaries.test.ts",
+    "rulePath": "rules/readability/name-things-by-their-purpose.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a41",
+    "labelA": "violates",
+    "labelB": "violates",
+    "truth": true
+  },
+  {
+    "file": "task-based-pi/apps/task-based-pi/src/task-runtime-boundaries.test.ts",
+    "rulePath": "rules/readability/replace-unexplained-values-with-meaningful-names.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a42",
+    "labelA": "violates",
+    "labelB": "violates",
+    "truth": true
+  },
+  {
+    "file": "task-based-pi/apps/task-based-pi/src/task-runtime-boundaries.test.ts",
+    "rulePath": "rules/typescript-contracts/isolate-unsafe-type-escapes.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a43",
+    "labelA": "violates",
+    "labelB": "violates",
+    "truth": true
+  },
+  {
+    "file": "task-based-pi/docs/executable-interactive-plans/task-unification/server.ts",
+    "rulePath": "rules/abstraction/give-each-resource-an-owner-that-releases-it.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "a44",
+    "labelA": "complies",
+    "labelB": "complies",
+    "truth": false
+  },
+  {
+    "file": "task-based-pi/docs/executable-interactive-plans/task-unification/server.ts",
+    "rulePath": "rules/effect/acquire-application-dependencies-once.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "a45",
+    "labelA": "complies",
+    "labelB": "complies",
+    "truth": false
+  },
+  {
+    "file": "task-based-pi/docs/executable-interactive-plans/task-unification/server.ts",
+    "rulePath": "rules/web-boundaries/separate-application-dependencies-from-request-state.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a46",
+    "labelA": "not-applicable",
+    "labelB": "not-applicable",
+    "truth": false
+  },
+  {
+    "file": "taskr/apps/infra/src/local-coding-controller.ts",
+    "rulePath": "rules/readability/declare-variables-near-their-first-use.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a47",
+    "labelA": "complies",
+    "labelB": "complies",
+    "truth": false
+  },
+  {
+    "file": "taskr/apps/infra/src/local-coding-controller.ts",
+    "rulePath": "rules/simplicity/choose-data-structures-that-reduce-special-cases.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a48",
+    "labelA": "violates",
+    "labelB": "violates",
+    "truth": true
+  },
+  {
+    "file": "taskr/apps/web/tests/development-runs-local.spec.ts",
+    "rulePath": "rules/readability/keep-each-function-at-a-consistent-level-of-detail.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a49",
+    "labelA": "complies",
+    "labelB": "complies",
+    "truth": false
+  },
+  {
+    "file": "taskr/apps/web/tests/development-runs-local.spec.ts",
+    "rulePath": "rules/readability/separate-test-setup-action-and-assertions.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a50",
+    "labelA": "violates",
+    "labelB": "violates",
+    "truth": true
+  },
+  {
+    "file": "token-double-click/cf-research/src/worker/tools/tool-types.ts",
+    "rulePath": "rules/typescript-contracts/use-schemas-for-external-contracts.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "a51",
+    "labelA": "complies",
+    "labelB": "complies",
+    "truth": false
+  },
+  {
+    "file": "token-double-click/scripts/upload-claude-session.ts",
+    "rulePath": "rules/effect/acquire-application-dependencies-once.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "a52",
+    "labelA": "complies",
+    "labelB": "complies",
+    "truth": false
+  },
+  {
+    "file": "token-double-click/scripts/upload-claude-session.ts",
+    "rulePath": "rules/readability/delete-dead-code.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a53",
+    "labelA": "violates",
+    "labelB": "violates",
+    "truth": true
+  },
+  {
+    "file": "token-double-click/scripts/upload-claude-session.ts",
+    "rulePath": "rules/readability/do-not-narrate-obvious-code.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a54",
+    "labelA": "complies",
+    "labelB": "violates",
+    "truth": null
+  },
+  {
+    "file": "token-double-click/scripts/upload-claude-session.ts",
+    "rulePath": "rules/readability/name-things-by-their-purpose.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "a55",
+    "labelA": "violates",
+    "labelB": "violates",
+    "truth": true
+  },
+  {
+    "file": "wintermute-web/frontend/src/components/phase-progress.tsx",
+    "rulePath": "rules/modularity/specify-inputs-outputs-errors-and-side-effects.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "a56",
+    "labelA": "violates",
+    "labelB": "violates",
+    "truth": true
+  },
+  {
+    "file": "wintermute-web/frontend/src/components/phase-progress.tsx",
+    "rulePath": "rules/readability/do-not-narrate-obvious-code.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "a57",
+    "labelA": "violates",
+    "labelB": "complies",
+    "truth": null
+  },
+  {
+    "file": "wintermute-web/frontend/src/components/phase-progress.tsx",
+    "rulePath": "rules/simplicity/keep-each-fact-in-one-authoritative-place.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "a58",
+    "labelA": "complies",
+    "labelB": "complies",
+    "truth": false
+  }
+]

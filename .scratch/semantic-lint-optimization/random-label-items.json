@@ -1,0 +1,2402 @@
+[
+  {
+    "set": "a",
+    "pair": [
+      "task-based-pi/apps/task-based-pi/src/task-runtime-boundaries.test.ts",
+      "rules/web-boundaries/treat-streaming-responses-as-active-work.md"
+    ],
+    "id": "r001",
+    "file": ".scratch/semantic-lint-optimization/external/task-based-pi/apps/task-based-pi/src/task-runtime-boundaries.test.ts",
+    "policy": "internal/semanticlint/defaults/web-boundaries/treat-streaming-responses-as-active-work.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "mapmaker/src/omp/ask-contract.ts",
+      "rules/abstraction/preserve-the-controls-callers-genuinely-need.md"
+    ],
+    "id": "r002",
+    "file": ".scratch/semantic-lint-optimization/external/mapmaker/src/omp/ask-contract.ts",
+    "policy": "internal/semanticlint/defaults/abstraction/preserve-the-controls-callers-genuinely-need.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "task-based-pi/apps/task-based-pi/src/task-runtime-boundaries.test.ts",
+      "rules/typescript-contracts/separate-storage-domain-and-api-representations.md"
+    ],
+    "id": "r003",
+    "file": ".scratch/semantic-lint-optimization/external/task-based-pi/apps/task-based-pi/src/task-runtime-boundaries.test.ts",
+    "policy": "internal/semanticlint/defaults/typescript-contracts/separate-storage-domain-and-api-representations.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "wintermute-web/frontend/src/components/phase-progress.tsx",
+      "rules/effect/retry-only-transient-failures.md"
+    ],
+    "id": "r004",
+    "file": ".scratch/semantic-lint-optimization/external/wintermute-web/frontend/src/components/phase-progress.tsx",
+    "policy": "internal/semanticlint/defaults/effect/retry-only-transient-failures.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "sandbox-sdk-effect/packages/sdk/src/core/provider.ts",
+      "rules/simplicity/preserve-failure-context.md"
+    ],
+    "id": "r005",
+    "file": ".scratch/semantic-lint-optimization/external/sandbox-sdk-effect/packages/sdk/src/core/provider.ts",
+    "policy": "internal/semanticlint/defaults/simplicity/preserve-failure-context.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "token-double-click/scripts/upload-claude-session.ts",
+      "rules/readability/prefer-straightforward-code-over-clever-code.md"
+    ],
+    "id": "r006",
+    "file": ".scratch/semantic-lint-optimization/external/token-double-click/scripts/upload-claude-session.ts",
+    "policy": "internal/semanticlint/defaults/readability/prefer-straightforward-code-over-clever-code.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "effect-redux/.agents/skills/executable-interactive-plans/assets/story-test-template/src/review-types.ts",
+      "rules/typescript-contracts/preserve-meaningful-distinctions-until-the-boundary.md"
+    ],
+    "id": "r007",
+    "file": ".scratch/semantic-lint-optimization/external/effect-redux/.agents/skills/executable-interactive-plans/assets/story-test-template/src/review-types.ts",
+    "policy": "internal/semanticlint/defaults/typescript-contracts/preserve-meaningful-distinctions-until-the-boundary.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "claude-skill-effect-ts/effect-ts-detectors/categories/native-apis/rule-013/rule-013.detector.ts",
+      "rules/function-naming.md"
+    ],
+    "id": "r008",
+    "file": ".scratch/semantic-lint-optimization/external/claude-skill-effect-ts/effect-ts-detectors/categories/native-apis/rule-013/rule-013.detector.ts",
+    "policy": "internal/semanticlint/defaults/function-naming.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "lion/packages/repl/src/components/ui/carousel.tsx",
+      "rules/typescript-contracts/decode-external-data-at-the-boundary.md"
+    ],
+    "id": "r009",
+    "file": ".scratch/semantic-lint-optimization/external/lion/packages/repl/src/components/ui/carousel.tsx",
+    "policy": "internal/semanticlint/defaults/typescript-contracts/decode-external-data-at-the-boundary.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "effect-redux/src/reducer.ts",
+      "rules/performance/avoid-growing-accumulator-copies.md"
+    ],
+    "id": "r010",
+    "file": ".scratch/semantic-lint-optimization/external/effect-redux/src/reducer.ts",
+    "policy": "internal/semanticlint/defaults/performance/avoid-growing-accumulator-copies.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "lion/packages/repl/src/components/ui/card.tsx",
+      "rules/readability/do-not-narrate-obvious-code.md"
+    ],
+    "id": "r011",
+    "file": ".scratch/semantic-lint-optimization/external/lion/packages/repl/src/components/ui/card.tsx",
+    "policy": "internal/semanticlint/defaults/readability/do-not-narrate-obvious-code.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "lion/packages/repl/src/components/ui/card.tsx",
+      "rules/readability/keep-comments-current.md"
+    ],
+    "id": "r012",
+    "file": ".scratch/semantic-lint-optimization/external/lion/packages/repl/src/components/ui/card.tsx",
+    "policy": "internal/semanticlint/defaults/readability/keep-comments-current.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "taskr/apps/web/tests/development-runs-local.spec.ts",
+      "rules/readability/keep-related-code-close-together.md"
+    ],
+    "id": "r013",
+    "file": ".scratch/semantic-lint-optimization/external/taskr/apps/web/tests/development-runs-local.spec.ts",
+    "policy": "internal/semanticlint/defaults/readability/keep-related-code-close-together.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "herd/packages/services/internal/identity/protocolDetection/resolve/parents/yearn/resolve.ts",
+      "rules/modularity/do-not-expose-internal-representations-unnecessarily.md"
+    ],
+    "id": "r014",
+    "file": ".scratch/semantic-lint-optimization/external/herd/packages/services/internal/identity/protocolDetection/resolve/parents/yearn/resolve.ts",
+    "policy": "internal/semanticlint/defaults/modularity/do-not-expose-internal-representations-unnecessarily.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "sandbox-sdk-effect/packages/sdk/src/providers/agentos/index.ts",
+      "rules/effect/translate-failures-only-at-the-presentation-boundary.md"
+    ],
+    "id": "r015",
+    "file": ".scratch/semantic-lint-optimization/external/sandbox-sdk-effect/packages/sdk/src/providers/agentos/index.ts",
+    "policy": "internal/semanticlint/defaults/effect/translate-failures-only-at-the-presentation-boundary.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "HerdProto/src/components/ExamplesSheet.tsx",
+      "rules/readonly.md"
+    ],
+    "id": "r016",
+    "file": ".scratch/semantic-lint-optimization/external/HerdProto/src/components/ExamplesSheet.tsx",
+    "policy": "internal/semanticlint/defaults/readonly.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "taskr/apps/infra/src/local-coding-controller.ts",
+      "rules/modularity/make-dependencies-explicit.md"
+    ],
+    "id": "r017",
+    "file": ".scratch/semantic-lint-optimization/external/taskr/apps/infra/src/local-coding-controller.ts",
+    "policy": "internal/semanticlint/defaults/modularity/make-dependencies-explicit.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "mapmaker/src/server/app.ts",
+      "rules/performance/avoid-repeated-linear-lookups.md"
+    ],
+    "id": "r018",
+    "file": ".scratch/semantic-lint-optimization/external/mapmaker/src/server/app.ts",
+    "policy": "internal/semanticlint/defaults/performance/avoid-repeated-linear-lookups.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "lion/packages/repl/src/components/ui/carousel.tsx",
+      "rules/performance/bound-pending-work.md"
+    ],
+    "id": "r019",
+    "file": ".scratch/semantic-lint-optimization/external/lion/packages/repl/src/components/ui/carousel.tsx",
+    "policy": "internal/semanticlint/defaults/performance/bound-pending-work.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "claude-skill-effect-ts/effect-ts-detectors/categories/native-apis/rule-013/rule-013.detector.ts",
+      "rules/abstraction/preserve-the-controls-callers-genuinely-need.md"
+    ],
+    "id": "r020",
+    "file": ".scratch/semantic-lint-optimization/external/claude-skill-effect-ts/effect-ts-detectors/categories/native-apis/rule-013/rule-013.detector.ts",
+    "policy": "internal/semanticlint/defaults/abstraction/preserve-the-controls-callers-genuinely-need.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "HerdProto/src/components/FunctionEditor.tsx",
+      "rules/modularity/minimize-back-and-forth-communication-between-modules.md"
+    ],
+    "id": "r021",
+    "file": ".scratch/semantic-lint-optimization/external/HerdProto/src/components/FunctionEditor.tsx",
+    "policy": "internal/semanticlint/defaults/modularity/minimize-back-and-forth-communication-between-modules.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "token-double-click/scripts/upload-claude-session.ts",
+      "rules/modularity/depend-on-narrow-collaborators.md"
+    ],
+    "id": "r022",
+    "file": ".scratch/semantic-lint-optimization/external/token-double-click/scripts/upload-claude-session.ts",
+    "policy": "internal/semanticlint/defaults/modularity/depend-on-narrow-collaborators.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "sandbox-sdk-effect/packages/sdk/src/core/provider.ts",
+      "rules/abstraction/keep-core-behavior-testable-in-isolation.md"
+    ],
+    "id": "r023",
+    "file": ".scratch/semantic-lint-optimization/external/sandbox-sdk-effect/packages/sdk/src/core/provider.ts",
+    "policy": "internal/semanticlint/defaults/abstraction/keep-core-behavior-testable-in-isolation.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "token-double-click/cf-research/src/worker/tools/tool-types.ts",
+      "rules/abstraction/make-correct-use-straightforward-and-invalid-use-difficult.md"
+    ],
+    "id": "r024",
+    "file": ".scratch/semantic-lint-optimization/external/token-double-click/cf-research/src/worker/tools/tool-types.ts",
+    "policy": "internal/semanticlint/defaults/abstraction/make-correct-use-straightforward-and-invalid-use-difficult.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "token-double-click/scripts/upload-claude-session.ts",
+      "rules/performance/bound-variable-input-fan-out.md"
+    ],
+    "id": "r025",
+    "file": ".scratch/semantic-lint-optimization/external/token-double-click/scripts/upload-claude-session.ts",
+    "policy": "internal/semanticlint/defaults/performance/bound-variable-input-fan-out.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "effect-redux/src/reducer.ts",
+      "rules/effect/model-expected-failures-with-specific-types.md"
+    ],
+    "id": "r026",
+    "file": ".scratch/semantic-lint-optimization/external/effect-redux/src/reducer.ts",
+    "policy": "internal/semanticlint/defaults/effect/model-expected-failures-with-specific-types.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "mapmaker/src/omp/ask-contract.ts",
+      "rules/effect/acquire-application-dependencies-once.md"
+    ],
+    "id": "r027",
+    "file": ".scratch/semantic-lint-optimization/external/mapmaker/src/omp/ask-contract.ts",
+    "policy": "internal/semanticlint/defaults/effect/acquire-application-dependencies-once.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "prime-agent/packages/coding-agent/test/agent-session-bus.test.ts",
+      "rules/simplicity/do-not-swallow-failures.md"
+    ],
+    "id": "r028",
+    "file": ".scratch/semantic-lint-optimization/external/prime-agent/packages/coding-agent/test/agent-session-bus.test.ts",
+    "policy": "internal/semanticlint/defaults/simplicity/do-not-swallow-failures.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "effect-redux/src/reducer.ts",
+      "rules/modularity/separate-decision-making-from-external-effects.md"
+    ],
+    "id": "r029",
+    "file": ".scratch/semantic-lint-optimization/external/effect-redux/src/reducer.ts",
+    "policy": "internal/semanticlint/defaults/modularity/separate-decision-making-from-external-effects.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "herd/packages/services/internal/identity/protocolDetection/resolve/parents/yearn/resolve.ts",
+      "rules/performance/avoid-growing-accumulator-copies.md"
+    ],
+    "id": "r030",
+    "file": ".scratch/semantic-lint-optimization/external/herd/packages/services/internal/identity/protocolDetection/resolve/parents/yearn/resolve.ts",
+    "policy": "internal/semanticlint/defaults/performance/avoid-growing-accumulator-copies.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "mapmaker/src/server/app.ts",
+      "rules/web-boundaries/give-request-bodies-and-streams-one-consumption-owner.md"
+    ],
+    "id": "r031",
+    "file": ".scratch/semantic-lint-optimization/external/mapmaker/src/server/app.ts",
+    "policy": "internal/semanticlint/defaults/web-boundaries/give-request-bodies-and-streams-one-consumption-owner.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "wintermute-web/frontend/tailwind.config.ts",
+      "rules/effect/retry-only-transient-failures.md"
+    ],
+    "id": "r032",
+    "file": ".scratch/semantic-lint-optimization/external/wintermute-web/frontend/tailwind.config.ts",
+    "policy": "internal/semanticlint/defaults/effect/retry-only-transient-failures.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "task-based-pi/apps/task-based-pi/src/task-runtime-boundaries.test.ts",
+      "rules/modularity/prefer-composition-over-cross-module-inheritance.md"
+    ],
+    "id": "r033",
+    "file": ".scratch/semantic-lint-optimization/external/task-based-pi/apps/task-based-pi/src/task-runtime-boundaries.test.ts",
+    "policy": "internal/semanticlint/defaults/modularity/prefer-composition-over-cross-module-inheritance.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "task-based-pi/apps/task-based-pi/src/task-runtime-boundaries.test.ts",
+      "rules/readability/delete-dead-code.md"
+    ],
+    "id": "r034",
+    "file": ".scratch/semantic-lint-optimization/external/task-based-pi/apps/task-based-pi/src/task-runtime-boundaries.test.ts",
+    "policy": "internal/semanticlint/defaults/readability/delete-dead-code.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "open-workflows/examples/audit-auth/src/review.ts",
+      "rules/effect/model-expected-failures-with-specific-types.md"
+    ],
+    "id": "r035",
+    "file": ".scratch/semantic-lint-optimization/external/open-workflows/examples/audit-auth/src/review.ts",
+    "policy": "internal/semanticlint/defaults/effect/model-expected-failures-with-specific-types.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "OpenBot/supervisor/tests/listen-port.test.ts",
+      "rules/abstraction/give-each-resource-an-owner-that-releases-it.md"
+    ],
+    "id": "r036",
+    "file": ".scratch/semantic-lint-optimization/external/OpenBot/supervisor/tests/listen-port.test.ts",
+    "policy": "internal/semanticlint/defaults/abstraction/give-each-resource-an-owner-that-releases-it.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "prime-agent/packages/coding-agent/test/agent-session-bus.test.ts",
+      "rules/abstraction/make-important-consequences-apparent.md"
+    ],
+    "id": "r037",
+    "file": ".scratch/semantic-lint-optimization/external/prime-agent/packages/coding-agent/test/agent-session-bus.test.ts",
+    "policy": "internal/semanticlint/defaults/abstraction/make-important-consequences-apparent.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "effect-redux/src/reducer.ts",
+      "rules/effect/compose-timeouts-and-retries-deliberately.md"
+    ],
+    "id": "r038",
+    "file": ".scratch/semantic-lint-optimization/external/effect-redux/src/reducer.ts",
+    "policy": "internal/semanticlint/defaults/effect/compose-timeouts-and-retries-deliberately.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "task-based-pi/apps/task-based-pi/src/task-runtime-boundaries.test.ts",
+      "rules/readability/avoid-obscure-abbreviations-and-redundant-prefixes.md"
+    ],
+    "id": "r039",
+    "file": ".scratch/semantic-lint-optimization/external/task-based-pi/apps/task-based-pi/src/task-runtime-boundaries.test.ts",
+    "policy": "internal/semanticlint/defaults/readability/avoid-obscure-abbreviations-and-redundant-prefixes.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "lion/packages/repl/src/components/ui/carousel.tsx",
+      "rules/effect/convert-thrown-exceptions-at-external-boundaries.md"
+    ],
+    "id": "r040",
+    "file": ".scratch/semantic-lint-optimization/external/lion/packages/repl/src/components/ui/carousel.tsx",
+    "policy": "internal/semanticlint/defaults/effect/convert-thrown-exceptions-at-external-boundaries.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "taskr/apps/web/tests/development-runs-local.spec.ts",
+      "rules/testing-enforcement/preserve-original-generated-inputs.md"
+    ],
+    "id": "r041",
+    "file": ".scratch/semantic-lint-optimization/external/taskr/apps/web/tests/development-runs-local.spec.ts",
+    "policy": "internal/semanticlint/defaults/testing-enforcement/preserve-original-generated-inputs.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "lion/packages/repl/src/components/ui/carousel.tsx",
+      "rules/effect/keep-pure-calculations-pure.md"
+    ],
+    "id": "r042",
+    "file": ".scratch/semantic-lint-optimization/external/lion/packages/repl/src/components/ui/carousel.tsx",
+    "policy": "internal/semanticlint/defaults/effect/keep-pure-calculations-pure.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "taskr/apps/web/tests/development-runs-local.spec.ts",
+      "rules/effect/retry-only-transient-failures.md"
+    ],
+    "id": "r043",
+    "file": ".scratch/semantic-lint-optimization/external/taskr/apps/web/tests/development-runs-local.spec.ts",
+    "policy": "internal/semanticlint/defaults/effect/retry-only-transient-failures.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "claude-skill-effect-ts/effect-ts-detectors/categories/code-style/rule-002/rule-002.detector.ts",
+      "rules/readability/keep-related-code-close-together.md"
+    ],
+    "id": "r044",
+    "file": ".scratch/semantic-lint-optimization/external/claude-skill-effect-ts/effect-ts-detectors/categories/code-style/rule-002/rule-002.detector.ts",
+    "policy": "internal/semanticlint/defaults/readability/keep-related-code-close-together.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "token-double-click/scripts/upload-claude-session.ts",
+      "rules/web-boundaries/enforce-authorization-in-the-protected-operation.md"
+    ],
+    "id": "r045",
+    "file": ".scratch/semantic-lint-optimization/external/token-double-click/scripts/upload-claude-session.ts",
+    "policy": "internal/semanticlint/defaults/web-boundaries/enforce-authorization-in-the-protected-operation.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "herd/packages/services/internal/identity/protocolDetection/resolve/parents/yearn/resolve.ts",
+      "rules/simplicity/do-not-swallow-failures.md"
+    ],
+    "id": "r046",
+    "file": ".scratch/semantic-lint-optimization/external/herd/packages/services/internal/identity/protocolDetection/resolve/parents/yearn/resolve.ts",
+    "policy": "internal/semanticlint/defaults/simplicity/do-not-swallow-failures.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "wintermute-web/frontend/tailwind.config.ts",
+      "rules/abstraction/keep-core-behavior-testable-in-isolation.md"
+    ],
+    "id": "r047",
+    "file": ".scratch/semantic-lint-optimization/external/wintermute-web/frontend/tailwind.config.ts",
+    "policy": "internal/semanticlint/defaults/abstraction/keep-core-behavior-testable-in-isolation.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "effect-redux/src/reducer.ts",
+      "rules/effect/retry-only-transient-failures.md"
+    ],
+    "id": "r048",
+    "file": ".scratch/semantic-lint-optimization/external/effect-redux/src/reducer.ts",
+    "policy": "internal/semanticlint/defaults/effect/retry-only-transient-failures.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "OpenBot/server/tests/bot-lifecycle-audit.test.ts",
+      "rules/modularity/do-not-require-a-secret-call-order.md"
+    ],
+    "id": "r049",
+    "file": ".scratch/semantic-lint-optimization/external/OpenBot/server/tests/bot-lifecycle-audit.test.ts",
+    "policy": "internal/semanticlint/defaults/modularity/do-not-require-a-secret-call-order.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "prime-agent/packages/coding-agent/test/agent-session-bus.test.ts",
+      "rules/modularity/separate-decision-making-from-external-effects.md"
+    ],
+    "id": "r050",
+    "file": ".scratch/semantic-lint-optimization/external/prime-agent/packages/coding-agent/test/agent-session-bus.test.ts",
+    "policy": "internal/semanticlint/defaults/modularity/separate-decision-making-from-external-effects.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "taskr/apps/web/tests/development-runs-local.spec.ts",
+      "rules/effect/keep-expected-failures-out-of-the-defect-channel.md"
+    ],
+    "id": "r051",
+    "file": ".scratch/semantic-lint-optimization/external/taskr/apps/web/tests/development-runs-local.spec.ts",
+    "policy": "internal/semanticlint/defaults/effect/keep-expected-failures-out-of-the-defect-channel.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "wintermute-web/frontend/tailwind.config.ts",
+      "rules/simplicity/choose-data-structures-that-reduce-special-cases.md"
+    ],
+    "id": "r052",
+    "file": ".scratch/semantic-lint-optimization/external/wintermute-web/frontend/tailwind.config.ts",
+    "policy": "internal/semanticlint/defaults/simplicity/choose-data-structures-that-reduce-special-cases.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "OpenBot/supervisor/tests/listen-port.test.ts",
+      "rules/readability/delete-dead-code.md"
+    ],
+    "id": "r053",
+    "file": ".scratch/semantic-lint-optimization/external/OpenBot/supervisor/tests/listen-port.test.ts",
+    "policy": "internal/semanticlint/defaults/readability/delete-dead-code.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "mapmaker/src/server/app.ts",
+      "rules/abstraction/make-the-public-interface-as-small-as-the-contract-allows.md"
+    ],
+    "id": "r054",
+    "file": ".scratch/semantic-lint-optimization/external/mapmaker/src/server/app.ts",
+    "policy": "internal/semanticlint/defaults/abstraction/make-the-public-interface-as-small-as-the-contract-allows.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "mapmaker/src/omp/ask-contract.ts",
+      "rules/simplicity/do-not-add-speculative-extension-points.md"
+    ],
+    "id": "r055",
+    "file": ".scratch/semantic-lint-optimization/external/mapmaker/src/omp/ask-contract.ts",
+    "policy": "internal/semanticlint/defaults/simplicity/do-not-add-speculative-extension-points.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "token-double-click/scripts/upload-claude-session.ts",
+      "rules/readability/make-interfaces-understandable-at-the-call-site.md"
+    ],
+    "id": "r056",
+    "file": ".scratch/semantic-lint-optimization/external/token-double-click/scripts/upload-claude-session.ts",
+    "policy": "internal/semanticlint/defaults/readability/make-interfaces-understandable-at-the-call-site.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "wintermute-web/frontend/src/components/phase-progress.tsx",
+      "rules/simplicity/handle-errors-explicitly-and-close-to-the-right-boundary.md"
+    ],
+    "id": "r057",
+    "file": ".scratch/semantic-lint-optimization/external/wintermute-web/frontend/src/components/phase-progress.tsx",
+    "policy": "internal/semanticlint/defaults/simplicity/handle-errors-explicitly-and-close-to-the-right-boundary.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "prime-agent/packages/coding-agent/src/utils/semaphore.ts",
+      "rules/typescript-contracts/decode-external-data-at-the-boundary.md"
+    ],
+    "id": "r058",
+    "file": ".scratch/semantic-lint-optimization/external/prime-agent/packages/coding-agent/src/utils/semaphore.ts",
+    "policy": "internal/semanticlint/defaults/typescript-contracts/decode-external-data-at-the-boundary.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "herd/packages/dal/src/sessionExecutions/repository.ts",
+      "rules/web-boundaries/enforce-authorization-in-the-protected-operation.md"
+    ],
+    "id": "r059",
+    "file": ".scratch/semantic-lint-optimization/external/herd/packages/dal/src/sessionExecutions/repository.ts",
+    "policy": "internal/semanticlint/defaults/web-boundaries/enforce-authorization-in-the-protected-operation.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "task-based-pi/apps/task-based-pi/src/task-runtime-boundaries.test.ts",
+      "rules/effect/keep-pure-calculations-pure.md"
+    ],
+    "id": "r060",
+    "file": ".scratch/semantic-lint-optimization/external/task-based-pi/apps/task-based-pi/src/task-runtime-boundaries.test.ts",
+    "policy": "internal/semanticlint/defaults/effect/keep-pure-calculations-pure.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "herd/packages/services/internal/identity/protocolDetection/resolve/parents/yearn/resolve.ts",
+      "rules/readability/delete-dead-code.md"
+    ],
+    "id": "r061",
+    "file": ".scratch/semantic-lint-optimization/external/herd/packages/services/internal/identity/protocolDetection/resolve/parents/yearn/resolve.ts",
+    "policy": "internal/semanticlint/defaults/readability/delete-dead-code.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "task-based-pi/apps/task-based-pi/src/task-runtime-boundaries.test.ts",
+      "rules/web-boundaries/separate-application-dependencies-from-request-state.md"
+    ],
+    "id": "r062",
+    "file": ".scratch/semantic-lint-optimization/external/task-based-pi/apps/task-based-pi/src/task-runtime-boundaries.test.ts",
+    "policy": "internal/semanticlint/defaults/web-boundaries/separate-application-dependencies-from-request-state.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "task-based-pi/apps/task-based-pi/src/task-runtime-boundaries.test.ts",
+      "rules/testing-enforcement/own-asynchronous-test-work.md"
+    ],
+    "id": "r063",
+    "file": ".scratch/semantic-lint-optimization/external/task-based-pi/apps/task-based-pi/src/task-runtime-boundaries.test.ts",
+    "policy": "internal/semanticlint/defaults/testing-enforcement/own-asynchronous-test-work.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "wintermute-web/frontend/tailwind.config.ts",
+      "rules/effect/retry-writes-only-when-safe-to-repeat.md"
+    ],
+    "id": "r064",
+    "file": ".scratch/semantic-lint-optimization/external/wintermute-web/frontend/tailwind.config.ts",
+    "policy": "internal/semanticlint/defaults/effect/retry-writes-only-when-safe-to-repeat.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "prime-agent/packages/coding-agent/test/agent-session-bus.test.ts",
+      "rules/effect/construct-effects-lazily.md"
+    ],
+    "id": "r065",
+    "file": ".scratch/semantic-lint-optimization/external/prime-agent/packages/coding-agent/test/agent-session-bus.test.ts",
+    "policy": "internal/semanticlint/defaults/effect/construct-effects-lazily.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "effect-redux/src/reducer.ts",
+      "rules/typescript-contracts/preserve-meaningful-distinctions-until-the-boundary.md"
+    ],
+    "id": "r066",
+    "file": ".scratch/semantic-lint-optimization/external/effect-redux/src/reducer.ts",
+    "policy": "internal/semanticlint/defaults/typescript-contracts/preserve-meaningful-distinctions-until-the-boundary.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "open-workflows/examples/audit-auth/src/review.ts",
+      "rules/readonly.md"
+    ],
+    "id": "r067",
+    "file": ".scratch/semantic-lint-optimization/external/open-workflows/examples/audit-auth/src/review.ts",
+    "policy": "internal/semanticlint/defaults/readonly.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "task-based-pi/apps/task-based-pi/src/task-runtime-boundaries.test.ts",
+      "rules/readability/prefer-straightforward-code-over-clever-code.md"
+    ],
+    "id": "r068",
+    "file": ".scratch/semantic-lint-optimization/external/task-based-pi/apps/task-based-pi/src/task-runtime-boundaries.test.ts",
+    "policy": "internal/semanticlint/defaults/readability/prefer-straightforward-code-over-clever-code.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "effect-domains/test/Application.types.ts",
+      "rules/testing-enforcement/execute-properties-through-the-test-runner.md"
+    ],
+    "id": "r069",
+    "file": ".scratch/semantic-lint-optimization/external/effect-domains/test/Application.types.ts",
+    "policy": "internal/semanticlint/defaults/testing-enforcement/execute-properties-through-the-test-runner.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "task-based-pi/apps/task-based-pi/src/task-runtime-boundaries.test.ts",
+      "rules/abstraction/test-promised-laws-against-their-equivalence.md"
+    ],
+    "id": "r070",
+    "file": ".scratch/semantic-lint-optimization/external/task-based-pi/apps/task-based-pi/src/task-runtime-boundaries.test.ts",
+    "policy": "internal/semanticlint/defaults/abstraction/test-promised-laws-against-their-equivalence.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "effect-domains/test/Application.types.ts",
+      "rules/readability/prefer-straightforward-code-over-clever-code.md"
+    ],
+    "id": "r071",
+    "file": ".scratch/semantic-lint-optimization/external/effect-domains/test/Application.types.ts",
+    "policy": "internal/semanticlint/defaults/readability/prefer-straightforward-code-over-clever-code.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "token-double-click/cf-research/src/worker/tools/tool-types.ts",
+      "rules/performance/avoid-growing-accumulator-copies.md"
+    ],
+    "id": "r072",
+    "file": ".scratch/semantic-lint-optimization/external/token-double-click/cf-research/src/worker/tools/tool-types.ts",
+    "policy": "internal/semanticlint/defaults/performance/avoid-growing-accumulator-copies.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "mapmaker/src/omp/ask-contract.ts",
+      "rules/typescript-contracts/make-exported-effect-signatures-intentional.md"
+    ],
+    "id": "r073",
+    "file": ".scratch/semantic-lint-optimization/external/mapmaker/src/omp/ask-contract.ts",
+    "policy": "internal/semanticlint/defaults/typescript-contracts/make-exported-effect-signatures-intentional.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "open-workflows/examples/audit-auth/src/review.ts",
+      "rules/simplicity/choose-data-structures-that-reduce-special-cases.md"
+    ],
+    "id": "r074",
+    "file": ".scratch/semantic-lint-optimization/external/open-workflows/examples/audit-auth/src/review.ts",
+    "policy": "internal/semanticlint/defaults/simplicity/choose-data-structures-that-reduce-special-cases.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "prime-agent/packages/coding-agent/src/utils/semaphore.ts",
+      "rules/readability/avoid-temporaries-that-merely-repeat-an-expression.md"
+    ],
+    "id": "r075",
+    "file": ".scratch/semantic-lint-optimization/external/prime-agent/packages/coding-agent/src/utils/semaphore.ts",
+    "policy": "internal/semanticlint/defaults/readability/avoid-temporaries-that-merely-repeat-an-expression.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "effect-domains/packages/effect-domains/src/resource/repository-store.ts",
+      "rules/web-boundaries/separate-application-dependencies-from-request-state.md"
+    ],
+    "id": "r076",
+    "file": ".scratch/semantic-lint-optimization/external/effect-domains/packages/effect-domains/src/resource/repository-store.ts",
+    "policy": "internal/semanticlint/defaults/web-boundaries/separate-application-dependencies-from-request-state.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "HerdProto/src/components/FunctionEditor.tsx",
+      "rules/performance/avoid-repeated-linear-lookups.md"
+    ],
+    "id": "r077",
+    "file": ".scratch/semantic-lint-optimization/external/HerdProto/src/components/FunctionEditor.tsx",
+    "policy": "internal/semanticlint/defaults/performance/avoid-repeated-linear-lookups.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "taskr/apps/web/tests/development-runs-local.spec.ts",
+      "rules/effect/give-background-tasks-an-owner.md"
+    ],
+    "id": "r078",
+    "file": ".scratch/semantic-lint-optimization/external/taskr/apps/web/tests/development-runs-local.spec.ts",
+    "policy": "internal/semanticlint/defaults/effect/give-background-tasks-an-owner.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "task-based-pi/docs/executable-interactive-plans/task-unification/server.ts",
+      "rules/abstraction/do-not-import-another-modules-internal-files.md"
+    ],
+    "id": "r079",
+    "file": ".scratch/semantic-lint-optimization/external/task-based-pi/docs/executable-interactive-plans/task-unification/server.ts",
+    "policy": "internal/semanticlint/defaults/abstraction/do-not-import-another-modules-internal-files.md"
+  },
+  {
+    "set": "a",
+    "pair": [
+      "effect-redux/src/reducer.ts",
+      "rules/performance/avoid-repeated-linear-lookups.md"
+    ],
+    "id": "r080",
+    "file": ".scratch/semantic-lint-optimization/external/effect-redux/src/reducer.ts",
+    "policy": "internal/semanticlint/defaults/performance/avoid-repeated-linear-lookups.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "prime-agent/packages/ai/test/openai-responses-empty-tool-result.test.ts",
+      "rules/testing-enforcement/test-resource-lifecycle-behavior.md"
+    ],
+    "id": "r081",
+    "file": ".scratch/semantic-lint-optimization/external/prime-agent/packages/ai/test/openai-responses-empty-tool-result.test.ts",
+    "policy": "internal/semanticlint/defaults/testing-enforcement/test-resource-lifecycle-behavior.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "token-double-click/cf-research/src/worker/domain/frontier-state.test.ts",
+      "rules/effect/translate-failures-only-at-the-presentation-boundary.md"
+    ],
+    "id": "r082",
+    "file": ".scratch/semantic-lint-optimization/external/token-double-click/cf-research/src/worker/domain/frontier-state.test.ts",
+    "policy": "internal/semanticlint/defaults/effect/translate-failures-only-at-the-presentation-boundary.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "HerdProto/src/icons/NotificationPixelatedIcon.tsx",
+      "rules/effect/construct-effects-lazily.md"
+    ],
+    "id": "r083",
+    "file": ".scratch/semantic-lint-optimization/external/HerdProto/src/icons/NotificationPixelatedIcon.tsx",
+    "policy": "internal/semanticlint/defaults/effect/construct-effects-lazily.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "effect-domains/examples/community-elections/tally.ts",
+      "rules/web-boundaries/treat-streaming-responses-as-active-work.md"
+    ],
+    "id": "r084",
+    "file": ".scratch/semantic-lint-optimization/external/effect-domains/examples/community-elections/tally.ts",
+    "policy": "internal/semanticlint/defaults/web-boundaries/treat-streaming-responses-as-active-work.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "task-based-pi/apps/task-based-pi/playwright.live-steering.config.ts",
+      "rules/effect/separate-service-interfaces-from-layer-construction.md"
+    ],
+    "id": "r085",
+    "file": ".scratch/semantic-lint-optimization/external/task-based-pi/apps/task-based-pi/playwright.live-steering.config.ts",
+    "policy": "internal/semanticlint/defaults/effect/separate-service-interfaces-from-layer-construction.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "claude-skill-effect-ts/effect-ts-detectors/categories/imperative/index.ts",
+      "rules/simplicity/give-each-function-or-module-one-coherent-responsibility.md"
+    ],
+    "id": "r086",
+    "file": ".scratch/semantic-lint-optimization/external/claude-skill-effect-ts/effect-ts-detectors/categories/imperative/index.ts",
+    "policy": "internal/semanticlint/defaults/simplicity/give-each-function-or-module-one-coherent-responsibility.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "lion/packages/core/src/schemas/evaluation.ts",
+      "rules/performance/avoid-repeated-linear-lookups.md"
+    ],
+    "id": "r087",
+    "file": ".scratch/semantic-lint-optimization/external/lion/packages/core/src/schemas/evaluation.ts",
+    "policy": "internal/semanticlint/defaults/performance/avoid-repeated-linear-lookups.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "OpenBot/server/tests/computer-snapshot-id.test.ts",
+      "rules/testing-enforcement/reuse-expensive-test-setup.md"
+    ],
+    "id": "r088",
+    "file": ".scratch/semantic-lint-optimization/external/OpenBot/server/tests/computer-snapshot-id.test.ts",
+    "policy": "internal/semanticlint/defaults/testing-enforcement/reuse-expensive-test-setup.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "sandbox-sdk-effect/packages/sdk/tests/core/disposal.test.ts",
+      "rules/testing-enforcement/state-the-law-property-tests-enforce.md"
+    ],
+    "id": "r089",
+    "file": ".scratch/semantic-lint-optimization/external/sandbox-sdk-effect/packages/sdk/tests/core/disposal.test.ts",
+    "policy": "internal/semanticlint/defaults/testing-enforcement/state-the-law-property-tests-enforce.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "open-workflows/examples/audit-auth/src/workflows.test.ts",
+      "rules/file-code-organization/keep-variants-of-one-thing-together.md"
+    ],
+    "id": "r090",
+    "file": ".scratch/semantic-lint-optimization/external/open-workflows/examples/audit-auth/src/workflows.test.ts",
+    "policy": "internal/semanticlint/defaults/file-code-organization/keep-variants-of-one-thing-together.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "HerdProto/src/icons/FunctionIcon.tsx",
+      "rules/effect/propagate-interruption-to-underlying-work.md"
+    ],
+    "id": "r091",
+    "file": ".scratch/semantic-lint-optimization/external/HerdProto/src/icons/FunctionIcon.tsx",
+    "policy": "internal/semanticlint/defaults/effect/propagate-interruption-to-underlying-work.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "taskr/apps/infra/src/protected-deployment.ts",
+      "rules/effect/separate-service-interfaces-from-layer-construction.md"
+    ],
+    "id": "r092",
+    "file": ".scratch/semantic-lint-optimization/external/taskr/apps/infra/src/protected-deployment.ts",
+    "policy": "internal/semanticlint/defaults/effect/separate-service-interfaces-from-layer-construction.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "OpenBot/server/tests/computer-snapshot-id.test.ts",
+      "rules/typescript-contracts/isolate-unsafe-type-escapes.md"
+    ],
+    "id": "r093",
+    "file": ".scratch/semantic-lint-optimization/external/OpenBot/server/tests/computer-snapshot-id.test.ts",
+    "policy": "internal/semanticlint/defaults/typescript-contracts/isolate-unsafe-type-escapes.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "mapmaker/src/server/lock.ts",
+      "rules/abstraction/keep-core-behavior-testable-in-isolation.md"
+    ],
+    "id": "r094",
+    "file": ".scratch/semantic-lint-optimization/external/mapmaker/src/server/lock.ts",
+    "policy": "internal/semanticlint/defaults/abstraction/keep-core-behavior-testable-in-isolation.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "effect-domains/examples/community-elections/tally.ts",
+      "rules/readability/make-important-distinctions-visible-in-names.md"
+    ],
+    "id": "r095",
+    "file": ".scratch/semantic-lint-optimization/external/effect-domains/examples/community-elections/tally.ts",
+    "policy": "internal/semanticlint/defaults/readability/make-important-distinctions-visible-in-names.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "herd/apps/api/src/models/monitors/versions.ts",
+      "rules/security/hide-database-details.md"
+    ],
+    "id": "r096",
+    "file": ".scratch/semantic-lint-optimization/external/herd/apps/api/src/models/monitors/versions.ts",
+    "policy": "internal/semanticlint/defaults/security/hide-database-details.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "sandbox-sdk-effect/packages/sdk/src/providers/local/index.ts",
+      "rules/effect/separate-service-interfaces-from-layer-construction.md"
+    ],
+    "id": "r097",
+    "file": ".scratch/semantic-lint-optimization/external/sandbox-sdk-effect/packages/sdk/src/providers/local/index.ts",
+    "policy": "internal/semanticlint/defaults/effect/separate-service-interfaces-from-layer-construction.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "mapmaker/src/server/lock.ts",
+      "rules/performance/bound-pending-work.md"
+    ],
+    "id": "r098",
+    "file": ".scratch/semantic-lint-optimization/external/mapmaker/src/server/lock.ts",
+    "policy": "internal/semanticlint/defaults/performance/bound-pending-work.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "open-workflows/packages/web/src/NodeDetail.tsx",
+      "rules/readability/make-interfaces-understandable-at-the-call-site.md"
+    ],
+    "id": "r099",
+    "file": ".scratch/semantic-lint-optimization/external/open-workflows/packages/web/src/NodeDetail.tsx",
+    "policy": "internal/semanticlint/defaults/readability/make-interfaces-understandable-at-the-call-site.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "herd/apps/api/src/routes/base-queries/post.ts",
+      "rules/effect/retry-writes-only-when-safe-to-repeat.md"
+    ],
+    "id": "r100",
+    "file": ".scratch/semantic-lint-optimization/external/herd/apps/api/src/routes/base-queries/post.ts",
+    "policy": "internal/semanticlint/defaults/effect/retry-writes-only-when-safe-to-repeat.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "effect-domains/examples/purchased-guides/main.ts",
+      "rules/effect/do-not-wrap-pure-utilities-in-services.md"
+    ],
+    "id": "r101",
+    "file": ".scratch/semantic-lint-optimization/external/effect-domains/examples/purchased-guides/main.ts",
+    "policy": "internal/semanticlint/defaults/effect/do-not-wrap-pure-utilities-in-services.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "OpenBot/app/tests/computer-reset-clears-activity.test.ts",
+      "rules/testing-enforcement/assert-absence-only-after-the-operation-completes.md"
+    ],
+    "id": "r102",
+    "file": ".scratch/semantic-lint-optimization/external/OpenBot/app/tests/computer-reset-clears-activity.test.ts",
+    "policy": "internal/semanticlint/defaults/testing-enforcement/assert-absence-only-after-the-operation-completes.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "herd/apps/api/src/routes/base-queries/post.ts",
+      "rules/modularity/separate-decision-making-from-external-effects.md"
+    ],
+    "id": "r103",
+    "file": ".scratch/semantic-lint-optimization/external/herd/apps/api/src/routes/base-queries/post.ts",
+    "policy": "internal/semanticlint/defaults/modularity/separate-decision-making-from-external-effects.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "herd/apps/api/src/routes/base-queries/post.ts",
+      "rules/effect/adapt-promises-once-at-integration-boundaries.md"
+    ],
+    "id": "r104",
+    "file": ".scratch/semantic-lint-optimization/external/herd/apps/api/src/routes/base-queries/post.ts",
+    "policy": "internal/semanticlint/defaults/effect/adapt-promises-once-at-integration-boundaries.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "open-workflows/examples/audit-auth/src/workflows.test.ts",
+      "rules/readonly.md"
+    ],
+    "id": "r105",
+    "file": ".scratch/semantic-lint-optimization/external/open-workflows/examples/audit-auth/src/workflows.test.ts",
+    "policy": "internal/semanticlint/defaults/readonly.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "OpenBot/app/tests/computer-reset-clears-activity.test.ts",
+      "rules/web-boundaries/separate-application-dependencies-from-request-state.md"
+    ],
+    "id": "r106",
+    "file": ".scratch/semantic-lint-optimization/external/OpenBot/app/tests/computer-reset-clears-activity.test.ts",
+    "policy": "internal/semanticlint/defaults/web-boundaries/separate-application-dependencies-from-request-state.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "token-double-click/cf-research/src/worker/domain/frontier-state.test.ts",
+      "rules/readability/delete-dead-code.md"
+    ],
+    "id": "r107",
+    "file": ".scratch/semantic-lint-optimization/external/token-double-click/cf-research/src/worker/domain/frontier-state.test.ts",
+    "policy": "internal/semanticlint/defaults/readability/delete-dead-code.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "task-based-pi/apps/task-based-pi/playwright.config.ts",
+      "rules/typescript-contracts/preserve-meaningful-distinctions-until-the-boundary.md"
+    ],
+    "id": "r108",
+    "file": ".scratch/semantic-lint-optimization/external/task-based-pi/apps/task-based-pi/playwright.config.ts",
+    "policy": "internal/semanticlint/defaults/typescript-contracts/preserve-meaningful-distinctions-until-the-boundary.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "token-double-click/cf-research/src/worker/domain/frontier-state.test.ts",
+      "rules/performance/bound-pending-work.md"
+    ],
+    "id": "r109",
+    "file": ".scratch/semantic-lint-optimization/external/token-double-click/cf-research/src/worker/domain/frontier-state.test.ts",
+    "policy": "internal/semanticlint/defaults/performance/bound-pending-work.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "mapmaker/src/server/lock.ts",
+      "rules/web-boundaries/keep-route-handlers-and-ui-components-thin.md"
+    ],
+    "id": "r110",
+    "file": ".scratch/semantic-lint-optimization/external/mapmaker/src/server/lock.ts",
+    "policy": "internal/semanticlint/defaults/web-boundaries/keep-route-handlers-and-ui-components-thin.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "open-workflows/packages/web/src/NodeDetail.tsx",
+      "rules/effect/do-not-wrap-pure-utilities-in-services.md"
+    ],
+    "id": "r111",
+    "file": ".scratch/semantic-lint-optimization/external/open-workflows/packages/web/src/NodeDetail.tsx",
+    "policy": "internal/semanticlint/defaults/effect/do-not-wrap-pure-utilities-in-services.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "mapmaker/src/server/lock.ts",
+      "rules/effect/keep-pure-calculations-pure.md"
+    ],
+    "id": "r112",
+    "file": ".scratch/semantic-lint-optimization/external/mapmaker/src/server/lock.ts",
+    "policy": "internal/semanticlint/defaults/effect/keep-pure-calculations-pure.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "wintermute-web/frontend/src/hooks/use-agent-stream.ts",
+      "rules/abstraction/make-correct-use-straightforward-and-invalid-use-difficult.md"
+    ],
+    "id": "r113",
+    "file": ".scratch/semantic-lint-optimization/external/wintermute-web/frontend/src/hooks/use-agent-stream.ts",
+    "policy": "internal/semanticlint/defaults/abstraction/make-correct-use-straightforward-and-invalid-use-difficult.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "effect-redux/.agents/skills/executable-interactive-plans/assets/examples/task-management/review-server.ts",
+      "rules/file-code-organization/keep-variants-of-one-thing-together.md"
+    ],
+    "id": "r114",
+    "file": ".scratch/semantic-lint-optimization/external/effect-redux/.agents/skills/executable-interactive-plans/assets/examples/task-management/review-server.ts",
+    "policy": "internal/semanticlint/defaults/file-code-organization/keep-variants-of-one-thing-together.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "sandbox-sdk-effect/packages/sdk/src/providers/local/index.ts",
+      "rules/readonly.md"
+    ],
+    "id": "r115",
+    "file": ".scratch/semantic-lint-optimization/external/sandbox-sdk-effect/packages/sdk/src/providers/local/index.ts",
+    "policy": "internal/semanticlint/defaults/readonly.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "task-based-pi/apps/task-based-pi/playwright.config.ts",
+      "rules/readability/name-booleans-as-conditions.md"
+    ],
+    "id": "r116",
+    "file": ".scratch/semantic-lint-optimization/external/task-based-pi/apps/task-based-pi/playwright.config.ts",
+    "policy": "internal/semanticlint/defaults/readability/name-booleans-as-conditions.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "open-workflows/examples/audit-auth/src/workflows.test.ts",
+      "rules/abstraction/do-not-import-another-modules-internal-files.md"
+    ],
+    "id": "r117",
+    "file": ".scratch/semantic-lint-optimization/external/open-workflows/examples/audit-auth/src/workflows.test.ts",
+    "policy": "internal/semanticlint/defaults/abstraction/do-not-import-another-modules-internal-files.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "OpenBot/app/tests/computer-reset-clears-activity.test.ts",
+      "rules/simplicity/choose-data-structures-that-reduce-special-cases.md"
+    ],
+    "id": "r118",
+    "file": ".scratch/semantic-lint-optimization/external/OpenBot/app/tests/computer-reset-clears-activity.test.ts",
+    "policy": "internal/semanticlint/defaults/simplicity/choose-data-structures-that-reduce-special-cases.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "task-based-pi/apps/task-based-pi/playwright.config.ts",
+      "rules/typescript-contracts/make-exported-effect-signatures-intentional.md"
+    ],
+    "id": "r119",
+    "file": ".scratch/semantic-lint-optimization/external/task-based-pi/apps/task-based-pi/playwright.config.ts",
+    "policy": "internal/semanticlint/defaults/typescript-contracts/make-exported-effect-signatures-intentional.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "wintermute-web/frontend/src/hooks/use-agent-stream.ts",
+      "rules/effect/keep-expected-failures-out-of-the-defect-channel.md"
+    ],
+    "id": "r120",
+    "file": ".scratch/semantic-lint-optimization/external/wintermute-web/frontend/src/hooks/use-agent-stream.ts",
+    "policy": "internal/semanticlint/defaults/effect/keep-expected-failures-out-of-the-defect-channel.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "sandbox-sdk-effect/packages/sdk/src/providers/local/index.ts",
+      "rules/readability/avoid-temporaries-that-merely-repeat-an-expression.md"
+    ],
+    "id": "r121",
+    "file": ".scratch/semantic-lint-optimization/external/sandbox-sdk-effect/packages/sdk/src/providers/local/index.ts",
+    "policy": "internal/semanticlint/defaults/readability/avoid-temporaries-that-merely-repeat-an-expression.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "claude-skill-effect-ts/effect-ts-detectors/categories/errors/rule-006/rule-006.detector.ts",
+      "rules/readability/make-important-distinctions-visible-in-names.md"
+    ],
+    "id": "r122",
+    "file": ".scratch/semantic-lint-optimization/external/claude-skill-effect-ts/effect-ts-detectors/categories/errors/rule-006/rule-006.detector.ts",
+    "policy": "internal/semanticlint/defaults/readability/make-important-distinctions-visible-in-names.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "mapmaker/src/server/lock.ts",
+      "rules/abstraction/give-each-resource-an-owner-that-releases-it.md"
+    ],
+    "id": "r123",
+    "file": ".scratch/semantic-lint-optimization/external/mapmaker/src/server/lock.ts",
+    "policy": "internal/semanticlint/defaults/abstraction/give-each-resource-an-owner-that-releases-it.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "task-based-pi/apps/task-based-pi/playwright.live-steering.config.ts",
+      "rules/readability/keep-related-code-close-together.md"
+    ],
+    "id": "r124",
+    "file": ".scratch/semantic-lint-optimization/external/task-based-pi/apps/task-based-pi/playwright.live-steering.config.ts",
+    "policy": "internal/semanticlint/defaults/readability/keep-related-code-close-together.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "mapmaker/src/ui/selection.ts",
+      "rules/typescript-contracts/decode-external-data-at-the-boundary.md"
+    ],
+    "id": "r125",
+    "file": ".scratch/semantic-lint-optimization/external/mapmaker/src/ui/selection.ts",
+    "policy": "internal/semanticlint/defaults/typescript-contracts/decode-external-data-at-the-boundary.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "task-based-pi/apps/task-based-pi/playwright.live-steering.config.ts",
+      "rules/simplicity/do-not-add-speculative-extension-points.md"
+    ],
+    "id": "r126",
+    "file": ".scratch/semantic-lint-optimization/external/task-based-pi/apps/task-based-pi/playwright.live-steering.config.ts",
+    "policy": "internal/semanticlint/defaults/simplicity/do-not-add-speculative-extension-points.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "herd/apps/api/src/models/monitors/versions.ts",
+      "rules/readability/write-comments-that-explain-what-the-code-cannot.md"
+    ],
+    "id": "r127",
+    "file": ".scratch/semantic-lint-optimization/external/herd/apps/api/src/models/monitors/versions.ts",
+    "policy": "internal/semanticlint/defaults/readability/write-comments-that-explain-what-the-code-cannot.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "HerdProto/src/icons/NotificationPixelatedIcon.tsx",
+      "rules/typescript-contracts/preserve-meaningful-distinctions-until-the-boundary.md"
+    ],
+    "id": "r128",
+    "file": ".scratch/semantic-lint-optimization/external/HerdProto/src/icons/NotificationPixelatedIcon.tsx",
+    "policy": "internal/semanticlint/defaults/typescript-contracts/preserve-meaningful-distinctions-until-the-boundary.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "claude-skill-effect-ts/effect-ts-detectors/categories/errors/rule-006/rule-006.detector.ts",
+      "rules/effect/retry-writes-only-when-safe-to-repeat.md"
+    ],
+    "id": "r129",
+    "file": ".scratch/semantic-lint-optimization/external/claude-skill-effect-ts/effect-ts-detectors/categories/errors/rule-006/rule-006.detector.ts",
+    "policy": "internal/semanticlint/defaults/effect/retry-writes-only-when-safe-to-repeat.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "wintermute-web/backend/src/index.ts",
+      "rules/abstraction/make-correct-use-straightforward-and-invalid-use-difficult.md"
+    ],
+    "id": "r130",
+    "file": ".scratch/semantic-lint-optimization/external/wintermute-web/backend/src/index.ts",
+    "policy": "internal/semanticlint/defaults/abstraction/make-correct-use-straightforward-and-invalid-use-difficult.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "HerdProto/src/icons/FunctionIcon.tsx",
+      "rules/readability/keep-comments-current.md"
+    ],
+    "id": "r131",
+    "file": ".scratch/semantic-lint-optimization/external/HerdProto/src/icons/FunctionIcon.tsx",
+    "policy": "internal/semanticlint/defaults/readability/keep-comments-current.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "token-double-click/cf-research/src/worker/domain/frontier-state.test.ts",
+      "rules/testing-enforcement/prevent-vacuous-test-success.md"
+    ],
+    "id": "r132",
+    "file": ".scratch/semantic-lint-optimization/external/token-double-click/cf-research/src/worker/domain/frontier-state.test.ts",
+    "policy": "internal/semanticlint/defaults/testing-enforcement/prevent-vacuous-test-success.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "task-based-pi/apps/task-based-pi/playwright.config.ts",
+      "rules/readability/delete-dead-code.md"
+    ],
+    "id": "r133",
+    "file": ".scratch/semantic-lint-optimization/external/task-based-pi/apps/task-based-pi/playwright.config.ts",
+    "policy": "internal/semanticlint/defaults/readability/delete-dead-code.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "OpenBot/app/tests/computer-reset-clears-activity.test.ts",
+      "rules/effect/separate-service-interfaces-from-layer-construction.md"
+    ],
+    "id": "r134",
+    "file": ".scratch/semantic-lint-optimization/external/OpenBot/app/tests/computer-reset-clears-activity.test.ts",
+    "policy": "internal/semanticlint/defaults/effect/separate-service-interfaces-from-layer-construction.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "OpenBot/server/tests/computer-snapshot-id.test.ts",
+      "rules/web-boundaries/keep-route-handlers-and-ui-components-thin.md"
+    ],
+    "id": "r135",
+    "file": ".scratch/semantic-lint-optimization/external/OpenBot/server/tests/computer-snapshot-id.test.ts",
+    "policy": "internal/semanticlint/defaults/web-boundaries/keep-route-handlers-and-ui-components-thin.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "herd/apps/api/src/models/monitors/versions.ts",
+      "rules/effect/convert-thrown-exceptions-at-external-boundaries.md"
+    ],
+    "id": "r136",
+    "file": ".scratch/semantic-lint-optimization/external/herd/apps/api/src/models/monitors/versions.ts",
+    "policy": "internal/semanticlint/defaults/effect/convert-thrown-exceptions-at-external-boundaries.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "effect-redux/.agents/skills/executable-interactive-plans/assets/story-test-template/src/plan-data.ts",
+      "rules/readability/prefer-straightforward-code-over-clever-code.md"
+    ],
+    "id": "r137",
+    "file": ".scratch/semantic-lint-optimization/external/effect-redux/.agents/skills/executable-interactive-plans/assets/story-test-template/src/plan-data.ts",
+    "policy": "internal/semanticlint/defaults/readability/prefer-straightforward-code-over-clever-code.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "open-workflows/examples/audit-auth/src/workflows.test.ts",
+      "rules/abstraction/do-not-promise-interchangeability-you-cannot-deliver.md"
+    ],
+    "id": "r138",
+    "file": ".scratch/semantic-lint-optimization/external/open-workflows/examples/audit-auth/src/workflows.test.ts",
+    "policy": "internal/semanticlint/defaults/abstraction/do-not-promise-interchangeability-you-cannot-deliver.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "open-workflows/packages/web/src/NodeDetail.tsx",
+      "rules/effect/acquire-application-dependencies-once.md"
+    ],
+    "id": "r139",
+    "file": ".scratch/semantic-lint-optimization/external/open-workflows/packages/web/src/NodeDetail.tsx",
+    "policy": "internal/semanticlint/defaults/effect/acquire-application-dependencies-once.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "lion/packages/repl/src/components/ui/button.tsx",
+      "rules/effect/adapt-promises-once-at-integration-boundaries.md"
+    ],
+    "id": "r140",
+    "file": ".scratch/semantic-lint-optimization/external/lion/packages/repl/src/components/ui/button.tsx",
+    "policy": "internal/semanticlint/defaults/effect/adapt-promises-once-at-integration-boundaries.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "OpenBot/server/tests/computer-snapshot-id.test.ts",
+      "rules/typescript-contracts/separate-storage-domain-and-api-representations.md"
+    ],
+    "id": "r141",
+    "file": ".scratch/semantic-lint-optimization/external/OpenBot/server/tests/computer-snapshot-id.test.ts",
+    "policy": "internal/semanticlint/defaults/typescript-contracts/separate-storage-domain-and-api-representations.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "OpenBot/server/tests/computer-snapshot-id.test.ts",
+      "rules/readability/delete-dead-code.md"
+    ],
+    "id": "r142",
+    "file": ".scratch/semantic-lint-optimization/external/OpenBot/server/tests/computer-snapshot-id.test.ts",
+    "policy": "internal/semanticlint/defaults/readability/delete-dead-code.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "task-based-pi/apps/task-based-pi/playwright.live-steering.config.ts",
+      "rules/modularity/do-not-expose-internal-representations-unnecessarily.md"
+    ],
+    "id": "r143",
+    "file": ".scratch/semantic-lint-optimization/external/task-based-pi/apps/task-based-pi/playwright.live-steering.config.ts",
+    "policy": "internal/semanticlint/defaults/modularity/do-not-expose-internal-representations-unnecessarily.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "effect-domains/examples/community-elections/tally.ts",
+      "rules/avoid-repetition.md"
+    ],
+    "id": "r144",
+    "file": ".scratch/semantic-lint-optimization/external/effect-domains/examples/community-elections/tally.ts",
+    "policy": "internal/semanticlint/defaults/avoid-repetition.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "HerdProto/src/icons/NotificationPixelatedIcon.tsx",
+      "rules/readability/prefer-straightforward-code-over-clever-code.md"
+    ],
+    "id": "r145",
+    "file": ".scratch/semantic-lint-optimization/external/HerdProto/src/icons/NotificationPixelatedIcon.tsx",
+    "policy": "internal/semanticlint/defaults/readability/prefer-straightforward-code-over-clever-code.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "task-based-pi/apps/task-based-pi/playwright.config.ts",
+      "rules/readability/do-not-narrate-obvious-code.md"
+    ],
+    "id": "r146",
+    "file": ".scratch/semantic-lint-optimization/external/task-based-pi/apps/task-based-pi/playwright.config.ts",
+    "policy": "internal/semanticlint/defaults/readability/do-not-narrate-obvious-code.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "sandbox-sdk-effect/packages/sdk/src/providers/local/index.ts",
+      "rules/abstraction/do-not-import-another-modules-internal-files.md"
+    ],
+    "id": "r147",
+    "file": ".scratch/semantic-lint-optimization/external/sandbox-sdk-effect/packages/sdk/src/providers/local/index.ts",
+    "policy": "internal/semanticlint/defaults/abstraction/do-not-import-another-modules-internal-files.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "token-double-click/cf-research/src/worker/domain/frontier-state.test.ts",
+      "rules/testing-enforcement/keep-test-resources-hermetic.md"
+    ],
+    "id": "r148",
+    "file": ".scratch/semantic-lint-optimization/external/token-double-click/cf-research/src/worker/domain/frontier-state.test.ts",
+    "policy": "internal/semanticlint/defaults/testing-enforcement/keep-test-resources-hermetic.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "effect-redux/.agents/skills/executable-interactive-plans/assets/examples/task-management/review-server.ts",
+      "rules/security/do-not-log-secrets.md"
+    ],
+    "id": "r149",
+    "file": ".scratch/semantic-lint-optimization/external/effect-redux/.agents/skills/executable-interactive-plans/assets/examples/task-management/review-server.ts",
+    "policy": "internal/semanticlint/defaults/security/do-not-log-secrets.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "sandbox-sdk-effect/packages/sdk/tests/core/disposal.test.ts",
+      "rules/testing-enforcement/own-asynchronous-test-work.md"
+    ],
+    "id": "r150",
+    "file": ".scratch/semantic-lint-optimization/external/sandbox-sdk-effect/packages/sdk/tests/core/disposal.test.ts",
+    "policy": "internal/semanticlint/defaults/testing-enforcement/own-asynchronous-test-work.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "wintermute-web/frontend/src/hooks/use-agent-stream.ts",
+      "rules/performance/reuse-invariant-expensive-setup.md"
+    ],
+    "id": "r151",
+    "file": ".scratch/semantic-lint-optimization/external/wintermute-web/frontend/src/hooks/use-agent-stream.ts",
+    "policy": "internal/semanticlint/defaults/performance/reuse-invariant-expensive-setup.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "mapmaker/src/server/lock.ts",
+      "rules/readability/delete-dead-code.md"
+    ],
+    "id": "r152",
+    "file": ".scratch/semantic-lint-optimization/external/mapmaker/src/server/lock.ts",
+    "policy": "internal/semanticlint/defaults/readability/delete-dead-code.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "OpenBot/app/tests/computer-reset-clears-activity.test.ts",
+      "rules/readability/declare-variables-near-their-first-use.md"
+    ],
+    "id": "r153",
+    "file": ".scratch/semantic-lint-optimization/external/OpenBot/app/tests/computer-reset-clears-activity.test.ts",
+    "policy": "internal/semanticlint/defaults/readability/declare-variables-near-their-first-use.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "token-double-click/cf-research/src/worker/domain/frontier-state.test.ts",
+      "rules/abstraction/keep-test-utilities-simpler-than-what-they-support.md"
+    ],
+    "id": "r154",
+    "file": ".scratch/semantic-lint-optimization/external/token-double-click/cf-research/src/worker/domain/frontier-state.test.ts",
+    "policy": "internal/semanticlint/defaults/abstraction/keep-test-utilities-simpler-than-what-they-support.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "herd/apps/api/src/models/monitors/versions.ts",
+      "rules/readability/declare-variables-near-their-first-use.md"
+    ],
+    "id": "r155",
+    "file": ".scratch/semantic-lint-optimization/external/herd/apps/api/src/models/monitors/versions.ts",
+    "policy": "internal/semanticlint/defaults/readability/declare-variables-near-their-first-use.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "OpenBot/app/tests/computer-reset-clears-activity.test.ts",
+      "rules/performance/bound-pending-work.md"
+    ],
+    "id": "r156",
+    "file": ".scratch/semantic-lint-optimization/external/OpenBot/app/tests/computer-reset-clears-activity.test.ts",
+    "policy": "internal/semanticlint/defaults/performance/bound-pending-work.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "OpenBot/app/tests/computer-reset-clears-activity.test.ts",
+      "rules/testing-enforcement/execute-properties-through-the-test-runner.md"
+    ],
+    "id": "r157",
+    "file": ".scratch/semantic-lint-optimization/external/OpenBot/app/tests/computer-reset-clears-activity.test.ts",
+    "policy": "internal/semanticlint/defaults/testing-enforcement/execute-properties-through-the-test-runner.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "sandbox-sdk-effect/packages/sdk/tests/core/disposal.test.ts",
+      "rules/abstraction/keep-core-behavior-testable-in-isolation.md"
+    ],
+    "id": "r158",
+    "file": ".scratch/semantic-lint-optimization/external/sandbox-sdk-effect/packages/sdk/tests/core/disposal.test.ts",
+    "policy": "internal/semanticlint/defaults/abstraction/keep-core-behavior-testable-in-isolation.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "taskr/apps/infra/src/local-coding-store.ts",
+      "rules/effect/adapt-promises-once-at-integration-boundaries.md"
+    ],
+    "id": "r159",
+    "file": ".scratch/semantic-lint-optimization/external/taskr/apps/infra/src/local-coding-store.ts",
+    "policy": "internal/semanticlint/defaults/effect/adapt-promises-once-at-integration-boundaries.md"
+  },
+  {
+    "set": "b",
+    "pair": [
+      "OpenBot/app/tests/computer-reset-clears-activity.test.ts",
+      "rules/web-boundaries/treat-streaming-responses-as-active-work.md"
+    ],
+    "id": "r160",
+    "file": ".scratch/semantic-lint-optimization/external/OpenBot/app/tests/computer-reset-clears-activity.test.ts",
+    "policy": "internal/semanticlint/defaults/web-boundaries/treat-streaming-responses-as-active-work.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "OpenBot/app/src/components/ui/bubble.tsx",
+      "rules/abstraction/keep-core-behavior-testable-in-isolation.md"
+    ],
+    "id": "r161",
+    "file": ".scratch/semantic-lint-optimization/external/OpenBot/app/src/components/ui/bubble.tsx",
+    "policy": "internal/semanticlint/defaults/abstraction/keep-core-behavior-testable-in-isolation.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "taskr/apps/web/src/coding-domain.ts",
+      "rules/typescript-contracts/make-exported-effect-signatures-intentional.md"
+    ],
+    "id": "r162",
+    "file": ".scratch/semantic-lint-optimization/external/taskr/apps/web/src/coding-domain.ts",
+    "policy": "internal/semanticlint/defaults/typescript-contracts/make-exported-effect-signatures-intentional.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "sandbox-sdk-effect/packages/sdk/tests/integrations/agent.test.ts",
+      "rules/performance/run-independent-io-concurrently.md"
+    ],
+    "id": "r163",
+    "file": ".scratch/semantic-lint-optimization/external/sandbox-sdk-effect/packages/sdk/tests/integrations/agent.test.ts",
+    "policy": "internal/semanticlint/defaults/performance/run-independent-io-concurrently.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "OpenBot/app/src/components/ui/bubble.tsx",
+      "rules/modularity/prefer-composition-over-cross-module-inheritance.md"
+    ],
+    "id": "r164",
+    "file": ".scratch/semantic-lint-optimization/external/OpenBot/app/src/components/ui/bubble.tsx",
+    "policy": "internal/semanticlint/defaults/modularity/prefer-composition-over-cross-module-inheritance.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "herd/packages/services/internal/transactions/interpret/envelope.test.ts",
+      "rules/testing-enforcement/isolate-browser-sessions-and-data.md"
+    ],
+    "id": "r165",
+    "file": ".scratch/semantic-lint-optimization/external/herd/packages/services/internal/transactions/interpret/envelope.test.ts",
+    "policy": "internal/semanticlint/defaults/testing-enforcement/isolate-browser-sessions-and-data.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "open-workflows/packages/core/src/types.ts",
+      "rules/effect/give-background-tasks-an-owner.md"
+    ],
+    "id": "r166",
+    "file": ".scratch/semantic-lint-optimization/external/open-workflows/packages/core/src/types.ts",
+    "policy": "internal/semanticlint/defaults/effect/give-background-tasks-an-owner.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "mapmaker/src/domain/asks-archive.ts",
+      "rules/effect/bound-retries-by-attempts-and-time.md"
+    ],
+    "id": "r167",
+    "file": ".scratch/semantic-lint-optimization/external/mapmaker/src/domain/asks-archive.ts",
+    "policy": "internal/semanticlint/defaults/effect/bound-retries-by-attempts-and-time.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "sandbox-sdk-effect/packages/sdk/tests/integrations/agent.test.ts",
+      "rules/readability/keep-comments-current.md"
+    ],
+    "id": "r168",
+    "file": ".scratch/semantic-lint-optimization/external/sandbox-sdk-effect/packages/sdk/tests/integrations/agent.test.ts",
+    "policy": "internal/semanticlint/defaults/readability/keep-comments-current.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "mapmaker/src/domain/project-effort-graph.test.ts",
+      "rules/typescript-contracts/isolate-unsafe-type-escapes.md"
+    ],
+    "id": "r169",
+    "file": ".scratch/semantic-lint-optimization/external/mapmaker/src/domain/project-effort-graph.test.ts",
+    "policy": "internal/semanticlint/defaults/typescript-contracts/isolate-unsafe-type-escapes.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "token-double-click/convex/approvals.ts",
+      "rules/performance/run-independent-io-concurrently.md"
+    ],
+    "id": "r170",
+    "file": ".scratch/semantic-lint-optimization/external/token-double-click/convex/approvals.ts",
+    "policy": "internal/semanticlint/defaults/performance/run-independent-io-concurrently.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "lion/packages/core/src/modules/index.ts",
+      "rules/typescript-contracts/make-exported-effect-signatures-intentional.md"
+    ],
+    "id": "r171",
+    "file": ".scratch/semantic-lint-optimization/external/lion/packages/core/src/modules/index.ts",
+    "policy": "internal/semanticlint/defaults/typescript-contracts/make-exported-effect-signatures-intentional.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "mapmaker/src/domain/project-effort-graph.test.ts",
+      "rules/readability/keep-comments-current.md"
+    ],
+    "id": "r172",
+    "file": ".scratch/semantic-lint-optimization/external/mapmaker/src/domain/project-effort-graph.test.ts",
+    "policy": "internal/semanticlint/defaults/readability/keep-comments-current.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "prime-agent/packages/coding-agent/examples/extensions/space-invaders.ts",
+      "rules/readability/prefer-straightforward-code-over-clever-code.md"
+    ],
+    "id": "r173",
+    "file": ".scratch/semantic-lint-optimization/external/prime-agent/packages/coding-agent/examples/extensions/space-invaders.ts",
+    "policy": "internal/semanticlint/defaults/readability/prefer-straightforward-code-over-clever-code.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "OpenBot/agent-computer/src/identity.ts",
+      "rules/performance/bound-pending-work.md"
+    ],
+    "id": "r174",
+    "file": ".scratch/semantic-lint-optimization/external/OpenBot/agent-computer/src/identity.ts",
+    "policy": "internal/semanticlint/defaults/performance/bound-pending-work.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "HerdProto/src/icons/LogoutPixelatedIcon.tsx",
+      "rules/readability/keep-comments-current.md"
+    ],
+    "id": "r175",
+    "file": ".scratch/semantic-lint-optimization/external/HerdProto/src/icons/LogoutPixelatedIcon.tsx",
+    "policy": "internal/semanticlint/defaults/readability/keep-comments-current.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "mapmaker/src/domain/project-effort-graph.test.ts",
+      "rules/readability/do-not-narrate-obvious-code.md"
+    ],
+    "id": "r176",
+    "file": ".scratch/semantic-lint-optimization/external/mapmaker/src/domain/project-effort-graph.test.ts",
+    "policy": "internal/semanticlint/defaults/readability/do-not-narrate-obvious-code.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "effect-domains/examples/purchased-guides/resources.ts",
+      "rules/modularity/minimize-back-and-forth-communication-between-modules.md"
+    ],
+    "id": "r177",
+    "file": ".scratch/semantic-lint-optimization/external/effect-domains/examples/purchased-guides/resources.ts",
+    "policy": "internal/semanticlint/defaults/modularity/minimize-back-and-forth-communication-between-modules.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "herd/packages/services/internal/transactions/interpret/envelope.test.ts",
+      "rules/readability/name-things-by-their-purpose.md"
+    ],
+    "id": "r178",
+    "file": ".scratch/semantic-lint-optimization/external/herd/packages/services/internal/transactions/interpret/envelope.test.ts",
+    "policy": "internal/semanticlint/defaults/readability/name-things-by-their-purpose.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "prime-agent/packages/coding-agent/examples/extensions/space-invaders.ts",
+      "rules/performance/bound-variable-input-fan-out.md"
+    ],
+    "id": "r179",
+    "file": ".scratch/semantic-lint-optimization/external/prime-agent/packages/coding-agent/examples/extensions/space-invaders.ts",
+    "policy": "internal/semanticlint/defaults/performance/bound-variable-input-fan-out.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "effect-domains/examples/purchased-guides/resources.ts",
+      "rules/abstraction/do-not-force-variation-through-flags.md"
+    ],
+    "id": "r180",
+    "file": ".scratch/semantic-lint-optimization/external/effect-domains/examples/purchased-guides/resources.ts",
+    "policy": "internal/semanticlint/defaults/abstraction/do-not-force-variation-through-flags.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "token-double-click/convex/approvals.ts",
+      "rules/typescript-contracts/make-exported-effect-signatures-intentional.md"
+    ],
+    "id": "r181",
+    "file": ".scratch/semantic-lint-optimization/external/token-double-click/convex/approvals.ts",
+    "policy": "internal/semanticlint/defaults/typescript-contracts/make-exported-effect-signatures-intentional.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "effect-domains/examples/report-exports/main.ts",
+      "rules/modularity/make-dependencies-explicit.md"
+    ],
+    "id": "r182",
+    "file": ".scratch/semantic-lint-optimization/external/effect-domains/examples/report-exports/main.ts",
+    "policy": "internal/semanticlint/defaults/modularity/make-dependencies-explicit.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "wintermute-web/frontend/src/components/story-card.tsx",
+      "rules/simplicity/keep-each-fact-in-one-authoritative-place.md"
+    ],
+    "id": "r183",
+    "file": ".scratch/semantic-lint-optimization/external/wintermute-web/frontend/src/components/story-card.tsx",
+    "policy": "internal/semanticlint/defaults/simplicity/keep-each-fact-in-one-authoritative-place.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "mapmaker/src/domain/project-effort-graph.test.ts",
+      "rules/modularity/do-not-require-a-secret-call-order.md"
+    ],
+    "id": "r184",
+    "file": ".scratch/semantic-lint-optimization/external/mapmaker/src/domain/project-effort-graph.test.ts",
+    "policy": "internal/semanticlint/defaults/modularity/do-not-require-a-secret-call-order.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "claude-skill-effect-ts/effect-ts-detectors/categories/errors/rule-008/rule-008.detector.ts",
+      "rules/abstraction/make-important-consequences-apparent.md"
+    ],
+    "id": "r185",
+    "file": ".scratch/semantic-lint-optimization/external/claude-skill-effect-ts/effect-ts-detectors/categories/errors/rule-008/rule-008.detector.ts",
+    "policy": "internal/semanticlint/defaults/abstraction/make-important-consequences-apparent.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "mapmaker/src/domain/asks-archive.ts",
+      "rules/readability/avoid-obscure-abbreviations-and-redundant-prefixes.md"
+    ],
+    "id": "r186",
+    "file": ".scratch/semantic-lint-optimization/external/mapmaker/src/domain/asks-archive.ts",
+    "policy": "internal/semanticlint/defaults/readability/avoid-obscure-abbreviations-and-redundant-prefixes.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "prime-agent/packages/coding-agent/src/utils/file-lines.ts",
+      "rules/performance/reuse-invariant-expensive-setup.md"
+    ],
+    "id": "r187",
+    "file": ".scratch/semantic-lint-optimization/external/prime-agent/packages/coding-agent/src/utils/file-lines.ts",
+    "policy": "internal/semanticlint/defaults/performance/reuse-invariant-expensive-setup.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "taskr/apps/infra/src/worker.ts",
+      "rules/web-boundaries/give-frontend-state-one-owner.md"
+    ],
+    "id": "r188",
+    "file": ".scratch/semantic-lint-optimization/external/taskr/apps/infra/src/worker.ts",
+    "policy": "internal/semanticlint/defaults/web-boundaries/give-frontend-state-one-owner.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "effect-domains/examples/purchased-guides/resources.ts",
+      "rules/simplicity/handle-errors-explicitly-and-close-to-the-right-boundary.md"
+    ],
+    "id": "r189",
+    "file": ".scratch/semantic-lint-optimization/external/effect-domains/examples/purchased-guides/resources.ts",
+    "policy": "internal/semanticlint/defaults/simplicity/handle-errors-explicitly-and-close-to-the-right-boundary.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "lion/packages/core/src/modules/index.ts",
+      "rules/abstraction/do-not-promise-interchangeability-you-cannot-deliver.md"
+    ],
+    "id": "r190",
+    "file": ".scratch/semantic-lint-optimization/external/lion/packages/core/src/modules/index.ts",
+    "policy": "internal/semanticlint/defaults/abstraction/do-not-promise-interchangeability-you-cannot-deliver.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "OpenBot/app/src/components/ui/bubble.tsx",
+      "rules/performance/avoid-repeated-linear-lookups.md"
+    ],
+    "id": "r191",
+    "file": ".scratch/semantic-lint-optimization/external/OpenBot/app/src/components/ui/bubble.tsx",
+    "policy": "internal/semanticlint/defaults/performance/avoid-repeated-linear-lookups.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "lion/packages/repl/src/components/ui/slider.tsx",
+      "rules/readability/use-whitespace-to-separate-logical-steps.md"
+    ],
+    "id": "r192",
+    "file": ".scratch/semantic-lint-optimization/external/lion/packages/repl/src/components/ui/slider.tsx",
+    "policy": "internal/semanticlint/defaults/readability/use-whitespace-to-separate-logical-steps.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "taskr/apps/web/src/coding-domain.ts",
+      "rules/readability/declare-variables-near-their-first-use.md"
+    ],
+    "id": "r193",
+    "file": ".scratch/semantic-lint-optimization/external/taskr/apps/web/src/coding-domain.ts",
+    "policy": "internal/semanticlint/defaults/readability/declare-variables-near-their-first-use.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "sandbox-sdk-effect/apps/fumadocs/src/app/(home)/page.tsx",
+      "rules/simplicity/handle-errors-explicitly-and-close-to-the-right-boundary.md"
+    ],
+    "id": "r194",
+    "file": ".scratch/semantic-lint-optimization/external/sandbox-sdk-effect/apps/fumadocs/src/app/(home)/page.tsx",
+    "policy": "internal/semanticlint/defaults/simplicity/handle-errors-explicitly-and-close-to-the-right-boundary.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "effect-redux/src/command.ts",
+      "rules/readability/replace-unexplained-values-with-meaningful-names.md"
+    ],
+    "id": "r195",
+    "file": ".scratch/semantic-lint-optimization/external/effect-redux/src/command.ts",
+    "policy": "internal/semanticlint/defaults/readability/replace-unexplained-values-with-meaningful-names.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "taskr/apps/web/src/coding-domain.ts",
+      "rules/readability/delete-dead-code.md"
+    ],
+    "id": "r196",
+    "file": ".scratch/semantic-lint-optimization/external/taskr/apps/web/src/coding-domain.ts",
+    "policy": "internal/semanticlint/defaults/readability/delete-dead-code.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "open-workflows/packages/core/src/types.ts",
+      "rules/readonly.md"
+    ],
+    "id": "r197",
+    "file": ".scratch/semantic-lint-optimization/external/open-workflows/packages/core/src/types.ts",
+    "policy": "internal/semanticlint/defaults/readonly.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "task-based-pi/apps/task-based-pi/e2e/recovery/seed.ts",
+      "rules/testing-enforcement/isolate-browser-sessions-and-data.md"
+    ],
+    "id": "r198",
+    "file": ".scratch/semantic-lint-optimization/external/task-based-pi/apps/task-based-pi/e2e/recovery/seed.ts",
+    "policy": "internal/semanticlint/defaults/testing-enforcement/isolate-browser-sessions-and-data.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "lion/packages/repl/src/components/ui/slider.tsx",
+      "rules/abstraction/do-not-import-another-modules-internal-files.md"
+    ],
+    "id": "r199",
+    "file": ".scratch/semantic-lint-optimization/external/lion/packages/repl/src/components/ui/slider.tsx",
+    "policy": "internal/semanticlint/defaults/abstraction/do-not-import-another-modules-internal-files.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "OpenBot/agent-computer/src/identity.ts",
+      "rules/simplicity/keep-each-fact-in-one-authoritative-place.md"
+    ],
+    "id": "r200",
+    "file": ".scratch/semantic-lint-optimization/external/OpenBot/agent-computer/src/identity.ts",
+    "policy": "internal/semanticlint/defaults/simplicity/keep-each-fact-in-one-authoritative-place.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "wintermute-web/frontend/src/components/story-card.tsx",
+      "rules/modularity/do-not-expose-internal-representations-unnecessarily.md"
+    ],
+    "id": "r201",
+    "file": ".scratch/semantic-lint-optimization/external/wintermute-web/frontend/src/components/story-card.tsx",
+    "policy": "internal/semanticlint/defaults/modularity/do-not-expose-internal-representations-unnecessarily.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "prime-agent/packages/coding-agent/src/utils/file-lines.ts",
+      "rules/file-code-organization/keep-variants-of-one-thing-together.md"
+    ],
+    "id": "r202",
+    "file": ".scratch/semantic-lint-optimization/external/prime-agent/packages/coding-agent/src/utils/file-lines.ts",
+    "policy": "internal/semanticlint/defaults/file-code-organization/keep-variants-of-one-thing-together.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "OpenBot/agent-computer/src/identity.ts",
+      "rules/abstraction/provide-defaults-only-when-safe.md"
+    ],
+    "id": "r203",
+    "file": ".scratch/semantic-lint-optimization/external/OpenBot/agent-computer/src/identity.ts",
+    "policy": "internal/semanticlint/defaults/abstraction/provide-defaults-only-when-safe.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "prime-agent/packages/coding-agent/src/utils/file-lines.ts",
+      "rules/typescript-contracts/separate-storage-domain-and-api-representations.md"
+    ],
+    "id": "r204",
+    "file": ".scratch/semantic-lint-optimization/external/prime-agent/packages/coding-agent/src/utils/file-lines.ts",
+    "policy": "internal/semanticlint/defaults/typescript-contracts/separate-storage-domain-and-api-representations.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "token-double-click/convex/approvals.ts",
+      "rules/effect/keep-expected-failures-out-of-the-defect-channel.md"
+    ],
+    "id": "r205",
+    "file": ".scratch/semantic-lint-optimization/external/token-double-click/convex/approvals.ts",
+    "policy": "internal/semanticlint/defaults/effect/keep-expected-failures-out-of-the-defect-channel.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "token-double-click/convex/approvals.ts",
+      "rules/readability/declare-variables-near-their-first-use.md"
+    ],
+    "id": "r206",
+    "file": ".scratch/semantic-lint-optimization/external/token-double-click/convex/approvals.ts",
+    "policy": "internal/semanticlint/defaults/readability/declare-variables-near-their-first-use.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "mapmaker/src/domain/asks-archive.ts",
+      "rules/readability/keep-related-code-close-together.md"
+    ],
+    "id": "r207",
+    "file": ".scratch/semantic-lint-optimization/external/mapmaker/src/domain/asks-archive.ts",
+    "policy": "internal/semanticlint/defaults/readability/keep-related-code-close-together.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "HerdProto/src/icons/SmartContractIcon.tsx",
+      "rules/web-boundaries/treat-streaming-responses-as-active-work.md"
+    ],
+    "id": "r208",
+    "file": ".scratch/semantic-lint-optimization/external/HerdProto/src/icons/SmartContractIcon.tsx",
+    "policy": "internal/semanticlint/defaults/web-boundaries/treat-streaming-responses-as-active-work.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "open-workflows/packages/core/src/types.ts",
+      "rules/modularity/depend-on-narrow-collaborators.md"
+    ],
+    "id": "r209",
+    "file": ".scratch/semantic-lint-optimization/external/open-workflows/packages/core/src/types.ts",
+    "policy": "internal/semanticlint/defaults/modularity/depend-on-narrow-collaborators.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "taskr/apps/web/src/coding-domain.ts",
+      "rules/readability/do-not-narrate-obvious-code.md"
+    ],
+    "id": "r210",
+    "file": ".scratch/semantic-lint-optimization/external/taskr/apps/web/src/coding-domain.ts",
+    "policy": "internal/semanticlint/defaults/readability/do-not-narrate-obvious-code.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "effect-domains/examples/purchased-guides/resources.ts",
+      "rules/readability/declare-variables-near-their-first-use.md"
+    ],
+    "id": "r211",
+    "file": ".scratch/semantic-lint-optimization/external/effect-domains/examples/purchased-guides/resources.ts",
+    "policy": "internal/semanticlint/defaults/readability/declare-variables-near-their-first-use.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "taskr/apps/infra/src/worker.ts",
+      "rules/effect/compose-timeouts-and-retries-deliberately.md"
+    ],
+    "id": "r212",
+    "file": ".scratch/semantic-lint-optimization/external/taskr/apps/infra/src/worker.ts",
+    "policy": "internal/semanticlint/defaults/effect/compose-timeouts-and-retries-deliberately.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "HerdProto/src/icons/LogoutPixelatedIcon.tsx",
+      "rules/security/do-not-log-secrets.md"
+    ],
+    "id": "r213",
+    "file": ".scratch/semantic-lint-optimization/external/HerdProto/src/icons/LogoutPixelatedIcon.tsx",
+    "policy": "internal/semanticlint/defaults/security/do-not-log-secrets.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "sandbox-sdk-effect/apps/fumadocs/src/app/(home)/page.tsx",
+      "rules/abstraction/make-the-public-interface-as-small-as-the-contract-allows.md"
+    ],
+    "id": "r214",
+    "file": ".scratch/semantic-lint-optimization/external/sandbox-sdk-effect/apps/fumadocs/src/app/(home)/page.tsx",
+    "policy": "internal/semanticlint/defaults/abstraction/make-the-public-interface-as-small-as-the-contract-allows.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "HerdProto/src/icons/SmartContractIcon.tsx",
+      "rules/effect/retry-only-transient-failures.md"
+    ],
+    "id": "r215",
+    "file": ".scratch/semantic-lint-optimization/external/HerdProto/src/icons/SmartContractIcon.tsx",
+    "policy": "internal/semanticlint/defaults/effect/retry-only-transient-failures.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "wintermute-web/frontend/src/components/story-card.tsx",
+      "rules/abstraction/do-not-promise-interchangeability-you-cannot-deliver.md"
+    ],
+    "id": "r216",
+    "file": ".scratch/semantic-lint-optimization/external/wintermute-web/frontend/src/components/story-card.tsx",
+    "policy": "internal/semanticlint/defaults/abstraction/do-not-promise-interchangeability-you-cannot-deliver.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "token-double-click/convex/approvals.ts",
+      "rules/web-boundaries/give-request-bodies-and-streams-one-consumption-owner.md"
+    ],
+    "id": "r217",
+    "file": ".scratch/semantic-lint-optimization/external/token-double-click/convex/approvals.ts",
+    "policy": "internal/semanticlint/defaults/web-boundaries/give-request-bodies-and-streams-one-consumption-owner.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "mapmaker/src/domain/project-effort-graph.test.ts",
+      "rules/testing-enforcement/test-resource-lifecycle-behavior.md"
+    ],
+    "id": "r218",
+    "file": ".scratch/semantic-lint-optimization/external/mapmaker/src/domain/project-effort-graph.test.ts",
+    "policy": "internal/semanticlint/defaults/testing-enforcement/test-resource-lifecycle-behavior.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "token-double-click/src/components/versioned-editor/versioned-artifact-editor.tsx",
+      "rules/modularity/minimize-back-and-forth-communication-between-modules.md"
+    ],
+    "id": "r219",
+    "file": ".scratch/semantic-lint-optimization/external/token-double-click/src/components/versioned-editor/versioned-artifact-editor.tsx",
+    "policy": "internal/semanticlint/defaults/modularity/minimize-back-and-forth-communication-between-modules.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "taskr/apps/web/src/coding-domain.ts",
+      "rules/web-boundaries/keep-route-handlers-and-ui-components-thin.md"
+    ],
+    "id": "r220",
+    "file": ".scratch/semantic-lint-optimization/external/taskr/apps/web/src/coding-domain.ts",
+    "policy": "internal/semanticlint/defaults/web-boundaries/keep-route-handlers-and-ui-components-thin.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "herd/packages/services/internal/transactions/interpret/envelope.test.ts",
+      "rules/abstraction/avoid-redundant-test-cases.md"
+    ],
+    "id": "r221",
+    "file": ".scratch/semantic-lint-optimization/external/herd/packages/services/internal/transactions/interpret/envelope.test.ts",
+    "policy": "internal/semanticlint/defaults/abstraction/avoid-redundant-test-cases.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "sandbox-sdk-effect/packages/sdk/tests/integrations/agent.test.ts",
+      "rules/readability/use-whitespace-to-separate-logical-steps.md"
+    ],
+    "id": "r222",
+    "file": ".scratch/semantic-lint-optimization/external/sandbox-sdk-effect/packages/sdk/tests/integrations/agent.test.ts",
+    "policy": "internal/semanticlint/defaults/readability/use-whitespace-to-separate-logical-steps.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "task-based-pi/apps/task-based-pi/e2e/recovery/seed.ts",
+      "rules/web-boundaries/keep-route-handlers-and-ui-components-thin.md"
+    ],
+    "id": "r223",
+    "file": ".scratch/semantic-lint-optimization/external/task-based-pi/apps/task-based-pi/e2e/recovery/seed.ts",
+    "policy": "internal/semanticlint/defaults/web-boundaries/keep-route-handlers-and-ui-components-thin.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "token-double-click/src/components/versioned-editor/versioned-artifact-editor.tsx",
+      "rules/effect/compose-timeouts-and-retries-deliberately.md"
+    ],
+    "id": "r224",
+    "file": ".scratch/semantic-lint-optimization/external/token-double-click/src/components/versioned-editor/versioned-artifact-editor.tsx",
+    "policy": "internal/semanticlint/defaults/effect/compose-timeouts-and-retries-deliberately.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "effect-domains/examples/purchased-guides/resources.ts",
+      "rules/simplicity/keep-each-fact-in-one-authoritative-place.md"
+    ],
+    "id": "r225",
+    "file": ".scratch/semantic-lint-optimization/external/effect-domains/examples/purchased-guides/resources.ts",
+    "policy": "internal/semanticlint/defaults/simplicity/keep-each-fact-in-one-authoritative-place.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "claude-skill-effect-ts/scripts/effect-diagnose/compare-approaches.ts",
+      "rules/modularity/minimize-back-and-forth-communication-between-modules.md"
+    ],
+    "id": "r226",
+    "file": ".scratch/semantic-lint-optimization/external/claude-skill-effect-ts/scripts/effect-diagnose/compare-approaches.ts",
+    "policy": "internal/semanticlint/defaults/modularity/minimize-back-and-forth-communication-between-modules.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "effect-domains/examples/report-exports/main.ts",
+      "rules/readability/avoid-temporaries-that-merely-repeat-an-expression.md"
+    ],
+    "id": "r227",
+    "file": ".scratch/semantic-lint-optimization/external/effect-domains/examples/report-exports/main.ts",
+    "policy": "internal/semanticlint/defaults/readability/avoid-temporaries-that-merely-repeat-an-expression.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "claude-skill-effect-ts/effect-ts-detectors/categories/errors/rule-008/rule-008.detector.ts",
+      "rules/effect/bound-retries-by-attempts-and-time.md"
+    ],
+    "id": "r228",
+    "file": ".scratch/semantic-lint-optimization/external/claude-skill-effect-ts/effect-ts-detectors/categories/errors/rule-008/rule-008.detector.ts",
+    "policy": "internal/semanticlint/defaults/effect/bound-retries-by-attempts-and-time.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "effect-domains/examples/purchased-guides/resources.ts",
+      "rules/simplicity/choose-data-structures-that-reduce-special-cases.md"
+    ],
+    "id": "r229",
+    "file": ".scratch/semantic-lint-optimization/external/effect-domains/examples/purchased-guides/resources.ts",
+    "policy": "internal/semanticlint/defaults/simplicity/choose-data-structures-that-reduce-special-cases.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "sandbox-sdk-effect/apps/fumadocs/src/app/(home)/page.tsx",
+      "rules/readability/avoid-obscure-abbreviations-and-redundant-prefixes.md"
+    ],
+    "id": "r230",
+    "file": ".scratch/semantic-lint-optimization/external/sandbox-sdk-effect/apps/fumadocs/src/app/(home)/page.tsx",
+    "policy": "internal/semanticlint/defaults/readability/avoid-obscure-abbreviations-and-redundant-prefixes.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "effect-redux/.agents/skills/executable-interactive-plans/assets/story-test-template/review-server.ts",
+      "rules/effect/model-expected-failures-with-specific-types.md"
+    ],
+    "id": "r231",
+    "file": ".scratch/semantic-lint-optimization/external/effect-redux/.agents/skills/executable-interactive-plans/assets/story-test-template/review-server.ts",
+    "policy": "internal/semanticlint/defaults/effect/model-expected-failures-with-specific-types.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "OpenBot/app/src/components/ui/bubble.tsx",
+      "rules/readability/delete-dead-code.md"
+    ],
+    "id": "r232",
+    "file": ".scratch/semantic-lint-optimization/external/OpenBot/app/src/components/ui/bubble.tsx",
+    "policy": "internal/semanticlint/defaults/readability/delete-dead-code.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "wintermute-web/backend/src/services/storage.ts",
+      "rules/simplicity/do-not-swallow-failures.md"
+    ],
+    "id": "r233",
+    "file": ".scratch/semantic-lint-optimization/external/wintermute-web/backend/src/services/storage.ts",
+    "policy": "internal/semanticlint/defaults/simplicity/do-not-swallow-failures.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "token-double-click/convex/approvals.ts",
+      "rules/modularity/separate-decision-making-from-external-effects.md"
+    ],
+    "id": "r234",
+    "file": ".scratch/semantic-lint-optimization/external/token-double-click/convex/approvals.ts",
+    "policy": "internal/semanticlint/defaults/modularity/separate-decision-making-from-external-effects.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "wintermute-web/backend/src/services/storage.ts",
+      "rules/readonly.md"
+    ],
+    "id": "r235",
+    "file": ".scratch/semantic-lint-optimization/external/wintermute-web/backend/src/services/storage.ts",
+    "policy": "internal/semanticlint/defaults/readonly.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "lion/packages/repl/src/components/ui/slider.tsx",
+      "rules/readability/do-not-narrate-obvious-code.md"
+    ],
+    "id": "r236",
+    "file": ".scratch/semantic-lint-optimization/external/lion/packages/repl/src/components/ui/slider.tsx",
+    "policy": "internal/semanticlint/defaults/readability/do-not-narrate-obvious-code.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "mapmaker/src/domain/asks-archive.ts",
+      "rules/effect/compose-timeouts-and-retries-deliberately.md"
+    ],
+    "id": "r237",
+    "file": ".scratch/semantic-lint-optimization/external/mapmaker/src/domain/asks-archive.ts",
+    "policy": "internal/semanticlint/defaults/effect/compose-timeouts-and-retries-deliberately.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "wintermute-web/frontend/src/components/story-card.tsx",
+      "rules/abstraction/make-the-public-interface-as-small-as-the-contract-allows.md"
+    ],
+    "id": "r238",
+    "file": ".scratch/semantic-lint-optimization/external/wintermute-web/frontend/src/components/story-card.tsx",
+    "policy": "internal/semanticlint/defaults/abstraction/make-the-public-interface-as-small-as-the-contract-allows.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "token-double-click/src/components/versioned-editor/versioned-artifact-editor.tsx",
+      "rules/simplicity/let-abstractions-emerge-from-concrete-needs.md"
+    ],
+    "id": "r239",
+    "file": ".scratch/semantic-lint-optimization/external/token-double-click/src/components/versioned-editor/versioned-artifact-editor.tsx",
+    "policy": "internal/semanticlint/defaults/simplicity/let-abstractions-emerge-from-concrete-needs.md"
+  },
+  {
+    "set": "c",
+    "pair": [
+      "wintermute-web/backend/src/services/storage.ts",
+      "rules/abstraction/do-not-force-variation-through-flags.md"
+    ],
+    "id": "r240",
+    "file": ".scratch/semantic-lint-optimization/external/wintermute-web/backend/src/services/storage.ts",
+    "policy": "internal/semanticlint/defaults/abstraction/do-not-force-variation-through-flags.md"
+  }
+]

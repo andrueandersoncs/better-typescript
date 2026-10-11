@@ -83,32 +83,36 @@ COST_STAGES = ("candidate", "evidence", "final")
 # GEPA's default template asks for every niche fact from the examples, which invites memorizing them.
 # GEPA discards rejected proposals without showing the reason, so the harness limits are stated here.
 REFLECTION_REQUIREMENTS = """Write an improved instruction. Requirements; an instruction that breaks one is discarded unseen:
-- At most {limit} bytes of plain ASCII.
+- HARD LIMIT: at most {limit} bytes, about {words} words, of plain ASCII. The current instruction is
+  {current} bytes. The harness discards longer proposals without scoring them, so replace or tighten
+  sentences instead of adding them, and count before answering.
 - One instruction serves every policy: testing, security, performance, Effect, readability, and more.
   Give general guidance on {guidance}. No per-policy sections.
 - Do not quote or paraphrase the examples: no identifiers, string literals, paths, policy titles, or
   details specific to these cases. They are a small sample and will not recur.
-- Start with a sentence and end with the line `Rule:`, because the policy text is appended after it.
+- {shape}
 {cost}
 Provide the new instruction within ``` blocks."""
 
 REFLECTION_TEMPLATES = {
-    "candidate": """I use the instruction below as the start of a yes/no question about code. The text of one policy
-follows it directly, and a model answers with the probability of yes for one source segment (`file`)
-of a larger file at `path`. Yes selects the segment as candidate evidence for a later, separate
-violation verdict. A missed segment loses its violation for good; each needless selection costs review work.
+    "candidateGuide": """I put the guidance below once in request state as `selection_guide`. Each yes/no question in the
+request says "Apply `selection_guide` to the following rule." followed by one policy's text, and a model
+answers with the probability of yes for one source segment (`file`) of a larger file at `path`. Yes
+selects the segment as candidate evidence for a later, separate violation verdict. A missed segment
+loses its violation for good; each needless selection costs review work.
 
-Current instruction:
+Current guidance:
 ```
 <curr_param>
 ```
 
-Segments judged with the current instruction, with feedback:
+Segments judged with the current guidance, with feedback:
 ```
 <side_info>
 ```
 
-""" + REFLECTION_REQUIREMENTS.replace("{guidance}", "what makes a segment evidence or necessary context"),
+""" + REFLECTION_REQUIREMENTS.replace("{guidance}", "what makes a segment evidence or necessary context").replace(
+        "{shape}", "Write it as a yes/no question about `file` and the rule, followed by guidance; it must make sense without a policy appended."),
     "final": """I use the instruction below as the start of a yes/no question about code. The text of one policy
 follows it directly, and a model answers with the probability of yes given the selected source spans of
 one file (`file`, at `path`); the spans are the whole file or several excerpts. The answer is the
@@ -126,14 +130,20 @@ Files judged with the current instruction, with feedback:
 <side_info>
 ```
 
-""" + REFLECTION_REQUIREMENTS.replace("{guidance}", "deciding whether the shown code breaks the policy"),
+""" + REFLECTION_REQUIREMENTS.replace("{guidance}", "deciding whether the shown code breaks the policy").replace(
+        "{shape}", "Start with a sentence and end with the line `Rule:`, because the policy text is appended after it."),
 }
 
-COST_TEMPLATE = """- Cost: the instruction repeats in every question, and every selected segment triggers more review
-  requests. Variants estimated above {limit}x the original cost are discarded. Each 100 bytes beyond
-  {seed} bytes spends about {per100}% of the allowed increase; the rest pays for extra selections. Win
-  recall by sharper discrimination, not by selecting more.
+COST_TEMPLATE = """- Cost: the guidance repeats in every candidate request, and every selected segment triggers more
+  review requests. Variants estimated above {limit}x the original cost are discarded. Each 100 bytes
+  beyond {seed} bytes spends about {per100}% of the allowed increase; the rest pays for extra
+  selections. Win recall by sharper discrimination, not by selecting more.
 """
+
+
+def stage_of(component):
+    """The pipeline stage a prompts.go field belongs to; harness feedback is keyed by stage."""
+    return next(stage for stage in ("candidate", "evidence", "final", "applicability") if component.startswith(stage))
 
 
 def encoded_length(text):
@@ -146,18 +156,20 @@ def stage_tokens(result, stage):
 
 
 class CostGate:
-    """Estimates a candidate prompt's cost on the efficiency workload relative to the seed.
+    """Estimates a candidate-stage prompt's cost on the efficiency workload relative to the seed.
 
-    Candidate-stage cost follows prompt length: every question repeats it. Evidence and final cost
-    follow selection breadth, measured as the batch's tokens against the seed's on the same cases,
-    smoothed by one minibatch of seed-average tokens.
+    Candidate-stage cost follows prompt length: the question prefix repeats in every question, and
+    the guide once per request. Evidence and final cost follow selection breadth, measured as the
+    batch's tokens against the seed's on the same cases, smoothed by one minibatch of seed-average tokens.
     """
 
     def __init__(self, workload_report, seed_report, seed, limit, minibatch):
         stages = workload_report["efficiency"]["byStage"]
         self.weights = {stage: stages[stage]["inputTokens"] for stage in COST_STAGES}
         candidate = stages["candidate"]
-        self.tokens_per_prompt_byte = candidate["questions"] * candidate["inputTokens"] / candidate["requestBytes"]
+        tokens_per_byte = candidate["inputTokens"] / candidate["requestBytes"]
+        self.tokens_per_byte = {"candidate": candidate["questions"] * tokens_per_byte,
+                                "candidateGuide": candidate["requests"] * tokens_per_byte}
         self.seed = seed
         self.seed_cases = {case["id"]: case for case in seed_report["cases"]}
         self.prior = {stage: minibatch * sum(stage_tokens(case, stage) for case in seed_report["cases"]) / len(seed_report["cases"])
@@ -166,18 +178,20 @@ class CostGate:
 
     def estimate(self, variant, results=()):
         """Estimated workload cost ÷ seed workload cost; results add the measured selection breadth."""
-        prompt = variant.get("candidate", self.seed.get("candidate", ""))
-        cost = self.weights["candidate"] + (encoded_length(prompt) - encoded_length(self.seed.get("candidate", prompt))) * self.tokens_per_prompt_byte
+        cost = self.weights["candidate"]
+        for field, per_byte in self.tokens_per_byte.items():
+            if field in variant and field in self.seed:
+                cost += (encoded_length(variant[field]) - encoded_length(self.seed[field])) * per_byte
         for stage in ("evidence", "final"):
             measured = sum(stage_tokens(result, stage) for result in results)
             seeded = sum(stage_tokens(self.seed_cases[result["id"]], stage) for result in results)
             cost += self.weights[stage] * (measured + self.prior[stage]) / (seeded + self.prior[stage])
         return cost / sum(self.weights.values())
 
-    def reflection_note(self):
+    def reflection_note(self, component):
         allowed = (self.limit - 1) * sum(self.weights.values())
-        per100 = round(100 * 100 * self.tokens_per_prompt_byte / allowed)
-        return COST_TEMPLATE.format(limit=self.limit, seed=encoded_length(self.seed["candidate"]), per100=per100)
+        per100 = round(100 * 100 * self.tokens_per_byte[component] / allowed)
+        return COST_TEMPLATE.format(limit=self.limit, seed=encoded_length(self.seed[component]), per100=per100)
 
 
 class SemanticLintAdapter:
@@ -239,27 +253,29 @@ class SemanticLintAdapter:
                 records.append({
                     "Inputs": {"policy": policy, "path": case["path"], "label": case["label"], "gold region": snippet(case)},
                     "Generated Outputs": {"outcome": result.get("outcome"), "violation probability": result.get("probability"), "score": result.get("score")},
-                    "Feedback": result.get("rejection") or (result.get("feedback") or {}).get(component, ""),
+                    "Feedback": result.get("rejection") or (result.get("feedback") or {}).get(stage_of(component), ""),
                 })
             dataset[component] = records
         return dataset
 
 
-def optimize(reflection_lm, components=("candidate",), max_metric_calls=1200, minibatch=6, run_dir=None,
-             workload_report=None, max_cost_ratio=None, selection_size=None):
+def optimize(reflection_lm, components=("candidateGuide",), max_metric_calls=1200, minibatch=6, run_dir=None,
+             workload_report=None, max_cost_ratio=None, selection_size=None, train_splits=("train",), val_splits=("val",)):
     """Run GEPA; return the result and its best candidate as a harness-ready variant.
 
+    `reflection_lm` is a litellm model name or a callable from prompt text to reply text.
     With a workload report (from TestSemanticEvalWorkload on the seed prompts) and a cost ratio,
-    variants whose estimated workload cost exceeds the ratio score 0. Only the candidate prompt's
+    variants whose estimated workload cost exceeds the ratio score 0. Only candidate-stage prompt
     length is modeled; selection breadth comes from measured evidence and final tokens. A selection
-    size makes GEPA select on evenly spaced `val` cases, leaving more budget for proposals;
-    acceptance still uses the whole `val` split.
+    size makes GEPA select on evenly spaced validation cases, leaving more budget for proposals;
+    acceptance still uses every validation case. Selecting on `ext-dev` scores variants on real code;
+    keep `ext-test` and `test` for confirmation.
     """
     import gepa
 
     cases = load_cases()
-    train = [case_id for case_id, case in cases.items() if case["split"] == "train"]
-    val = [case_id for case_id, case in cases.items() if case["split"] == "val"]
+    train = [case_id for case_id, case in cases.items() if case["split"] in train_splits]
+    val = [case_id for case_id, case in cases.items() if case["split"] in val_splits]
     seed_report, _ = run_cases(train + val, None)
     if selection_size is not None and selection_size < len(val):
         val = val[::math.ceil(len(val) / selection_size)]
@@ -270,8 +286,10 @@ def optimize(reflection_lm, components=("candidate",), max_metric_calls=1200, mi
         gate = CostGate(workload_report, seed_report, seed, max_cost_ratio, minibatch)
     templates = {}
     for component, text in seed.items():
-        cost = gate.reflection_note() if gate is not None and component == "candidate" else ""
-        templates[component] = REFLECTION_TEMPLATES[component].replace("{limit}", str(PROMPT_GROWTH * len(text.encode()) - 1)).replace("{cost}", cost)
+        cost = gate.reflection_note(component) if gate is not None and component in gate.tokens_per_byte else ""
+        limit = PROMPT_GROWTH * len(text.encode()) - 1
+        templates[component] = (REFLECTION_TEMPLATES[component].replace("{limit}", str(limit)).replace("{words}", str(limit // 7))
+                                .replace("{current}", str(len(text.encode()))).replace("{cost}", cost))
     adapter = SemanticLintAdapter(cases, seed_tokens, seed, gate)
     result = gepa.optimize(
         seed_candidate=seed, trainset=train, valset=val, adapter=adapter,
@@ -283,11 +301,13 @@ def optimize(reflection_lm, components=("candidate",), max_metric_calls=1200, mi
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--reflection-lm", required=True, help="litellm model name for GEPA reflection")
-    parser.add_argument("--components", default="candidate", help="comma-separated prompts.go JSON fields")
+    parser.add_argument("--components", default="candidateGuide", help="comma-separated prompts.go JSON fields")
     parser.add_argument("--max-metric-calls", type=int, default=1200)
     parser.add_argument("--workload-report", help="TestSemanticEvalWorkload report for the seed prompts; enables the cost gate")
     parser.add_argument("--max-cost-ratio", type=float, default=1.3, help="largest estimated workload cost ÷ seed cost")
-    parser.add_argument("--selection-size", type=int, help="evenly spaced val cases GEPA selects on (default: all)")
+    parser.add_argument("--selection-size", type=int, help="evenly spaced validation cases GEPA selects on (default: all)")
+    parser.add_argument("--train-splits", default="train", help="comma-separated splits GEPA reflects on")
+    parser.add_argument("--val-splits", default="val", help="comma-separated splits GEPA selects on, e.g. ext-dev")
     parser.add_argument("--out", required=True, help="directory for the GEPA run and best variant")
     args = parser.parse_args()
     workload = None
@@ -295,7 +315,8 @@ def main():
         with open(args.workload_report) as file:
             workload = json.load(file)
     _, variant = optimize(args.reflection_lm, tuple(args.components.split(",")), args.max_metric_calls, run_dir=args.out,
-                          workload_report=workload, max_cost_ratio=args.max_cost_ratio, selection_size=args.selection_size)
+                          workload_report=workload, max_cost_ratio=args.max_cost_ratio, selection_size=args.selection_size,
+                          train_splits=tuple(args.train_splits.split(",")), val_splits=tuple(args.val_splits.split(",")))
     with open(os.path.join(args.out, "best-variant.json"), "w") as file:
         json.dump(variant, file, indent=2)
     print(json.dumps(variant, indent=2))

@@ -1,0 +1,539 @@
+diff --git a/internal/semanticlint/batch.go b/internal/semanticlint/batch.go
+index 7c1129023..ebad11c80 100644
+--- a/internal/semanticlint/batch.go
++++ b/internal/semanticlint/batch.go
+@@ -72,34 +72,53 @@ func buildRequestPartitions(source Source, rules []Rule, settings requestSetting
+ 	return partitions, nil
+ }
+ 
+-func singleRuleRequest(path, sourceText string, rule Rule, settings requestSettings) evaluationRequest {
+-	return evaluationRequest{
+-		State:     map[string]string{"path": path, "file": sourceText},
+-		Questions: map[string]question{rule.ID: settings.prompts.candidateQuestion(rule)},
++// candidateRequest asks every rule whether one source window could hold evidence.
++func candidateRequest(source Source, window sourceWindow, rules []Rule, settings requestSettings) evaluationRequest {
++	request := evaluationRequest{
++		State:     map[string]any{"path": source.Path, "file": settings.sourceText(source, window)},
++		Questions: make(map[string]question, len(rules)),
+ 		Model:     settings.model,
+ 	}
++	for _, rule := range rules {
++		addCandidateRule(&request, rule, settings)
++	}
++	return request
++}
++
++func addCandidateRule(request *evaluationRequest, rule Rule, settings requestSettings) {
++	request.Questions[rule.ID] = settings.prompts.candidateQuestion(settings.ruleText(rule, "policies."+rule.ID))
++	if !settings.shape.Policy {
++		return
++	}
++	policies, ok := request.State["policies"].(map[string]string)
++	if !ok {
++		policies = map[string]string{}
++		request.State["policies"] = policies
++	}
++	policies[rule.ID] = rule.Source
++}
++
++func removeCandidateRule(request *evaluationRequest, rule Rule) {
++	delete(request.Questions, rule.ID)
++	if policies, ok := request.State["policies"].(map[string]string); ok {
++		delete(policies, rule.ID)
++	}
+ }
+ 
+ func partitionWindow(source Source, window sourceWindow, rules []Rule, settings requestSettings, maximumBytes int, windowed bool) ([]requestPartition, error) {
+-	state := map[string]string{"path": source.Path, "file": source.Text[window.start:window.end]}
+ 	var partitions []requestPartition
+-	current := requestPartition{
+-		request:  evaluationRequest{State: state, Questions: make(map[string]question, len(rules)), Model: settings.model},
+-		window:   window,
+-		windowed: windowed,
+-	}
++	current := requestPartition{request: candidateRequest(source, window, nil, settings), window: window, windowed: windowed}
+ 	for _, rule := range rules {
+-		ruleQuestion := settings.prompts.candidateQuestion(rule)
+-		current.request.Questions[rule.ID] = ruleQuestion
++		addCandidateRule(&current.request, rule, settings)
+ 		if requestSize(current.request) <= maximumBytes {
+ 			current.rules = append(current.rules, rule)
+ 			continue
+ 		}
+-		delete(current.request.Questions, rule.ID)
++		removeCandidateRule(&current.request, rule)
+ 		if len(current.rules) > 0 {
+ 			partitions = append(partitions, current)
+ 		}
+-		single := evaluationRequest{State: state, Questions: map[string]question{rule.ID: ruleQuestion}, Model: settings.model}
++		single := candidateRequest(source, window, []Rule{rule}, settings)
+ 		if requestSize(single) > maximumBytes {
+ 			return nil, fmt.Errorf("file %s bytes %d:%d with rule %s exceeds the %d-byte TypeSafe request limit", source.Path, window.start, window.end, rule.Path, maximumBytes)
+ 		}
+@@ -113,9 +132,9 @@ func partitionWindow(source Source, window sourceWindow, rules []Rule, settings
+ 
+ func sourceWindows(source Source, rules []Rule, settings requestSettings, maximumBytes int) ([]sourceWindow, error) {
+ 	largestRule := rules[0]
+-	largestEmptyRequest := requestSize(singleRuleRequest(source.Path, "", largestRule, settings))
++	largestEmptyRequest := requestSize(candidateRequest(source, sourceWindow{}, rules[:1], settings))
+ 	for _, rule := range rules[1:] {
+-		size := requestSize(singleRuleRequest(source.Path, "", rule, settings))
++		size := requestSize(candidateRequest(source, sourceWindow{}, []Rule{rule}, settings))
+ 		if size > largestEmptyRequest {
+ 			largestRule = rule
+ 			largestEmptyRequest = size
+@@ -127,6 +146,10 @@ func sourceWindows(source Source, rules []Rule, settings requestSettings, maximu
+ 	if source.Text == "" {
+ 		return []sourceWindow{{}}, nil
+ 	}
++	whole := sourceWindow{start: 0, end: len(source.Text)}
++	if settings.shape.Whole && requestSize(candidateRequest(source, whole, []Rule{largestRule}, settings)) <= maximumBytes {
++		return []sourceWindow{whole}, nil
++	}
+ 
+ 	contentBudget := min(maximumSegmentBytes, maximumBytes-largestEmptyRequest)
+ 	var windows []sourceWindow
+@@ -135,7 +158,7 @@ func sourceWindows(source Source, rules []Rule, settings requestSettings, maximu
+ 		if end < len(source.Text) {
+ 			end = preferLineEnd(source.Text, start, end)
+ 		}
+-		for end > start && requestSize(singleRuleRequest(source.Path, source.Text[start:end], largestRule, settings)) > maximumBytes {
++		for end > start && requestSize(candidateRequest(source, sourceWindow{start: start, end: end}, []Rule{largestRule}, settings)) > maximumBytes {
+ 			_, width := utf8.DecodeLastRuneInString(source.Text[start:end])
+ 			end -= width
+ 		}
+@@ -300,19 +323,33 @@ func candidateRanges(source Source, windows []sourceWindow) []CandidateRange {
+ }
+ 
+ func finalRequest(source Source, rule Rule, windows []sourceWindow, ranges []CandidateRange, settings requestSettings) evaluationRequest {
+-	var text strings.Builder
+-	for index, window := range windows {
+-		if index > 0 {
+-			text.WriteString("\n")
++	state := map[string]any{"path": source.Path}
++	if settings.shape.Lines {
++		spans := make([]any, len(windows))
++		for index, window := range windows {
++			spans[index] = settings.sourceText(source, window)
++		}
++		state["file"] = spans
++	} else {
++		var text strings.Builder
++		for index, window := range windows {
++			if index > 0 {
++				text.WriteString("\n")
++			}
++			fmt.Fprintf(&text, "[source lines %d-%d]\n", ranges[index].StartLine, ranges[index].EndLine)
++			text.WriteString(source.Text[window.start:window.end])
+ 		}
+-		fmt.Fprintf(&text, "[source lines %d-%d]\n", ranges[index].StartLine, ranges[index].EndLine)
+-		text.WriteString(source.Text[window.start:window.end])
++		state["file"] = text.String()
++	}
++	if settings.shape.Policy {
++		state["policy"] = rule.Source
+ 	}
++	ruleText := settings.ruleText(rule, "policy")
+ 	return evaluationRequest{
+-		State: map[string]string{"path": source.Path, "file": text.String()},
++		State: state,
+ 		Questions: map[string]question{
+-			rule.ID:              settings.prompts.finalQuestion(rule),
+-			rule.ID + "_applies": settings.prompts.applicabilityQuestion(rule),
++			rule.ID:              settings.prompts.finalQuestion(ruleText),
++			rule.ID + "_applies": settings.prompts.applicabilityQuestion(ruleText),
+ 		},
+ 		Model: settings.model,
+ 	}
+diff --git a/internal/semanticlint/eval_live_test.go b/internal/semanticlint/eval_live_test.go
+index 9260dc39a..8d5ea241f 100644
+--- a/internal/semanticlint/eval_live_test.go
++++ b/internal/semanticlint/eval_live_test.go
+@@ -18,8 +18,9 @@ import (
+ //	SEMANTIC_EVAL_OUT=/tmp/val.json go test -tags semanticeval -run '^TestSemanticEvalCases$' -count=1 -timeout 0 ./internal/semanticlint
+ //
+ // Inputs: SEMANTIC_EVAL_SPLIT (train, val, test, or all; default val), SEMANTIC_EVAL_CASES (comma-separated
+-// ids; overrides the split), SEMANTIC_EVAL_VARIANT (JSON prompt overrides), SEMANTIC_EVAL_MODEL (default
+-// jev-1.13.0), SEMANTIC_EVAL_CACHE (replay directory), SEMANTIC_EVAL_PACKED=1 (ask every matching policy).
++// ids; overrides the split), SEMANTIC_EVAL_VARIANT (JSON prompt overrides), SEMANTIC_EVAL_SHAPE (JSON
++// stateShape, e.g. {"policy":true}), SEMANTIC_EVAL_MODEL (default jev-1.13.0), SEMANTIC_EVAL_CACHE
++// (replay directory), SEMANTIC_EVAL_PACKED=1 (ask every matching policy).
+ 
+ func TestSemanticEvalCases(t *testing.T) {
+ 	output := requiredEvalEnv(t, "SEMANTIC_EVAL_OUT")
+@@ -130,6 +131,13 @@ func newLiveEvalRun(t *testing.T) (evalRun, []evalCase) {
+ 			t.Fatalf("variant rejected: %v", err)
+ 		}
+ 	}
++	if shape := os.Getenv("SEMANTIC_EVAL_SHAPE"); shape != "" {
++		decoder := json.NewDecoder(strings.NewReader(shape))
++		decoder.DisallowUnknownFields()
++		if err := decoder.Decode(&options.shape); err != nil {
++			t.Fatalf("shape rejected: %v", err)
++		}
++	}
+ 	run := evalRun{directory: evalDirectory, rules: rules, options: options, packed: os.Getenv("SEMANTIC_EVAL_PACKED") == "1", cache: os.Getenv("SEMANTIC_EVAL_CACHE")}
+ 	if os.Getenv("TYPESAFE_API_KEY") != "" {
+ 		client, err := newTypeSafeClient()
+diff --git a/internal/semanticlint/eval_test.go b/internal/semanticlint/eval_test.go
+index fc9de0d31..5a1980e89 100644
+--- a/internal/semanticlint/eval_test.go
++++ b/internal/semanticlint/eval_test.go
+@@ -554,6 +554,7 @@ type evalCasesReport struct {
+ 	Corpus            string              `json:"corpus"`
+ 	Variant           string              `json:"variant"`
+ 	Prompts           prompts             `json:"prompts"`
++	Shape             stateShape          `json:"shape"`
+ 	Split             string              `json:"split"`
+ 	Packed            bool                `json:"packed"`
+ 	Accuracy          map[string]*float64 `json:"accuracy"`
+@@ -577,7 +578,7 @@ type evalRun struct {
+ 
+ func (run evalRun) runCases(ctx context.Context, cases []evalCase, split string) (evalCasesReport, error) {
+ 	settings := run.options.requestSettings()
+-	variant, err := evalDigest(settings.prompts)
++	variant, err := variantDigest(settings)
+ 	if err != nil {
+ 		return evalCasesReport{}, err
+ 	}
+@@ -606,7 +607,7 @@ func (run evalRun) runCases(ctx context.Context, cases []evalCase, split string)
+ 
+ 	report := evalCasesReport{
+ 		Kind: "semantic-eval-cases", Model: settings.model, Corpus: corpus, Variant: variant,
+-		Prompts: settings.prompts, Split: split, Packed: run.packed, Cases: results,
++		Prompts: settings.prompts, Shape: settings.shape, Split: split, Packed: run.packed, Cases: results,
+ 		Accuracy: map[string]*float64{},
+ 	}
+ 	var scored []evalCaseResult
+@@ -960,6 +961,17 @@ func evalDigest(value any) (string, error) {
+ 	return "sha256:" + hex.EncodeToString(digest[:]), nil
+ }
+ 
++// variantDigest identifies the prompts and state shape; the default shape keeps the prompt digest.
++func variantDigest(settings requestSettings) (string, error) {
++	if settings.shape == (stateShape{}) {
++		return evalDigest(settings.prompts)
++	}
++	return evalDigest(struct {
++		Prompts prompts    `json:"prompts"`
++		Shape   stateShape `json:"shape"`
++	}{settings.prompts, settings.shape})
++}
++
+ // corpusDigest identifies the selected cases and the exact source text each one evaluates.
+ func corpusDigest(directory string, cases []evalCase) (string, error) {
+ 	hash := sha256.New()
+@@ -1353,7 +1365,7 @@ type evalWorkloadReport struct {
+ // runWorkload evaluates real files with every matching default policy, as the CLI would.
+ func (run evalRun) runWorkload(ctx context.Context, root string, paths []string) (evalWorkloadReport, error) {
+ 	settings := run.options.requestSettings()
+-	variant, err := evalDigest(settings.prompts)
++	variant, err := variantDigest(settings)
+ 	if err != nil {
+ 		return evalWorkloadReport{}, err
+ 	}
+diff --git a/internal/semanticlint/issue12_test.go b/internal/semanticlint/issue12_test.go
+index be829556e..1ca9ccf00 100644
+--- a/internal/semanticlint/issue12_test.go
++++ b/internal/semanticlint/issue12_test.go
+@@ -61,7 +61,7 @@ func TestPathSpecificPolicyFindsOnlyTheMatchingFile(t *testing.T) {
+ 			return
+ 		}
+ 		probability := 0.02
+-		if received.State["path"] == "src/smoke.ts" && strings.Contains(received.State["file"], "debugger;") {
++		if received.State["path"] == "src/smoke.ts" && strings.Contains(stateText(received, "file"), "debugger;") {
+ 			probability = 0.98
+ 		}
+ 		answers := make(map[string]answer, len(received.Questions))
+@@ -107,7 +107,7 @@ func TestSemanticViolationLocatesEvidenceWithinCandidateSpan(t *testing.T) {
+ 				continue
+ 			}
+ 			value := 0.1
+-			if strings.Contains(request.State["file"], "parseArgs") {
++			if strings.Contains(stateText(request, "file"), "parseArgs") {
+ 				value = 0.9
+ 			}
+ 			answers[id] = answer{Type: "noul", Noul: value}
+@@ -139,7 +139,7 @@ func TestDistantDeclarationsRemainTogetherInEvidenceSet(t *testing.T) {
+ 				answers[id] = testEvidenceAnswer(request, id, "interface Service", "const Service")
+ 				continue
+ 			}
+-			text := request.State["file"]
++			text := stateText(request, "file")
+ 			both := strings.Contains(text, "interface Service") && strings.Contains(text, "const Service")
+ 			probability := 0.9
+ 			if len(request.Questions) == 2 && !strings.HasSuffix(id, "_applies") && !both {
+diff --git a/internal/semanticlint/prompts.go b/internal/semanticlint/prompts.go
+index e1f9b0d74..1e278d48b 100644
+--- a/internal/semanticlint/prompts.go
++++ b/internal/semanticlint/prompts.go
+@@ -1,6 +1,9 @@
+ package semanticlint
+ 
+-import "strings"
++import (
++	"fmt"
++	"strings"
++)
+ 
+ // blockPlaceholder marks where the evidence prompt names the block it asks about.
+ const blockPlaceholder = "{block}"
+@@ -25,35 +28,67 @@ var defaultPrompts = prompts{
+ 	ApplicabilityFalse: "The source has no operation of the kind this policy governs.",
+ }
+ 
+-func (p *prompts) candidateQuestion(rule Rule) question {
+-	return question{Type: "noul", Instructions: p.Candidate + rule.Source}
++// candidateQuestion, finalQuestion, and applicabilityQuestion end with rule: the policy text, or
++// a backticked state path that holds it.
++func (p *prompts) candidateQuestion(rule string) question {
++	return question{Type: "noul", Instructions: p.Candidate + rule}
+ }
+ 
+ func (p *prompts) evidenceQuestion(block string) question {
+ 	return question{Type: "noul", Instructions: strings.ReplaceAll(p.Evidence, blockPlaceholder, block)}
+ }
+ 
+-func (p *prompts) finalQuestion(rule Rule) question {
+-	return question{Type: "noul", Instructions: p.Final + rule.Source}
++func (p *prompts) finalQuestion(rule string) question {
++	return question{Type: "noul", Instructions: p.Final + rule}
+ }
+ 
+-func (p *prompts) applicabilityQuestion(rule Rule) question {
+-	return question{Type: "noul", Instructions: p.Applicability + rule.Source, Criteria: map[string]string{
++func (p *prompts) applicabilityQuestion(rule string) question {
++	return question{Type: "noul", Instructions: p.Applicability + rule, Criteria: map[string]string{
+ 		"true":  p.ApplicabilityTrue,
+ 		"false": p.ApplicabilityFalse,
+ 	}}
+ }
+ 
+-// requestSettings fixes the model and wording of every TypeSafe request in one run.
++// stateShape lays out TypeSafe state. The zero value is the default shape; evals compare others.
++type stateShape struct {
++	// Policy puts each policy in state and points questions at it instead of repeating its text.
++	Policy bool `json:"policy,omitempty"`
++	// Whole sends the complete file to candidate selection when it fits one request.
++	Whole bool `json:"whole,omitempty"`
++	// Lines sends source text as {lines, text} objects; final spans become an array of them.
++	Lines bool `json:"lines,omitempty"`
++}
++
++// requestSettings fixes the model, wording, and state shape of every TypeSafe request in one run.
+ type requestSettings struct {
+ 	model   string
+ 	prompts prompts
++	shape   stateShape
+ }
+ 
+ func (options Options) requestSettings() requestSettings {
+-	settings := requestSettings{model: modelOrDefault(options.Model), prompts: options.prompts}
++	settings := requestSettings{model: modelOrDefault(options.Model), prompts: options.prompts, shape: options.shape}
+ 	if settings.prompts == (prompts{}) {
+ 		settings.prompts = defaultPrompts
+ 	}
+ 	return settings
+ }
++
++// ruleText is what a question appends as its rule: the policy text, or the state path holding it.
++func (settings requestSettings) ruleText(rule Rule, path string) string {
++	if settings.shape.Policy {
++		return "`" + path + "`"
++	}
++	return rule.Source
++}
++
++// sourceText is one source window as state: its text, or its text with its line range.
++func (settings requestSettings) sourceText(source Source, window sourceWindow) any {
++	text := source.Text[window.start:window.end]
++	if !settings.shape.Lines {
++		return text
++	}
++	start := 1 + strings.Count(source.Text[:window.start], "\n")
++	end := start + strings.Count(source.Text[window.start:max(window.start, window.end-1)], "\n")
++	return map[string]string{"lines": fmt.Sprintf("%d-%d", start, end), "text": text}
++}
+diff --git a/internal/semanticlint/search.go b/internal/semanticlint/search.go
+index 45b576a15..145689748 100644
+--- a/internal/semanticlint/search.go
++++ b/internal/semanticlint/search.go
+@@ -33,12 +33,12 @@ func blockKey(position int) string {
+ 
+ // evidenceRequest states the policy once and asks one short Noul per block.
+ func evidenceRequest(source Source, rule Rule, blocks []sourceWindow, settings requestSettings) evaluationRequest {
+-	state := make(map[string]string, len(blocks)+2)
++	state := make(map[string]any, len(blocks)+2)
+ 	state["path"], state["policy"] = source.Path, rule.Source
+ 	questions := make(map[string]question, len(blocks))
+ 	for position, block := range blocks {
+ 		key := blockKey(position)
+-		state[key] = source.Text[block.start:block.end]
++		state[key] = settings.sourceText(source, block)
+ 		questions[key] = settings.prompts.evidenceQuestion(key)
+ 	}
+ 	return evaluationRequest{State: state, Questions: questions, Model: settings.model}
+diff --git a/internal/semanticlint/semanticlint_test.go b/internal/semanticlint/semanticlint_test.go
+index 4bb24227f..852a5990b 100644
+--- a/internal/semanticlint/semanticlint_test.go
++++ b/internal/semanticlint/semanticlint_test.go
+@@ -169,7 +169,7 @@ func TestRunSelectsCandidateSpansBeforeFinalJudgment(t *testing.T) {
+ 		requests = append(requests, received)
+ 		mu.Unlock()
+ 		probability := 0.1
+-		if strings.Contains(received.State["file"], "VIOLATION") {
++		if strings.Contains(stateText(received, "file"), "VIOLATION") {
+ 			probability = 0.9
+ 		}
+ 		answers := make(map[string]answer, len(received.Questions))
+@@ -233,8 +233,8 @@ func TestRunSelectsCandidateSpansBeforeFinalJudgment(t *testing.T) {
+ 		}
+ 		if len(received.Questions) == 2 {
+ 			foundFinal = true
+-			if len(received.State["file"]) >= len(source) || !strings.Contains(received.State["file"], "VIOLATION") {
+-				t.Fatalf("final state = %q", received.State["file"])
++			if final := stateText(received, "file"); len(final) >= len(source) || !strings.Contains(final, "VIOLATION") {
++				t.Fatalf("final state = %q", final)
+ 			}
+ 		}
+ 	}
+@@ -262,11 +262,11 @@ func TestRunRecomposesDistantCandidateSpans(t *testing.T) {
+ 			}
+ 			probability := 0.1
+ 			if len(received.Questions) == 2 {
+-				finalState = received.State["file"]
++				finalState = stateText(received, "file")
+ 				if strings.Contains(finalState, "VIOLATION_A") && strings.Contains(finalState, "VIOLATION_B") {
+ 					probability = 0.9
+ 				}
+-			} else if strings.Contains(received.State["file"], "VIOLATION_A") || strings.Contains(received.State["file"], "VIOLATION_B") {
++			} else if file := stateText(received, "file"); strings.Contains(file, "VIOLATION_A") || strings.Contains(file, "VIOLATION_B") {
+ 				probability = 0.8
+ 			}
+ 			answers[id] = answer{Type: "noul", Noul: probability}
+@@ -463,10 +463,16 @@ func TestParseOptionsRejectsRemovedPipelines(t *testing.T) {
+ 	}
+ }
+ 
++// stateText is a text field of the default state shape.
++func stateText(request evaluationRequest, key string) string {
++	text, _ := request.State[key].(string)
++	return text
++}
++
+ // testEvidenceAnswer selects an evidence block when its text contains any marker.
+ func testEvidenceAnswer(request evaluationRequest, key string, markers ...string) answer {
+ 	for _, marker := range markers {
+-		if strings.Contains(request.State[key], marker) {
++		if strings.Contains(stateText(request, key), marker) {
+ 			return answer{Type: "noul", Noul: 0.9}
+ 		}
+ 	}
+diff --git a/internal/semanticlint/shape_probe_test.go b/internal/semanticlint/shape_probe_test.go
+new file mode 100644
+index 000000000..cacb3a7e2
+--- /dev/null
++++ b/internal/semanticlint/shape_probe_test.go
+@@ -0,0 +1,81 @@
++package semanticlint
++
++import (
++	"fmt"
++	"os"
++	"path/filepath"
++	"strings"
++	"testing"
++)
++
++// Throwaway: prints sample requests and candidate-stage bytes per shape.
++func TestShapeProbe(t *testing.T) {
++	if os.Getenv("SHAPE_PROBE") == "" {
++		t.Skip()
++	}
++	rules, err := loadRules(t.TempDir(), "")
++	if err != nil {
++		t.Fatal(err)
++	}
++	cases, err := loadEvalCorpus(evalDirectory, rules)
++	if err != nil {
++		t.Fatal(err)
++	}
++	policies := policyIndex(rules)
++	shapes := map[string]stateShape{"base": {}, "policy": {Policy: true}, "whole": {Whole: true}, "lines": {Lines: true}}
++	workload, err := os.ReadFile(filepath.Join(evalDirectory, "workload.txt"))
++	if err != nil {
++		t.Fatal(err)
++	}
++	for _, name := range []string{"base", "policy", "whole", "lines"} {
++		settings := Options{shape: shapes[name]}.requestSettings()
++		valBytes, valRequests := 0, 0
++		for _, item := range cases {
++			if item.Split != "val" {
++				continue
++			}
++			source, _, err := caseSource(evalDirectory, item)
++			if err != nil {
++				t.Fatal(err)
++			}
++			partitions, err := buildRequestPartitions(source, []Rule{policies[item.Policy]}, settings, maximumRequestBytes)
++			if err != nil {
++				t.Fatal(err)
++			}
++			for _, partition := range partitions {
++				valBytes += requestSize(partition.request)
++				valRequests++
++			}
++		}
++		packedBytes, packedRequests := 0, 0
++		for _, path := range strings.Fields(string(workload)) {
++			content, err := os.ReadFile(filepath.Join("..", "..", filepath.FromSlash(path)))
++			if err != nil {
++				t.Fatal(err)
++			}
++			partitions, err := buildRequestPartitions(Source{Path: path, Text: string(content)}, rulesForPath(rules, nil, path), settings, maximumRequestBytes)
++			if err != nil {
++				t.Fatal(err)
++			}
++			for _, partition := range partitions {
++				packedBytes += requestSize(partition.request)
++				packedRequests++
++			}
++		}
++		fmt.Printf("%-7s val candidate %9d bytes %5d requests | workload packed candidate %9d bytes %5d requests\n", name, valBytes, valRequests, packedBytes, packedRequests)
++	}
++	source := Source{Path: "src/a.ts", Text: "const a = 1\nconst b = 2\nconst c = 3\n"}
++	rule := Rule{ID: "rule_1", Source: "POLICY TEXT"}
++	for _, name := range []string{"policy", "lines"} {
++		settings := Options{shape: shapes[name]}.requestSettings()
++		windows := []sourceWindow{{0, 12}, {24, len(source.Text)}}
++		for _, request := range []evaluationRequest{
++			candidateRequest(source, sourceWindow{0, len(source.Text)}, []Rule{rule}, settings),
++			evidenceRequest(source, rule, windows, settings),
++			finalRequest(source, rule, windows, candidateRanges(source, windows), settings),
++		} {
++			encoded, _ := marshalJSON(request)
++			fmt.Printf("%s: %s\n", name, encoded)
++		}
++	}
++}
+diff --git a/internal/semanticlint/types.go b/internal/semanticlint/types.go
+index 05323a31f..a08e632a2 100644
+--- a/internal/semanticlint/types.go
++++ b/internal/semanticlint/types.go
+@@ -41,6 +41,7 @@ type Options struct {
+ 	JSON           bool
+ 	DryRun         bool
+ 	prompts        prompts
++	shape          stateShape
+ }
+ 
+ type Source struct {
+@@ -119,7 +120,7 @@ type question struct {
+ }
+ 
+ type evaluationRequest struct {
+-	State     map[string]string   `json:"state"`
++	State     map[string]any      `json:"state"`
+ 	Questions map[string]question `json:"questions"`
+ 	Model     string              `json:"model,omitempty"`
+ 	// scope tells evaluators which step issued the request; it is never sent.

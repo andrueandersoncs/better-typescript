@@ -9,7 +9,7 @@ import (
 )
 
 // minimumBlockBytes sets evidence granularity: blocks hold whole lines and at least this many bytes.
-const minimumBlockBytes = 400
+const minimumBlockBytes = 800
 
 // evidenceBlocks splits a window into consecutive whole-line blocks of at least minimumBlockBytes.
 func evidenceBlocks(text string, window sourceWindow) []sourceWindow {
@@ -31,10 +31,10 @@ func blockKey(position int) string {
 	return "block_" + strconv.Itoa(position+1)
 }
 
-// evidenceRequest states the policy once and asks one short Noul per block.
+// evidenceRequest states the policy and the evidence guide once and asks one short Noul per block.
 func evidenceRequest(source Source, rule Rule, blocks []sourceWindow, settings requestSettings) evaluationRequest {
-	state := make(map[string]string, len(blocks)+2)
-	state["path"], state["policy"] = source.Path, rule.Source
+	state := make(map[string]string, len(blocks)+3)
+	state["path"], state["policy"], state["evidence_guide"] = source.Path, rule.Source, settings.prompts.EvidenceGuide
 	questions := make(map[string]question, len(blocks))
 	for position, block := range blocks {
 		key := blockKey(position)

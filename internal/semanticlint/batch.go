@@ -12,7 +12,6 @@ const (
 	candidateSelectionThreshold     = 0.4
 	minimumApplicabilityProbability = 0.7
 	maximumSegmentBytes             = 4_000
-	maximumWindowOverlapBytes       = 2_000
 	maximumConcurrentEvaluations    = 8
 	applicabilityGateReason         = "policy applicability not established"
 )
@@ -74,14 +73,19 @@ func buildRequestPartitions(source Source, rules []Rule, settings requestSetting
 
 func singleRuleRequest(path, sourceText string, rule Rule, settings requestSettings) evaluationRequest {
 	return evaluationRequest{
-		State:     map[string]string{"path": path, "file": sourceText},
+		State:     candidateState(path, sourceText, settings),
 		Questions: map[string]question{rule.ID: settings.prompts.candidateQuestion(rule)},
 		Model:     settings.model,
 	}
 }
 
+// candidateState holds the selection guide once, so each policy's question only points at it.
+func candidateState(path, sourceText string, settings requestSettings) map[string]string {
+	return map[string]string{"path": path, "file": sourceText, "selection_guide": settings.prompts.CandidateGuide}
+}
+
 func partitionWindow(source Source, window sourceWindow, rules []Rule, settings requestSettings, maximumBytes int, windowed bool) ([]requestPartition, error) {
-	state := map[string]string{"path": source.Path, "file": source.Text[window.start:window.end]}
+	state := candidateState(source.Path, source.Text[window.start:window.end], settings)
 	var partitions []requestPartition
 	current := requestPartition{
 		request:  evaluationRequest{State: state, Questions: make(map[string]question, len(rules)), Model: settings.model},
@@ -194,8 +198,9 @@ func preferLineEnd(text string, start, end int) int {
 	return end
 }
 
+// nextWindowStart overlaps consecutive spans by a quarter of a span, 1,000 bytes at most.
 func nextWindowStart(text string, start, end int) int {
-	overlap := min(maximumWindowOverlapBytes, (end-start)/4)
+	overlap := (end - start) / 4
 	if overlap == 0 {
 		return end
 	}

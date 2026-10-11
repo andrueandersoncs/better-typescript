@@ -1,0 +1,614 @@
+[
+  {
+    "file": ".scratch/semantic-lint-optimization/external/OpenBot/app/tests/computer-reset-clears-activity.test.ts",
+    "rulePath": "rules/modularity/make-dependencies-explicit.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "b01",
+    "pair": [
+      "OpenBot/app/tests/computer-reset-clears-activity.test.ts",
+      "rules/modularity/make-dependencies-explicit.md"
+    ],
+    "policy": "internal/semanticlint/defaults/modularity/make-dependencies-explicit.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/OpenBot/app/tests/computer-reset-clears-activity.test.ts",
+    "rulePath": "rules/readability/do-not-narrate-obvious-code.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "b02",
+    "pair": [
+      "OpenBot/app/tests/computer-reset-clears-activity.test.ts",
+      "rules/readability/do-not-narrate-obvious-code.md"
+    ],
+    "policy": "internal/semanticlint/defaults/readability/do-not-narrate-obvious-code.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/OpenBot/app/tests/computer-reset-clears-activity.test.ts",
+    "rulePath": "rules/readability/separate-test-setup-action-and-assertions.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "b03",
+    "pair": [
+      "OpenBot/app/tests/computer-reset-clears-activity.test.ts",
+      "rules/readability/separate-test-setup-action-and-assertions.md"
+    ],
+    "policy": "internal/semanticlint/defaults/readability/separate-test-setup-action-and-assertions.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/OpenBot/app/tests/computer-reset-clears-activity.test.ts",
+    "rulePath": "rules/typescript-contracts/isolate-unsafe-type-escapes.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "b04",
+    "pair": [
+      "OpenBot/app/tests/computer-reset-clears-activity.test.ts",
+      "rules/typescript-contracts/isolate-unsafe-type-escapes.md"
+    ],
+    "policy": "internal/semanticlint/defaults/typescript-contracts/isolate-unsafe-type-escapes.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/OpenBot/server/tests/computer-snapshot-id.test.ts",
+    "rulePath": "rules/testing-enforcement/keep-test-fixtures-type-checked.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "b05",
+    "pair": [
+      "OpenBot/server/tests/computer-snapshot-id.test.ts",
+      "rules/testing-enforcement/keep-test-fixtures-type-checked.md"
+    ],
+    "policy": "internal/semanticlint/defaults/testing-enforcement/keep-test-fixtures-type-checked.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/claude-skill-effect-ts/effect-ts-detectors/categories/imperative/index.ts",
+    "rulePath": "rules/function-naming.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "b06",
+    "pair": [
+      "claude-skill-effect-ts/effect-ts-detectors/categories/imperative/index.ts",
+      "rules/function-naming.md"
+    ],
+    "policy": "internal/semanticlint/defaults/function-naming.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/claude-skill-effect-ts/effect-ts-detectors/categories/imperative/index.ts",
+    "rulePath": "rules/readability/name-things-by-their-purpose.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "b07",
+    "pair": [
+      "claude-skill-effect-ts/effect-ts-detectors/categories/imperative/index.ts",
+      "rules/readability/name-things-by-their-purpose.md"
+    ],
+    "policy": "internal/semanticlint/defaults/readability/name-things-by-their-purpose.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/effect-domains/examples/community-elections/tally.ts",
+    "rulePath": "rules/readability/name-booleans-as-conditions.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "b08",
+    "pair": [
+      "effect-domains/examples/community-elections/tally.ts",
+      "rules/readability/name-booleans-as-conditions.md"
+    ],
+    "policy": "internal/semanticlint/defaults/readability/name-booleans-as-conditions.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/effect-domains/examples/community-elections/tally.ts",
+    "rulePath": "rules/readability/prefer-straightforward-code-over-clever-code.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "b09",
+    "pair": [
+      "effect-domains/examples/community-elections/tally.ts",
+      "rules/readability/prefer-straightforward-code-over-clever-code.md"
+    ],
+    "policy": "internal/semanticlint/defaults/readability/prefer-straightforward-code-over-clever-code.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/effect-domains/examples/purchased-guides/main.ts",
+    "rulePath": "rules/abstraction/keep-core-behavior-testable-in-isolation.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "b10",
+    "pair": [
+      "effect-domains/examples/purchased-guides/main.ts",
+      "rules/abstraction/keep-core-behavior-testable-in-isolation.md"
+    ],
+    "policy": "internal/semanticlint/defaults/abstraction/keep-core-behavior-testable-in-isolation.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/effect-domains/examples/purchased-guides/main.ts",
+    "rulePath": "rules/readability/delete-dead-code.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "b11",
+    "pair": [
+      "effect-domains/examples/purchased-guides/main.ts",
+      "rules/readability/delete-dead-code.md"
+    ],
+    "policy": "internal/semanticlint/defaults/readability/delete-dead-code.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/effect-redux/.agents/skills/executable-interactive-plans/assets/examples/task-management/review-server.ts",
+    "rulePath": "rules/performance/avoid-growing-accumulator-copies.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "b12",
+    "pair": [
+      "effect-redux/.agents/skills/executable-interactive-plans/assets/examples/task-management/review-server.ts",
+      "rules/performance/avoid-growing-accumulator-copies.md"
+    ],
+    "policy": "internal/semanticlint/defaults/performance/avoid-growing-accumulator-copies.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/effect-redux/.agents/skills/executable-interactive-plans/assets/examples/task-management/review-server.ts",
+    "rulePath": "rules/readability/name-things-by-their-purpose.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "b13",
+    "pair": [
+      "effect-redux/.agents/skills/executable-interactive-plans/assets/examples/task-management/review-server.ts",
+      "rules/readability/name-things-by-their-purpose.md"
+    ],
+    "policy": "internal/semanticlint/defaults/readability/name-things-by-their-purpose.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/effect-redux/.agents/skills/executable-interactive-plans/assets/examples/task-management/review-server.ts",
+    "rulePath": "rules/simplicity/prefer-direct-calls-over-hidden-dispatch.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "b14",
+    "pair": [
+      "effect-redux/.agents/skills/executable-interactive-plans/assets/examples/task-management/review-server.ts",
+      "rules/simplicity/prefer-direct-calls-over-hidden-dispatch.md"
+    ],
+    "policy": "internal/semanticlint/defaults/simplicity/prefer-direct-calls-over-hidden-dispatch.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/effect-redux/.agents/skills/executable-interactive-plans/assets/examples/task-management/review-server.ts",
+    "rulePath": "rules/web-boundaries/separate-application-dependencies-from-request-state.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "b15",
+    "pair": [
+      "effect-redux/.agents/skills/executable-interactive-plans/assets/examples/task-management/review-server.ts",
+      "rules/web-boundaries/separate-application-dependencies-from-request-state.md"
+    ],
+    "policy": "internal/semanticlint/defaults/web-boundaries/separate-application-dependencies-from-request-state.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/herd/apps/api/src/routes/base-queries/post.ts",
+    "rulePath": "rules/effect/acquire-application-dependencies-once.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "b16",
+    "pair": [
+      "herd/apps/api/src/routes/base-queries/post.ts",
+      "rules/effect/acquire-application-dependencies-once.md"
+    ],
+    "policy": "internal/semanticlint/defaults/effect/acquire-application-dependencies-once.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/mapmaker/src/server/lock.ts",
+    "rulePath": "rules/modularity/separate-decision-making-from-external-effects.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "b17",
+    "pair": [
+      "mapmaker/src/server/lock.ts",
+      "rules/modularity/separate-decision-making-from-external-effects.md"
+    ],
+    "policy": "internal/semanticlint/defaults/modularity/separate-decision-making-from-external-effects.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/mapmaker/src/ui/selection.ts",
+    "rulePath": "rules/typescript-contracts/isolate-unsafe-type-escapes.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "b18",
+    "pair": [
+      "mapmaker/src/ui/selection.ts",
+      "rules/typescript-contracts/isolate-unsafe-type-escapes.md"
+    ],
+    "policy": "internal/semanticlint/defaults/typescript-contracts/isolate-unsafe-type-escapes.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/open-workflows/examples/audit-auth/src/workflows.test.ts",
+    "rulePath": "rules/function-naming.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "b19",
+    "pair": [
+      "open-workflows/examples/audit-auth/src/workflows.test.ts",
+      "rules/function-naming.md"
+    ],
+    "policy": "internal/semanticlint/defaults/function-naming.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/open-workflows/examples/audit-auth/src/workflows.test.ts",
+    "rulePath": "rules/readability/do-not-narrate-obvious-code.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "b20",
+    "pair": [
+      "open-workflows/examples/audit-auth/src/workflows.test.ts",
+      "rules/readability/do-not-narrate-obvious-code.md"
+    ],
+    "policy": "internal/semanticlint/defaults/readability/do-not-narrate-obvious-code.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/open-workflows/packages/web/src/NodeDetail.tsx",
+    "rulePath": "rules/abstraction/do-not-force-variation-through-flags.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "b21",
+    "pair": [
+      "open-workflows/packages/web/src/NodeDetail.tsx",
+      "rules/abstraction/do-not-force-variation-through-flags.md"
+    ],
+    "policy": "internal/semanticlint/defaults/abstraction/do-not-force-variation-through-flags.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/open-workflows/packages/web/src/NodeDetail.tsx",
+    "rulePath": "rules/readability/avoid-temporaries-that-merely-repeat-an-expression.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "b22",
+    "pair": [
+      "open-workflows/packages/web/src/NodeDetail.tsx",
+      "rules/readability/avoid-temporaries-that-merely-repeat-an-expression.md"
+    ],
+    "policy": "internal/semanticlint/defaults/readability/avoid-temporaries-that-merely-repeat-an-expression.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/open-workflows/packages/web/src/NodeDetail.tsx",
+    "rulePath": "rules/readability/do-not-narrate-obvious-code.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "b23",
+    "pair": [
+      "open-workflows/packages/web/src/NodeDetail.tsx",
+      "rules/readability/do-not-narrate-obvious-code.md"
+    ],
+    "policy": "internal/semanticlint/defaults/readability/do-not-narrate-obvious-code.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/open-workflows/packages/web/src/NodeDetail.tsx",
+    "rulePath": "rules/readability/keep-each-function-at-a-consistent-level-of-detail.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "b24",
+    "pair": [
+      "open-workflows/packages/web/src/NodeDetail.tsx",
+      "rules/readability/keep-each-function-at-a-consistent-level-of-detail.md"
+    ],
+    "policy": "internal/semanticlint/defaults/readability/keep-each-function-at-a-consistent-level-of-detail.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/open-workflows/packages/web/src/NodeDetail.tsx",
+    "rulePath": "rules/readability/name-things-by-their-purpose.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "b25",
+    "pair": [
+      "open-workflows/packages/web/src/NodeDetail.tsx",
+      "rules/readability/name-things-by-their-purpose.md"
+    ],
+    "policy": "internal/semanticlint/defaults/readability/name-things-by-their-purpose.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/open-workflows/packages/web/src/NodeDetail.tsx",
+    "rulePath": "rules/simplicity/prefer-direct-calls-over-hidden-dispatch.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "b26",
+    "pair": [
+      "open-workflows/packages/web/src/NodeDetail.tsx",
+      "rules/simplicity/prefer-direct-calls-over-hidden-dispatch.md"
+    ],
+    "policy": "internal/semanticlint/defaults/simplicity/prefer-direct-calls-over-hidden-dispatch.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/prime-agent/packages/coding-agent/examples/extensions/interactive-shell.ts",
+    "rulePath": "rules/readability/do-not-narrate-obvious-code.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "b27",
+    "pair": [
+      "prime-agent/packages/coding-agent/examples/extensions/interactive-shell.ts",
+      "rules/readability/do-not-narrate-obvious-code.md"
+    ],
+    "policy": "internal/semanticlint/defaults/readability/do-not-narrate-obvious-code.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/prime-agent/packages/coding-agent/examples/extensions/interactive-shell.ts",
+    "rulePath": "rules/readability/name-things-by-their-purpose.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "b28",
+    "pair": [
+      "prime-agent/packages/coding-agent/examples/extensions/interactive-shell.ts",
+      "rules/readability/name-things-by-their-purpose.md"
+    ],
+    "policy": "internal/semanticlint/defaults/readability/name-things-by-their-purpose.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/sandbox-sdk-effect/packages/sdk/src/providers/local/index.ts",
+    "rulePath": "rules/abstraction/make-the-public-interface-as-small-as-the-contract-allows.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "b29",
+    "pair": [
+      "sandbox-sdk-effect/packages/sdk/src/providers/local/index.ts",
+      "rules/abstraction/make-the-public-interface-as-small-as-the-contract-allows.md"
+    ],
+    "policy": "internal/semanticlint/defaults/abstraction/make-the-public-interface-as-small-as-the-contract-allows.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/sandbox-sdk-effect/packages/sdk/tests/core/disposal.test.ts",
+    "rulePath": "rules/abstraction/do-not-import-another-modules-internal-files.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "b30",
+    "pair": [
+      "sandbox-sdk-effect/packages/sdk/tests/core/disposal.test.ts",
+      "rules/abstraction/do-not-import-another-modules-internal-files.md"
+    ],
+    "policy": "internal/semanticlint/defaults/abstraction/do-not-import-another-modules-internal-files.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/task-based-pi/apps/task-based-pi/playwright.live-steering.config.ts",
+    "rulePath": "rules/abstraction/keep-core-behavior-testable-in-isolation.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "b31",
+    "pair": [
+      "task-based-pi/apps/task-based-pi/playwright.live-steering.config.ts",
+      "rules/abstraction/keep-core-behavior-testable-in-isolation.md"
+    ],
+    "policy": "internal/semanticlint/defaults/abstraction/keep-core-behavior-testable-in-isolation.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/taskr/apps/infra/src/local-coding-store.ts",
+    "rulePath": "rules/abstraction/make-the-public-interface-as-small-as-the-contract-allows.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "b32",
+    "pair": [
+      "taskr/apps/infra/src/local-coding-store.ts",
+      "rules/abstraction/make-the-public-interface-as-small-as-the-contract-allows.md"
+    ],
+    "policy": "internal/semanticlint/defaults/abstraction/make-the-public-interface-as-small-as-the-contract-allows.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/taskr/apps/infra/src/local-coding-store.ts",
+    "rulePath": "rules/modularity/specify-inputs-outputs-errors-and-side-effects.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "b33",
+    "pair": [
+      "taskr/apps/infra/src/local-coding-store.ts",
+      "rules/modularity/specify-inputs-outputs-errors-and-side-effects.md"
+    ],
+    "policy": "internal/semanticlint/defaults/modularity/specify-inputs-outputs-errors-and-side-effects.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/taskr/apps/infra/src/protected-deployment.ts",
+    "rulePath": "rules/abstraction/do-not-force-variation-through-flags.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "b34",
+    "pair": [
+      "taskr/apps/infra/src/protected-deployment.ts",
+      "rules/abstraction/do-not-force-variation-through-flags.md"
+    ],
+    "policy": "internal/semanticlint/defaults/abstraction/do-not-force-variation-through-flags.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/taskr/apps/infra/src/protected-deployment.ts",
+    "rulePath": "rules/readability/avoid-obscure-abbreviations-and-redundant-prefixes.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "b35",
+    "pair": [
+      "taskr/apps/infra/src/protected-deployment.ts",
+      "rules/readability/avoid-obscure-abbreviations-and-redundant-prefixes.md"
+    ],
+    "policy": "internal/semanticlint/defaults/readability/avoid-obscure-abbreviations-and-redundant-prefixes.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/taskr/apps/infra/src/protected-deployment.ts",
+    "rulePath": "rules/readability/avoid-temporaries-that-merely-repeat-an-expression.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "b36",
+    "pair": [
+      "taskr/apps/infra/src/protected-deployment.ts",
+      "rules/readability/avoid-temporaries-that-merely-repeat-an-expression.md"
+    ],
+    "policy": "internal/semanticlint/defaults/readability/avoid-temporaries-that-merely-repeat-an-expression.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/taskr/apps/infra/src/protected-deployment.ts",
+    "rulePath": "rules/readability/keep-each-function-at-a-consistent-level-of-detail.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "b37",
+    "pair": [
+      "taskr/apps/infra/src/protected-deployment.ts",
+      "rules/readability/keep-each-function-at-a-consistent-level-of-detail.md"
+    ],
+    "policy": "internal/semanticlint/defaults/readability/keep-each-function-at-a-consistent-level-of-detail.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/taskr/apps/infra/src/protected-deployment.ts",
+    "rulePath": "rules/readability/name-booleans-as-conditions.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "b38",
+    "pair": [
+      "taskr/apps/infra/src/protected-deployment.ts",
+      "rules/readability/name-booleans-as-conditions.md"
+    ],
+    "policy": "internal/semanticlint/defaults/readability/name-booleans-as-conditions.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/token-double-click/cf-research/src/worker/domain/frontier-state.test.ts",
+    "rulePath": "rules/abstraction/make-correct-use-straightforward-and-invalid-use-difficult.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "b39",
+    "pair": [
+      "token-double-click/cf-research/src/worker/domain/frontier-state.test.ts",
+      "rules/abstraction/make-correct-use-straightforward-and-invalid-use-difficult.md"
+    ],
+    "policy": "internal/semanticlint/defaults/abstraction/make-correct-use-straightforward-and-invalid-use-difficult.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/token-double-click/cf-research/src/worker/domain/frontier-state.test.ts",
+    "rulePath": "rules/readability/name-tests-after-condition-and-outcome.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "b40",
+    "pair": [
+      "token-double-click/cf-research/src/worker/domain/frontier-state.test.ts",
+      "rules/readability/name-tests-after-condition-and-outcome.md"
+    ],
+    "policy": "internal/semanticlint/defaults/readability/name-tests-after-condition-and-outcome.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/token-double-click/cf-research/src/worker/domain/frontier-state.test.ts",
+    "rulePath": "rules/readability/use-test-data-that-makes-behavior-obvious.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "b41",
+    "pair": [
+      "token-double-click/cf-research/src/worker/domain/frontier-state.test.ts",
+      "rules/readability/use-test-data-that-makes-behavior-obvious.md"
+    ],
+    "policy": "internal/semanticlint/defaults/readability/use-test-data-that-makes-behavior-obvious.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/token-double-click/cf-research/src/worker/domain/frontier-state.test.ts",
+    "rulePath": "rules/testing-enforcement/prevent-vacuous-property-sampling.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "b42",
+    "pair": [
+      "token-double-click/cf-research/src/worker/domain/frontier-state.test.ts",
+      "rules/testing-enforcement/prevent-vacuous-property-sampling.md"
+    ],
+    "policy": "internal/semanticlint/defaults/testing-enforcement/prevent-vacuous-property-sampling.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/token-double-click/convex/r0.ts",
+    "rulePath": "rules/readability/avoid-obscure-abbreviations-and-redundant-prefixes.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "b43",
+    "pair": [
+      "token-double-click/convex/r0.ts",
+      "rules/readability/avoid-obscure-abbreviations-and-redundant-prefixes.md"
+    ],
+    "policy": "internal/semanticlint/defaults/readability/avoid-obscure-abbreviations-and-redundant-prefixes.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/token-double-click/convex/r0.ts",
+    "rulePath": "rules/readability/do-not-narrate-obvious-code.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "b44",
+    "pair": [
+      "token-double-click/convex/r0.ts",
+      "rules/readability/do-not-narrate-obvious-code.md"
+    ],
+    "policy": "internal/semanticlint/defaults/readability/do-not-narrate-obvious-code.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/token-double-click/convex/r0.ts",
+    "rulePath": "rules/readability/name-booleans-as-conditions.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "b45",
+    "pair": [
+      "token-double-click/convex/r0.ts",
+      "rules/readability/name-booleans-as-conditions.md"
+    ],
+    "policy": "internal/semanticlint/defaults/readability/name-booleans-as-conditions.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/token-double-click/convex/r0.ts",
+    "rulePath": "rules/web-boundaries/enforce-authorization-in-the-protected-operation.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "b46",
+    "pair": [
+      "token-double-click/convex/r0.ts",
+      "rules/web-boundaries/enforce-authorization-in-the-protected-operation.md"
+    ],
+    "policy": "internal/semanticlint/defaults/web-boundaries/enforce-authorization-in-the-protected-operation.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/wintermute-web/backend/src/index.ts",
+    "rulePath": "rules/abstraction/give-each-resource-an-owner-that-releases-it.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "b47",
+    "pair": [
+      "wintermute-web/backend/src/index.ts",
+      "rules/abstraction/give-each-resource-an-owner-that-releases-it.md"
+    ],
+    "policy": "internal/semanticlint/defaults/abstraction/give-each-resource-an-owner-that-releases-it.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/wintermute-web/backend/src/index.ts",
+    "rulePath": "rules/readability/replace-unexplained-values-with-meaningful-names.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "b48",
+    "pair": [
+      "wintermute-web/backend/src/index.ts",
+      "rules/readability/replace-unexplained-values-with-meaningful-names.md"
+    ],
+    "policy": "internal/semanticlint/defaults/readability/replace-unexplained-values-with-meaningful-names.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/wintermute-web/frontend/src/hooks/use-agent-stream.ts",
+    "rulePath": "rules/effect/model-expected-failures-with-specific-types.md",
+    "baseSurfaced": false,
+    "candidateSurfaced": true,
+    "id": "b49",
+    "pair": [
+      "wintermute-web/frontend/src/hooks/use-agent-stream.ts",
+      "rules/effect/model-expected-failures-with-specific-types.md"
+    ],
+    "policy": "internal/semanticlint/defaults/effect/model-expected-failures-with-specific-types.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/wintermute-web/frontend/src/hooks/use-agent-stream.ts",
+    "rulePath": "rules/readability/name-things-by-their-purpose.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "b50",
+    "pair": [
+      "wintermute-web/frontend/src/hooks/use-agent-stream.ts",
+      "rules/readability/name-things-by-their-purpose.md"
+    ],
+    "policy": "internal/semanticlint/defaults/readability/name-things-by-their-purpose.md"
+  },
+  {
+    "file": ".scratch/semantic-lint-optimization/external/wintermute-web/frontend/src/hooks/use-agent-stream.ts",
+    "rulePath": "rules/simplicity/preserve-failure-context.md",
+    "baseSurfaced": true,
+    "candidateSurfaced": false,
+    "id": "b51",
+    "pair": [
+      "wintermute-web/frontend/src/hooks/use-agent-stream.ts",
+      "rules/simplicity/preserve-failure-context.md"
+    ],
+    "policy": "internal/semanticlint/defaults/simplicity/preserve-failure-context.md"
+  }
+]

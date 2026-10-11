@@ -225,7 +225,7 @@ func TestRunSelectsCandidateSpansBeforeFinalJudgment(t *testing.T) {
 	}
 	foundFinal := false
 	for _, received := range requests {
-		if _, evidence := received.State["policy"]; evidence {
+		if _, evidence := received.Questions["block_1"]; evidence {
 			continue
 		}
 		if len(received.Questions) < 1 || len(received.Questions) > 2 {
@@ -240,6 +240,36 @@ func TestRunSelectsCandidateSpansBeforeFinalJudgment(t *testing.T) {
 	}
 	if !foundFinal {
 		t.Fatal("no final Noul question")
+	}
+}
+
+// TypeSafe bills state once per request but every question's text separately, so guidance and policy
+// text shared by a candidate or evidence request's questions must appear in it exactly once.
+func TestRequestsSendSharedTextOnce(t *testing.T) {
+	settings := Options{}.requestSettings()
+	source := Source{Path: "src/example.ts", Text: strings.Repeat("const value = 1;\n", 400)}
+	rules := []Rule{{ID: "rule_1", Source: "First policy text."}, {ID: "rule_2", Source: "Second policy text."}}
+	occurrences := func(request evaluationRequest, text string) int {
+		body, err := marshalJSON(request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		encoded, _ := marshalJSON(text)
+		return strings.Count(string(body), strings.Trim(string(encoded), `"`))
+	}
+	partitions, err := buildRequestPartitions(source, rules, settings, maximumRequestBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, partition := range partitions {
+		if len(partition.request.Questions) != 2 || occurrences(partition.request, settings.prompts.CandidateGuide) != 1 {
+			t.Fatalf("candidate request = %#v", partition.request)
+		}
+	}
+	window := sourceWindow{start: 0, end: 4_000}
+	evidence := evidenceRequest(source, rules[0], evidenceBlocks(source.Text, window), settings)
+	if len(evidence.Questions) < 2 || occurrences(evidence, settings.prompts.EvidenceGuide) != 1 || occurrences(evidence, rules[0].Source) != 1 {
+		t.Fatalf("evidence request = %#v", evidence)
 	}
 }
 

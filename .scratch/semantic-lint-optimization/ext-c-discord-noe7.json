@@ -1,0 +1,163 @@
+{
+  "summary": {
+    "runs": [
+      3,
+      3
+    ],
+    "meanTokens": [
+      5729734.0,
+      3717234.0
+    ],
+    "pairs": 2802,
+    "bothSurfaced": 100,
+    "neither": 2678,
+    "baseOnly": 10,
+    "candidateOnly": 14
+  },
+  "discordant": [
+    {
+      "file": "HerdProto/src/icons/SmartContractIcon.tsx",
+      "rulePath": "rules/abstraction/make-correct-use-straightforward-and-invalid-use-difficult.md",
+      "baseSurfaced": true,
+      "candidateSurfaced": false
+    },
+    {
+      "file": "OpenBot/agent-computer/src/identity.ts",
+      "rulePath": "rules/effect/model-expected-failures-with-specific-types.md",
+      "baseSurfaced": true,
+      "candidateSurfaced": false
+    },
+    {
+      "file": "OpenBot/agent-computer/src/identity.ts",
+      "rulePath": "rules/modularity/make-dependencies-explicit.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "OpenBot/agent-computer/src/identity.ts",
+      "rulePath": "rules/modularity/specify-inputs-outputs-errors-and-side-effects.md",
+      "baseSurfaced": true,
+      "candidateSurfaced": false
+    },
+    {
+      "file": "OpenBot/agent-computer/src/identity.ts",
+      "rulePath": "rules/simplicity/preserve-failure-context.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "claude-skill-effect-ts/scripts/effect-diagnose/compare-approaches.ts",
+      "rulePath": "rules/readability/do-not-narrate-obvious-code.md",
+      "baseSurfaced": true,
+      "candidateSurfaced": false
+    },
+    {
+      "file": "claude-skill-effect-ts/scripts/effect-diagnose/compare-approaches.ts",
+      "rulePath": "rules/simplicity/preserve-failure-context.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "effect-redux/.agents/skills/executable-interactive-plans/assets/story-test-template/review-server.ts",
+      "rulePath": "rules/function-naming.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "effect-redux/.agents/skills/executable-interactive-plans/assets/story-test-template/review-server.ts",
+      "rulePath": "rules/performance/avoid-growing-accumulator-copies.md",
+      "baseSurfaced": true,
+      "candidateSurfaced": false
+    },
+    {
+      "file": "effect-redux/.agents/skills/executable-interactive-plans/assets/story-test-template/review-server.ts",
+      "rulePath": "rules/readability/replace-unexplained-values-with-meaningful-names.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "mapmaker/src/domain/project-effort-graph.test.ts",
+      "rulePath": "rules/readability/name-booleans-as-conditions.md",
+      "baseSurfaced": true,
+      "candidateSurfaced": false
+    },
+    {
+      "file": "open-workflows/packages/core/src/types.ts",
+      "rulePath": "rules/function-naming.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "prime-agent/packages/coding-agent/examples/extensions/space-invaders.ts",
+      "rulePath": "rules/abstraction/give-each-resource-an-owner-that-releases-it.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "prime-agent/packages/coding-agent/examples/extensions/space-invaders.ts",
+      "rulePath": "rules/readability/avoid-obscure-abbreviations-and-redundant-prefixes.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "task-based-pi/apps/task-based-pi/e2e/recovery/seed.ts",
+      "rulePath": "rules/abstraction/test-observable-guarantees-not-private-structure.md",
+      "baseSurfaced": true,
+      "candidateSurfaced": false
+    },
+    {
+      "file": "taskr/apps/infra/src/worker.ts",
+      "rulePath": "rules/effect/model-expected-failures-with-specific-types.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "taskr/apps/infra/src/worker.ts",
+      "rulePath": "rules/readability/make-important-distinctions-visible-in-names.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "taskr/apps/infra/src/worker.ts",
+      "rulePath": "rules/readability/write-comments-that-explain-what-the-code-cannot.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "taskr/apps/web/src/coding-domain.ts",
+      "rulePath": "rules/modularity/specify-inputs-outputs-errors-and-side-effects.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "token-double-click/convex/approvals.ts",
+      "rulePath": "rules/performance/bound-materialized-data.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "token-double-click/convex/approvals.ts",
+      "rulePath": "rules/readability/name-booleans-as-conditions.md",
+      "baseSurfaced": true,
+      "candidateSurfaced": false
+    },
+    {
+      "file": "token-double-click/convex/approvals.ts",
+      "rulePath": "rules/simplicity/keep-each-fact-in-one-authoritative-place.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "token-double-click/convex/approvals.ts",
+      "rulePath": "rules/web-boundaries/keep-route-handlers-and-ui-components-thin.md",
+      "baseSurfaced": true,
+      "candidateSurfaced": false
+    },
+    {
+      "file": "wintermute-web/backend/src/services/storage.ts",
+      "rulePath": "rules/avoid-repetition.md",
+      "baseSurfaced": true,
+      "candidateSurfaced": false
+    }
+  ]
+}

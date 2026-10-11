@@ -1,0 +1,325 @@
+{
+  "summary": {
+    "runs": [
+      3,
+      3
+    ],
+    "meanTokens": [
+      3970897.0,
+      2608155.3333333335
+    ],
+    "pairs": 2880,
+    "bothSurfaced": 79,
+    "neither": 2750,
+    "baseOnly": 18,
+    "candidateOnly": 33
+  },
+  "discordant": [
+    {
+      "file": "OpenBot/app/tests/computer-reset-clears-activity.test.ts",
+      "rulePath": "rules/modularity/make-dependencies-explicit.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "OpenBot/app/tests/computer-reset-clears-activity.test.ts",
+      "rulePath": "rules/readability/do-not-narrate-obvious-code.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "OpenBot/app/tests/computer-reset-clears-activity.test.ts",
+      "rulePath": "rules/readability/separate-test-setup-action-and-assertions.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "OpenBot/app/tests/computer-reset-clears-activity.test.ts",
+      "rulePath": "rules/typescript-contracts/isolate-unsafe-type-escapes.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "OpenBot/server/tests/computer-snapshot-id.test.ts",
+      "rulePath": "rules/testing-enforcement/keep-test-fixtures-type-checked.md",
+      "baseSurfaced": true,
+      "candidateSurfaced": false
+    },
+    {
+      "file": "claude-skill-effect-ts/effect-ts-detectors/categories/imperative/index.ts",
+      "rulePath": "rules/function-naming.md",
+      "baseSurfaced": true,
+      "candidateSurfaced": false
+    },
+    {
+      "file": "claude-skill-effect-ts/effect-ts-detectors/categories/imperative/index.ts",
+      "rulePath": "rules/readability/name-things-by-their-purpose.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "effect-domains/examples/community-elections/tally.ts",
+      "rulePath": "rules/readability/name-booleans-as-conditions.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "effect-domains/examples/community-elections/tally.ts",
+      "rulePath": "rules/readability/prefer-straightforward-code-over-clever-code.md",
+      "baseSurfaced": true,
+      "candidateSurfaced": false
+    },
+    {
+      "file": "effect-domains/examples/purchased-guides/main.ts",
+      "rulePath": "rules/abstraction/keep-core-behavior-testable-in-isolation.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "effect-domains/examples/purchased-guides/main.ts",
+      "rulePath": "rules/readability/delete-dead-code.md",
+      "baseSurfaced": true,
+      "candidateSurfaced": false
+    },
+    {
+      "file": "effect-redux/.agents/skills/executable-interactive-plans/assets/examples/task-management/review-server.ts",
+      "rulePath": "rules/performance/avoid-growing-accumulator-copies.md",
+      "baseSurfaced": true,
+      "candidateSurfaced": false
+    },
+    {
+      "file": "effect-redux/.agents/skills/executable-interactive-plans/assets/examples/task-management/review-server.ts",
+      "rulePath": "rules/readability/name-things-by-their-purpose.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "effect-redux/.agents/skills/executable-interactive-plans/assets/examples/task-management/review-server.ts",
+      "rulePath": "rules/simplicity/prefer-direct-calls-over-hidden-dispatch.md",
+      "baseSurfaced": true,
+      "candidateSurfaced": false
+    },
+    {
+      "file": "effect-redux/.agents/skills/executable-interactive-plans/assets/examples/task-management/review-server.ts",
+      "rulePath": "rules/web-boundaries/separate-application-dependencies-from-request-state.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "herd/apps/api/src/routes/base-queries/post.ts",
+      "rulePath": "rules/effect/acquire-application-dependencies-once.md",
+      "baseSurfaced": true,
+      "candidateSurfaced": false
+    },
+    {
+      "file": "mapmaker/src/server/lock.ts",
+      "rulePath": "rules/modularity/separate-decision-making-from-external-effects.md",
+      "baseSurfaced": true,
+      "candidateSurfaced": false
+    },
+    {
+      "file": "mapmaker/src/ui/selection.ts",
+      "rulePath": "rules/typescript-contracts/isolate-unsafe-type-escapes.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "open-workflows/examples/audit-auth/src/workflows.test.ts",
+      "rulePath": "rules/function-naming.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "open-workflows/examples/audit-auth/src/workflows.test.ts",
+      "rulePath": "rules/readability/do-not-narrate-obvious-code.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "open-workflows/packages/web/src/NodeDetail.tsx",
+      "rulePath": "rules/abstraction/do-not-force-variation-through-flags.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "open-workflows/packages/web/src/NodeDetail.tsx",
+      "rulePath": "rules/readability/avoid-temporaries-that-merely-repeat-an-expression.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "open-workflows/packages/web/src/NodeDetail.tsx",
+      "rulePath": "rules/readability/do-not-narrate-obvious-code.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "open-workflows/packages/web/src/NodeDetail.tsx",
+      "rulePath": "rules/readability/keep-each-function-at-a-consistent-level-of-detail.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "open-workflows/packages/web/src/NodeDetail.tsx",
+      "rulePath": "rules/readability/name-things-by-their-purpose.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "open-workflows/packages/web/src/NodeDetail.tsx",
+      "rulePath": "rules/simplicity/prefer-direct-calls-over-hidden-dispatch.md",
+      "baseSurfaced": true,
+      "candidateSurfaced": false
+    },
+    {
+      "file": "prime-agent/packages/coding-agent/examples/extensions/interactive-shell.ts",
+      "rulePath": "rules/readability/do-not-narrate-obvious-code.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "prime-agent/packages/coding-agent/examples/extensions/interactive-shell.ts",
+      "rulePath": "rules/readability/name-things-by-their-purpose.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "sandbox-sdk-effect/packages/sdk/src/providers/local/index.ts",
+      "rulePath": "rules/abstraction/make-the-public-interface-as-small-as-the-contract-allows.md",
+      "baseSurfaced": true,
+      "candidateSurfaced": false
+    },
+    {
+      "file": "sandbox-sdk-effect/packages/sdk/tests/core/disposal.test.ts",
+      "rulePath": "rules/abstraction/do-not-import-another-modules-internal-files.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "task-based-pi/apps/task-based-pi/playwright.live-steering.config.ts",
+      "rulePath": "rules/abstraction/keep-core-behavior-testable-in-isolation.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "taskr/apps/infra/src/local-coding-store.ts",
+      "rulePath": "rules/abstraction/make-the-public-interface-as-small-as-the-contract-allows.md",
+      "baseSurfaced": true,
+      "candidateSurfaced": false
+    },
+    {
+      "file": "taskr/apps/infra/src/local-coding-store.ts",
+      "rulePath": "rules/modularity/specify-inputs-outputs-errors-and-side-effects.md",
+      "baseSurfaced": true,
+      "candidateSurfaced": false
+    },
+    {
+      "file": "taskr/apps/infra/src/protected-deployment.ts",
+      "rulePath": "rules/abstraction/do-not-force-variation-through-flags.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "taskr/apps/infra/src/protected-deployment.ts",
+      "rulePath": "rules/readability/avoid-obscure-abbreviations-and-redundant-prefixes.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "taskr/apps/infra/src/protected-deployment.ts",
+      "rulePath": "rules/readability/avoid-temporaries-that-merely-repeat-an-expression.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "taskr/apps/infra/src/protected-deployment.ts",
+      "rulePath": "rules/readability/keep-each-function-at-a-consistent-level-of-detail.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "taskr/apps/infra/src/protected-deployment.ts",
+      "rulePath": "rules/readability/name-booleans-as-conditions.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "token-double-click/cf-research/src/worker/domain/frontier-state.test.ts",
+      "rulePath": "rules/abstraction/make-correct-use-straightforward-and-invalid-use-difficult.md",
+      "baseSurfaced": true,
+      "candidateSurfaced": false
+    },
+    {
+      "file": "token-double-click/cf-research/src/worker/domain/frontier-state.test.ts",
+      "rulePath": "rules/readability/name-tests-after-condition-and-outcome.md",
+      "baseSurfaced": true,
+      "candidateSurfaced": false
+    },
+    {
+      "file": "token-double-click/cf-research/src/worker/domain/frontier-state.test.ts",
+      "rulePath": "rules/readability/use-test-data-that-makes-behavior-obvious.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "token-double-click/cf-research/src/worker/domain/frontier-state.test.ts",
+      "rulePath": "rules/testing-enforcement/prevent-vacuous-property-sampling.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "token-double-click/convex/r0.ts",
+      "rulePath": "rules/readability/avoid-obscure-abbreviations-and-redundant-prefixes.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "token-double-click/convex/r0.ts",
+      "rulePath": "rules/readability/do-not-narrate-obvious-code.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "token-double-click/convex/r0.ts",
+      "rulePath": "rules/readability/name-booleans-as-conditions.md",
+      "baseSurfaced": true,
+      "candidateSurfaced": false
+    },
+    {
+      "file": "token-double-click/convex/r0.ts",
+      "rulePath": "rules/web-boundaries/enforce-authorization-in-the-protected-operation.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "wintermute-web/backend/src/index.ts",
+      "rulePath": "rules/abstraction/give-each-resource-an-owner-that-releases-it.md",
+      "baseSurfaced": true,
+      "candidateSurfaced": false
+    },
+    {
+      "file": "wintermute-web/backend/src/index.ts",
+      "rulePath": "rules/readability/replace-unexplained-values-with-meaningful-names.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "wintermute-web/frontend/src/hooks/use-agent-stream.ts",
+      "rulePath": "rules/effect/model-expected-failures-with-specific-types.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    },
+    {
+      "file": "wintermute-web/frontend/src/hooks/use-agent-stream.ts",
+      "rulePath": "rules/readability/name-things-by-their-purpose.md",
+      "baseSurfaced": true,
+      "candidateSurfaced": false
+    },
+    {
+      "file": "wintermute-web/frontend/src/hooks/use-agent-stream.ts",
+      "rulePath": "rules/simplicity/preserve-failure-context.md",
+      "baseSurfaced": true,
+      "candidateSurfaced": false
+    }
+  ]
+}

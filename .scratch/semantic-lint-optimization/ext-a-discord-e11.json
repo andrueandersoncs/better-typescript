@@ -1,0 +1,37 @@
+{
+  "summary": {
+    "runs": [
+      3,
+      3
+    ],
+    "meanTokens": [
+      4344053.0,
+      3851699.6666666665
+    ],
+    "pairs": 2911,
+    "bothSurfaced": 125,
+    "neither": 2783,
+    "baseOnly": 2,
+    "candidateOnly": 1
+  },
+  "discordant": [
+    {
+      "file": "effect-domains/test/Application.types.ts",
+      "rulePath": "rules/readability/do-not-narrate-obvious-code.md",
+      "baseSurfaced": true,
+      "candidateSurfaced": false
+    },
+    {
+      "file": "task-based-pi/apps/task-based-pi/src/task-runtime-boundaries.test.ts",
+      "rulePath": "rules/readability/write-comments-that-explain-what-the-code-cannot.md",
+      "baseSurfaced": true,
+      "candidateSurfaced": false
+    },
+    {
+      "file": "taskr/apps/infra/src/local-coding-controller.ts",
+      "rulePath": "rules/readability/do-not-narrate-obvious-code.md",
+      "baseSurfaced": false,
+      "candidateSurfaced": true
+    }
+  ]
+}

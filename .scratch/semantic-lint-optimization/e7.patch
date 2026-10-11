@@ -1,0 +1,7 @@
+--- finalRequest (E7): policy moves to state; both final questions reference it
+-		State: map[string]string{"path": source.Path, "file": text.String()},
++		State: map[string]string{"path": source.Path, "file": text.String(), "policy": rule.Source},
+-			rule.ID:              settings.prompts.finalQuestion(rule),
+-			rule.ID + "_applies": settings.prompts.applicabilityQuestion(rule),
++			rule.ID:              settings.prompts.finalQuestion(Rule{ID: rule.ID, Source: "`policy`"}),
++			rule.ID + "_applies": settings.prompts.applicabilityQuestion(Rule{ID: rule.ID, Source: "`policy`"}),

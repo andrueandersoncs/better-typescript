@@ -45,7 +45,7 @@ func TestCheckVariantRejectsLongMalformedOrCorpusQuotingPrompts(t *testing.T) {
 		{"corpus string literal", func(p *prompts) { p.Final += " A message like “Could not load invoice” is generic." }, false},
 		{"corpus member expression", func(p *prompts) { p.Final += " `context.authorization !== undefined` reveals presence only." }, false},
 		{"corpus type name", func(p *prompts) { p.Final += " Passing a `QueryFailure` along is not evidence." }, false},
-		{"five times the default length", func(p *prompts) { p.Candidate = strings.Repeat(p.Candidate, 5) }, false},
+		{"five times the default length", func(p *prompts) { p.CandidateGuide = strings.Repeat(p.CandidateGuide, 5) }, false},
 		{"evidence prompt without its block", func(p *prompts) { p.Evidence = "Is this block relevant to `policy`?" }, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {

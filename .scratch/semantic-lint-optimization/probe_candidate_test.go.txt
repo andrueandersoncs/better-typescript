@@ -1,0 +1,89 @@
+//go:build semanticeval
+
+package semanticlint
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+// Throwaway: replays cached candidate answers to simulate candidate cutoffs offline.
+func TestProbeCandidate(t *testing.T) {
+	cache := os.Getenv("PROBE_CACHE")
+	if cache == "" {
+		t.Skip()
+	}
+	rules, err := loadRules(t.TempDir(), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases, err := loadEvalCorpus(evalDirectory, rules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	policies := policyIndex(rules)
+	settings := Options{}.requestSettings()
+	settings.model = evalModel
+	type row struct {
+		Case     string    `json:"case"`
+		Label    string    `json:"label"`
+		Target   []float64 `json:"target"`   // target policy, per window
+		GoldHit  []bool    `json:"goldHit"`  // window overlaps gold
+		Others   []float64 `json:"others"`   // every other policy and window
+		Windows  int       `json:"windows"`
+		Missing  int       `json:"missing"`
+	}
+	var rows []row
+	for _, item := range cases {
+		if item.Split != "train" && item.Split != "val" || item.Label == "ambiguous" {
+			continue
+		}
+		source, gold, err := caseSource(evalDirectory, item)
+		if err != nil {
+			t.Fatal(err)
+		}
+		target := policies[item.Policy]
+		partitions, err := buildRequestPartitions(source, rulesForPath(rules, nil, item.Path), settings, maximumRequestBytes)
+		if err != nil {
+			t.Fatal(err)
+		}
+		starts := lineStarts(source.Text)
+		r := row{Case: item.ID, Label: item.Label}
+		seen := map[sourceWindow]bool{}
+		for _, partition := range partitions {
+			seen[partition.window] = true
+			body, _ := marshalJSON(partition.request)
+			digest := sha256.Sum256(body)
+			content, err := os.ReadFile(filepath.Join(cache, hex.EncodeToString(digest[:])+".json"))
+			if err != nil {
+				r.Missing++
+				continue
+			}
+			var response evaluationResponse
+			if err := json.Unmarshal(content, &response); err != nil {
+				t.Fatal(err)
+			}
+			for _, rule := range partition.rules {
+				value := response.Answers[rule.ID].Noul
+				if rule.ID == target.ID {
+					r.Target = append(r.Target, value)
+					r.GoldHit = append(r.GoldHit, coversAny(gold, windowLines(starts, partition.window)))
+				} else {
+					r.Others = append(r.Others, value)
+				}
+			}
+		}
+		r.Windows = len(seen)
+		rows = append(rows, r)
+	}
+	content, _ := json.Marshal(rows)
+	if err := os.WriteFile(os.Getenv("PROBE_OUT"), content, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println("rows", len(rows))
+}

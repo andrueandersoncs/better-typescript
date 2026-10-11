@@ -21,28 +21,41 @@ For every selected file:
 2. split the file into overlapping, line-aware spans of at most 4,000 encoded source bytes;
 3. ask a Noul per span and policy whether it could contain concrete violation evidence or necessary context;
 4. merge candidate spans scoring above 0.40 for each policy;
-5. cut selected spans into whole-line blocks of at least 400 source bytes and ask one Noul per block whether it could supply evidence or necessary context, keeping blocks above 0.40 as an evidence set;
+5. cut selected spans into whole-line blocks of at least 800 source bytes and ask one Noul per block whether it could supply evidence or necessary context, keeping blocks above 0.40 as an evidence set;
 6. ask two independent Nouls over that complete evidence set: whether the policy applies and whether the original file violates it; and
 7. report the verdict, selected context, and whether that context covers the entire file.
 
-Selection questions use:
+Guidance that every question of a stage shares sits once in request state; each question only points at it. TypeSafe bills state once per request and question text once per question, so this keeps the cost of packing many policies into one request low.
+
+Each selection question is:
 
 ```text
-Could the `file` segment provide evidence that the complete file at `path` violates the following rule?
-This is candidate selection, not a final verdict. Apply the rule's scope and exceptions. Answer yes when the segment shows a concrete construct, behavior, or omission that plausibly conflicts with the rule, or provides context needed to evaluate a specific candidate violation. A candidate need not be proved within this segment; do not require the rest of the file to be visible. Judge semantics and the role of the code, not just matching words or APIs. An absent requirement is evidence when the segment shows where it should be satisfied; do not invent unseen behavior or dependencies. Answer no for mere topical relevance, clearly compliant code, or an inapplicable rule. Uncertainty about a concrete candidate favors yes; uncertainty without a concrete candidate does not.
+Apply `selection_guide` to the following rule.
 Rule:
 <verbatim rule file>
 ```
 
-This wording was chosen by prompt optimization against the semantic eval corpus. It halves silent misses relative to the earlier wording, with violation precision unchanged, and roughly doubles live token cost because it is longer and selects more spans.
-
-Each evidence request states the policy once and asks one Noul per block:
+The state holds `path`, the span as `file`, and `selection_guide`:
 
 ```text
-Could `block_N` provide concrete evidence, or context needed, for deciding whether the complete file violates the rule in `policy`? Answer yes for plausible evidence or necessary context, not merely related code. Answer no if this block cannot contribute.
+Could the `file` segment provide evidence that the complete file at `path` violates the rule, or necessary context for evaluating a concrete suspected violation?
+
+This is candidate selection, not a final verdict. Apply the rule's scope, conditions, and exceptions first. Answer yes when the shown code contains an identifiable construct, behavior, contradiction, or omission that plausibly meets the rule's reporting criteria. An omission is evidence only when the segment shows the place where the requirement should be satisfied. The segment need not prove the violation or contain every related fact.
+
+Select context only when it is tied to a specific candidate and is needed to interpret that candidate. Do not select material merely because it might become relevant if unseen code contains a violation. Do not invent unseen behavior, dependencies, or conflicting facts.
+
+Answer no for token or API overlap, imports, generic setup, merely governed constructs, or uncertainty with no concrete candidate. Also answer no when the visible code satisfies the requirement, falls under an exception, or is outside the rule's scope. Judge meaning and code role rather than surface wording. Once a concrete candidate exists, unresolved uncertainty favors yes; otherwise it favors no.
 ```
 
-The state holds `path`, the verbatim rule file as `policy`, and the blocks as `block_1` … `block_n`. Blocks hold whole lines. Each block is judged on its own, so distant blocks that are jointly needed can both remain. A span that is a single block is kept without asking. A block too large for a request is kept whole rather than truncated.
+This guide was chosen by GEPA, selecting on real external code (`ext-dev`). On held-out cases it kept accuracy and cut tokens by 8–12% by selecting fewer spans.
+
+Each evidence question is ``Apply `evidence_guide` to `block_N`.`` The state holds `path`, the verbatim rule file as `policy`, the blocks as `block_1` … `block_n`, and `evidence_guide`:
+
+```text
+Could the block provide concrete evidence, or context needed, for deciding whether the complete file violates the rule in `policy`? Answer yes for plausible evidence or necessary context, not merely related code. Answer no if this block cannot contribute.
+```
+
+Blocks hold whole lines. Each block is judged on its own, so distant blocks that are jointly needed can both remain. A span that is a single block is kept without asking. A block too large for a request is kept whole rather than truncated.
 
 Final applicability question:
 
@@ -65,7 +78,7 @@ Rule:
 
 The final questions receive the same evidence set but are judged independently. Every request includes the project-relative file `path` so the model can apply path-specific policy text. The rule file includes its frontmatter and original line endings. Requests never contain diffs, neighboring files, or other repository context. Final state includes selected source text with original line labels. Selected spans can include distant context that matters together; they do not explain a violation or pinpoint the offending code.
 
-Selection questions over the same span are batched up to the 64,000-byte request limit. Selection spans prefer line boundaries and overlap by up to 2,000 source bytes. At most eight requests run concurrently per stage. If no candidate is selected, no evidence block is kept, or the combined evidence set cannot fit one final request, the result is `inconclusive` without a final probability. No source is silently truncated. A policy that leaves no room for source text still causes an error.
+Selection questions over the same span are batched up to the 64,000-byte request limit. Selection spans prefer line boundaries and overlap by a quarter of a span, at most 1,000 source bytes. At most eight requests run concurrently per stage. If no candidate is selected, no evidence block is kept, or the combined evidence set cannot fit one final request, the result is `inconclusive` without a final probability. No source is silently truncated. A policy that leaves no room for source text still causes an error.
 
 Live semantic lint sends source spans and policy text to TypeSafe. Do not run it on repositories whose data cannot be sent to that provider. Deterministic lint and semantic `--dry-run` make no TypeSafe request.
 

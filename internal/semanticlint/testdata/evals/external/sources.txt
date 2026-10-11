@@ -1,0 +1,22 @@
+External real files copied 2026-10-10 from sibling projects (see table) for the ext-dev and ext-test splits.
+Labels: two blind Claude labelers per pair; disagreements are ambiguous. Pairs are those some pipeline variant surfaced, so the split is enriched for borderline findings.
+
+| Project | HEAD |
+| --- | --- |
+| effect-domains | 222b430 |
+| token-double-click | 8542c458 |
+| prime-agent | 920016c2 |
+| OpenBot | c3dd280 |
+| taskr | 9602902 |
+| lion | 425c226 |
+| sandbox-sdk-effect | 5bca716 |
+| open-workflows | 81b0280 |
+| mapmaker | 5a2113a |
+| effect-redux | 6edc7a2 |
+| claude-skill-effect-ts | c7c818d |
+| HerdProto | 1ff2114 |
+| wintermute-web | f3488b4 |
+| task-based-pi | 6fd59aa |
+| herd | da4fb6353d |
+
+`external-c.txt` holds picks 5–6 (added after the ext-b check, for the E7 ablation).

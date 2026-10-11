@@ -31,7 +31,7 @@ const (
 var (
 	evalLabels    = map[string]bool{"violates": true, "complies": true, "not-applicable": true, "ambiguous": true}
 	evalOrigins   = map[string]bool{"contrast": true, "planted": true, "real": true, "regression": true}
-	evalSplits    = map[string]bool{"train": true, "val": true, "test": true}
+	evalSplits    = map[string]bool{"train": true, "val": true, "test": true, "ext-dev": true, "ext-test": true}
 	evalLeakWords = []string{"violat", "complian", "fixme"}
 )
 
@@ -862,9 +862,25 @@ func checkVariant(directory string, cases []evalCase, rules []Rule, variant prom
 	if err != nil {
 		return err
 	}
+	// Growth is checked per stage, so text can move between a stage's prompt, guide, and criteria.
+	stage := func(name string) string {
+		for _, prefix := range []string{"candidate", "evidence", "final", "applicability"} {
+			if strings.HasPrefix(name, prefix) {
+				return prefix
+			}
+		}
+		return name
+	}
+	sizes, limits := map[string]int{}, map[string]int{}
 	for name, value := range fields {
-		if limit := evalMaximumPromptGrowth * len(defaults[name]); len(value) > limit {
-			return fmt.Errorf("prompt %s is %d bytes; the limit is %d (%d× the default)", name, len(value), limit, evalMaximumPromptGrowth)
+		sizes[stage(name)] += len(value)
+	}
+	for name, value := range defaults {
+		limits[stage(name)] += evalMaximumPromptGrowth * len(value)
+	}
+	for name, size := range sizes {
+		if size > limits[name] {
+			return fmt.Errorf("prompt %s is %d bytes; the limit is %d (%d× the default)", name, size, limits[name], evalMaximumPromptGrowth)
 		}
 	}
 	return checkVariantLeak(directory, cases, rules, fields)
@@ -1339,7 +1355,9 @@ type evalWorkloadFile struct {
 	Bytes      int            `json:"bytes"`
 	Policies   int            `json:"policies"`
 	Efficiency evalEfficiency `json:"efficiency"`
-	Error      string         `json:"error,omitempty"`
+	// Findings lets two runs over unlabeled files be compared case by case.
+	Findings []Finding `json:"findings,omitempty"`
+	Error    string    `json:"error,omitempty"`
 }
 
 type evalWorkloadReport struct {
@@ -1393,7 +1411,8 @@ func (run evalRun) runWorkloadFile(ctx context.Context, root, path string) evalW
 	file.Bytes, file.Policies = len(content), len(rules)
 	tracer := &tracingEvaluator{next: run.next, cache: run.cache}
 	started := time.Now()
-	_, err = evaluateSource(ctx, Source{Path: path, Text: string(content)}, rules, run.options, tracer)
+	report, err := evaluateSource(ctx, Source{Path: path, Text: string(content)}, rules, run.options, tracer)
+	file.Findings = report.Findings
 	file.Efficiency = measureEfficiency(tracer.entries, time.Since(started))
 	if err != nil {
 		file.Error = err.Error()
