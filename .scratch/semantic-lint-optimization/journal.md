@@ -603,3 +603,17 @@ Replaying dev seed 4 offline with the shipped code hits the replay cache for eve
 - Of about 80 missed violations, about 62 were judged `pass` by the final judge and about 17 never got a candidate.
 - **The final judge is the bottleneck in both directions:** it misses violations and passes false alarms. Candidate selection loses little.
 - All 558 cases were added to `ext-test` as `external-oss-*` (87 violating). Licenses are in `external/<repo>/LICENSE`; THIRD-PARTY-NOTICES is updated.
+
+### 30. Joint GEPA on `candidateGuide` + `final` (seed = shipped)
+
+- **Setup:** reflection on `train`, selection on 117 `ext-dev` cases, 2,500 calls. The length fix held: 0 of 29 proposals were rejected. Selection score 0.854 → 0.870.
+- The best variant is much longer: guide 1.8 KB, final 3.3 KB (`variant-gepa3.json`).
+- **Confirmation, 3 vs 3 against shipped:**
+
+| Split | Tokens | Score | Surfaced | Precision | AUROC |
+| --- | --- | --- | --- | --- | --- |
+| `ext-test` (1,072 cases) | −1.7% | 0.8669 → 0.8705 (n.s.) | **0.836 → 0.698 (worse)** | 0.786 → 0.791 | **0.891 → 0.877 (worse)** |
+| `test` | −3.0% | 0.9341 → 0.9324 (n.s.) | **0.734 → 0.684 (worse)** | 0.962 → 0.956 | — |
+
+- **Rejected.** The selection-score gain came from conservatism: the per-case score is Brier-like and rewards low probabilities on the many clean cases. On real code that cost 14 pp of recall and some ranking quality.
+- **Lesson:** GEPA's objective, mean per-case score, does not match the real-code goal. The last useful GEPA result (`gepa2`) was found despite this. Next time, optimize a recall-weighted objective, for example AUROC or surfaced recall at fixed precision on `ext-dev`.
