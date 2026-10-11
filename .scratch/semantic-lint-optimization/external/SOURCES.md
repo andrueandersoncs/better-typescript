@@ -21,3 +21,5 @@ Copied 2026-10-10. The first 4 tracked `.ts`/`.tsx` files per project, 800 B–2
 | herd | da4fb6353d |
 
 `external-c.txt` holds picks 5–6 (added after the ext-b check, for the E7 ablation).
+
+`external-d.txt` holds picks 7–10 (2026-10-11), labeled into `ext-test`.

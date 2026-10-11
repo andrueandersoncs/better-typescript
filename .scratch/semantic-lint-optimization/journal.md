@@ -546,3 +546,25 @@ Replaying dev seed 4 offline with the shipped code hits the replay cache for eve
 
 - **Rejected under the rule.** Corpus `test` score is worse, and the held-out real-code gain is not significant. Variant kept as `variant-gepa2.json`.
 - **This is the most promising lead so far:** on real code it raised recall by 11–19 pp at nearly flat precision. The corpus pulls the other way, as with every final-framing change, because its contrast cases reward conservatism. Deciding it needs a larger `ext-test`: about 100 violating cases would resolve a 15 pp recall change.
+
+## Round 4: enlarged `ext-test`
+
+### 26. ext-d labels (60 new files, picks 7–10 per project)
+
+- **What was labeled:** pairs surfaced by the shipped pipeline or by `variant-gepa2` (332, one seed each), plus 120 random unsurfaced pairs. Two blind labelers each.
+- **All added to `ext-test`.** Violations: 178 surfaced + 3 random. `ext-test` now has about 200 violating cases.
+- **Caveat:** most violations were found by one of the two compared sides, so absolute recall is inflated for both. The comparison is still symmetric.
+
+### 27. `variant-gepa2` (final prompt) vs shipped on the enlarged `ext-test`, 3 vs 3
+
+| Metric | Shipped | gepa2 | Change, 95/99% CI | Verdict |
+| --- | --- | --- | --- | --- |
+| Surfaced | 0.781 | 0.889 | [0.049, 0.171] | **better** |
+| Precision | 0.768 | 0.813 | [−0.024, 0.117] | no change |
+| Score | 0.8446 | 0.8460 | [−0.003, 0.006] | no change |
+| AUROC | 0.844 | 0.861 | [−0.000, 0.035] | no change |
+| Tokens | — | +2.4% | — | worse |
+
+- The verdict rule says *worse*, only because of the cost.
+- On the corpus `test` split, its score was 0.9368 → 0.9341, which counts as worse.
+- **Adopting it needs a maintainer decision:** +11 pp recall on real code, precision not worse, +2.4% tokens, and a small regression on the synthetic corpus.
