@@ -12,6 +12,7 @@ as feedback. Any other failure, such as a TypeSafe error, stops the run.
 
 import argparse
 import glob
+import hashlib
 import json
 import math
 import os
@@ -197,11 +198,12 @@ class CostGate:
 class SemanticLintAdapter:
     propose_new_texts = None  # use GEPA's default reflective proposer with REFLECTION_TEMPLATES
 
-    def __init__(self, cases, seed_tokens, seed, gate=None):
+    def __init__(self, cases, seed_tokens, seed, gate=None, weights=None):
         self.cases = cases
         self.seed_tokens = seed_tokens
         self.seed = seed
         self.gate = gate
+        self.weights = weights or {}
 
     def variant(self, candidate):
         """GEPA strips proposals; restore the trailing newline a seed prompt ends with."""
@@ -232,12 +234,12 @@ class SemanticLintAdapter:
         outputs, scores, objectives, trajectories = [], [], [], []
         for case_id in batch:
             result = results.get(case_id) or {"id": case_id, "rejection": rejection, "score": 0.0, "efficiency": {"inputTokens": 0}}
-            score = result["score"]
-            tokens = result["efficiency"]["inputTokens"]
-            efficiency = math.log2(self.seed_tokens[case_id] / tokens) if tokens and self.seed_tokens.get(case_id) else 0.0
+            # Class-balanced: violating and clean cases carry equal total weight, so lowering every
+            # probability no longer raises the mean. Cost is a gate, not an objective.
+            score = result["score"] * self.weights.get(case_id, 1.0)
             outputs.append(result)
             scores.append(score)
-            objectives.append({"accuracy": score, "efficiency": efficiency})
+            objectives.append({"accuracy": score})
             trajectories.append(result)
         return EvaluationBatch(outputs=outputs, scores=scores, objective_scores=objectives,
                                trajectories=trajectories if capture_traces else None)
@@ -259,26 +261,49 @@ class SemanticLintAdapter:
         return dataset
 
 
-def optimize(reflection_lm, components=("candidateGuide",), max_metric_calls=1200, minibatch=6, run_dir=None,
-             workload_report=None, max_cost_ratio=None, selection_size=None, train_splits=("train",), val_splits=("val",)):
+def select_cases(cases, splits):
+    """Case ids in the named splits. `name:1` and `name:2` are disjoint halves of a split, divided by
+    file so one file never lands in both."""
+    chosen = []
+    for case_id, case in cases.items():
+        half = 1 + int(hashlib.sha256(case.get("file", case_id).encode()).hexdigest(), 16) % 2
+        if case["split"] in splits or f"{case['split']}:{half}" in splits:
+            chosen.append(case_id)
+    return chosen
+
+
+def balanced_weights(cases, ids):
+    """Weights that give violating and clean cases equal total mass, averaging 1."""
+    violating = sum(cases[case_id]["label"] == "violates" for case_id in ids)
+    clean = len(ids) - violating
+    if not violating or not clean:
+        return {}
+    return {case_id: len(ids) / (2 * (violating if cases[case_id]["label"] == "violates" else clean)) for case_id in ids}
+
+
+def optimize(reflection_lm, components=("final",), max_metric_calls=1200, minibatch=6, run_dir=None,
+             workload_report=None, max_cost_ratio=None, selection_size=None,
+             train_splits=("train", "ext-dev:1"), val_splits=("ext-dev:2",)):
     """Run GEPA; return the result and its best candidate as a harness-ready variant.
 
     `reflection_lm` is a litellm model name or a callable from prompt text to reply text.
-    With a workload report (from TestSemanticEvalWorkload on the seed prompts) and a cost ratio,
-    variants whose estimated workload cost exceeds the ratio score 0. Only candidate-stage prompt
-    length is modeled; selection breadth comes from measured evidence and final tokens. A selection
-    size makes GEPA select on evenly spaced validation cases, leaving more budget for proposals;
-    acceptance still uses every validation case. Selecting on `ext-dev` scores variants on real code;
-    keep `ext-test` and `test` for confirmation.
+    Scores are class-balanced so a variant cannot win by lowering every probability. Reflection uses
+    the corpus `train` split and one half of real-code `ext-dev`; selection uses the other half, all
+    of it unless `selection_size` subsamples it. Accept a winner on `ext-test`; corpus `test` is a
+    regression check. With a workload report (from TestSemanticEvalWorkload on the seed prompts) and
+    a cost ratio, variants whose estimated workload cost exceeds the ratio score 0.
     """
     import gepa
 
     cases = load_cases()
-    train = [case_id for case_id, case in cases.items() if case["split"] in train_splits]
-    val = [case_id for case_id, case in cases.items() if case["split"] in val_splits]
+    train = select_cases(cases, train_splits)
+    val = select_cases(cases, val_splits)
+    if set(train) & set(val):
+        raise ValueError("training and selection cases overlap")
     seed_report, _ = run_cases(train + val, None)
     if selection_size is not None and selection_size < len(val):
         val = val[::math.ceil(len(val) / selection_size)]
+    weights = {**balanced_weights(cases, train), **balanced_weights(cases, val)}
     seed_tokens = {case["id"]: case["efficiency"]["inputTokens"] for case in seed_report["cases"]}
     seed = {component: seed_report["prompts"][component] for component in components}
     gate = None
@@ -290,7 +315,7 @@ def optimize(reflection_lm, components=("candidateGuide",), max_metric_calls=120
         limit = PROMPT_GROWTH * len(text.encode()) - 1
         templates[component] = (REFLECTION_TEMPLATES[component].replace("{limit}", str(limit)).replace("{words}", str(limit // 7))
                                 .replace("{current}", str(len(text.encode()))).replace("{cost}", cost))
-    adapter = SemanticLintAdapter(cases, seed_tokens, seed, gate)
+    adapter = SemanticLintAdapter(cases, seed_tokens, seed, gate, weights)
     result = gepa.optimize(
         seed_candidate=seed, trainset=train, valset=val, adapter=adapter,
         reflection_lm=reflection_lm, max_metric_calls=max_metric_calls, frontier_type="hybrid",
@@ -301,13 +326,13 @@ def optimize(reflection_lm, components=("candidateGuide",), max_metric_calls=120
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--reflection-lm", required=True, help="litellm model name for GEPA reflection")
-    parser.add_argument("--components", default="candidateGuide", help="comma-separated prompts.go JSON fields")
+    parser.add_argument("--components", default="final", help="comma-separated prompts.go JSON fields")
     parser.add_argument("--max-metric-calls", type=int, default=1200)
     parser.add_argument("--workload-report", help="TestSemanticEvalWorkload report for the seed prompts; enables the cost gate")
     parser.add_argument("--max-cost-ratio", type=float, default=1.3, help="largest estimated workload cost ÷ seed cost")
     parser.add_argument("--selection-size", type=int, help="evenly spaced validation cases GEPA selects on (default: all)")
-    parser.add_argument("--train-splits", default="train", help="comma-separated splits GEPA reflects on")
-    parser.add_argument("--val-splits", default="val", help="comma-separated splits GEPA selects on, e.g. ext-dev")
+    parser.add_argument("--train-splits", default="train,ext-dev:1", help="comma-separated splits GEPA reflects on; name:1/name:2 are halves")
+    parser.add_argument("--val-splits", default="ext-dev:2", help="comma-separated splits GEPA selects on")
     parser.add_argument("--out", required=True, help="directory for the GEPA run and best variant")
     args = parser.parse_args()
     workload = None

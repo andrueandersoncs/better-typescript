@@ -617,3 +617,22 @@ Replaying dev seed 4 offline with the shipped code hits the replay cache for eve
 
 - **Rejected.** The selection-score gain came from conservatism: the per-case score is Brier-like and rewards low probabilities on the many clean cases. On real code that cost 14 pp of recall and some ranking quality.
 - **Lesson:** GEPA's objective, mean per-case score, does not match the real-code goal. The last useful GEPA result (`gepa2`) was found despite this. Next time, optimize a recall-weighted objective, for example AUROC or surfaced recall at fixed precision on `ext-dev`.
+
+### 31. GEPA objective fixes, then a rerun on `final`
+
+**Fixes in `semantic_gepa.py`:**
+1. **Balanced score:** case scores are class-balanced, so violating and clean cases carry equal weight. Lowering every probability no longer raises the mean.
+2. **Cost:** efficiency is no longer an objective; cost stays a gate.
+3. **Reflection data:** reflection uses `train` plus `ext-dev:1`. Selection uses all of `ext-dev:2` (147 cases, 32 violating). The two halves split `ext-dev` by file, so no file is in both.
+
+**Rerun on `final`:** 3,000 calls, 36 proposals. Selection score 0.852 → 0.867. The winner grew to 3.6 KB (`variant-gepa4.json`).
+
+| Split | Surfaced | Precision | Score | Tokens |
+| --- | --- | --- | --- | --- |
+| `ext-test` | 0.836 → 0.842 (n.s.) | **0.786 → 0.722 (worse)** | **0.8669 → 0.8636 (worse)** | **+6.6%** |
+| `test` | 0.734 → 0.745 (n.s.) | 0.962 → 0.956 (n.s.) | n.s. | **+7.5%** |
+
+- **Rejected.**
+- **The objective fix worked:** recall no longer drops.
+- **The selection gain still did not replicate.** It traded precision instead. With only 32 violating selection cases, picking the best of 36 proposals mostly selects noise.
+- **Next:** more `ext-dev` violations for selection (target ≥ 150), or score candidates with a paired comparison against the seed rather than an absolute mean.
