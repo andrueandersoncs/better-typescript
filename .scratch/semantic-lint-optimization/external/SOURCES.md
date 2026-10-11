@@ -23,3 +23,16 @@ Copied 2026-10-10. The first 4 tracked `.ts`/`.tsx` files per project, 800 B–2
 `external-c.txt` holds picks 5–6 (added after the ext-b check, for the E7 ablation).
 
 `external-d.txt` holds picks 7–10 (2026-10-11), labeled into `ext-test`.
+
+`external-oss.txt` (2026-10-11): first 6 eligible files per MIT-licensed GitHub repo, for the stratified recall study.
+
+| Repo | Commit | License |
+| --- | --- | --- |
+| colinhacks/zod | 284243fb0d6532665afdc9239188773bb624f73c | MIT |
+| honojs/hono | 552ea024250093a48071b3ded9710de4c6e05f14 | MIT |
+| trpc/trpc | 796700d8653b3832409fff997e6f5789519b9ea7 | MIT |
+| TanStack/query | dee1679bf42cad475a5c5810524475b2ffd6903d | MIT |
+| excalidraw/excalidraw | e65eca999e071503efb893d3379a29fb96ff37c4 | MIT |
+| immerjs/immer | 8848a5b16938e5681a890d73de7bda24b5080498 | MIT |
+| statelyai/xstate | da4c74efa441dd3a4c1d9835c42c3d1f87cdcaba | MIT |
+| sindresorhus/ky | 3541888878c4d303a8bc2ad61815f4e048f55a5d | MIT |

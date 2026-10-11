@@ -574,3 +574,32 @@ Replaying dev seed 4 offline with the shipped code hits the replay cache for eve
 - **Maintainer decision (2026-10-11):** real-code results outrank the corpus. `ext-test` is now the primary acceptance gate; corpus splits are a regression check.
 - **Shipped:** recall on real code goes from 0.78 to 0.89, precision is not worse, and cost is +2.4%.
 - Docs updated: `semantic-lint.md` (final question) and `semantic-lint-architecture.md` (acceptance gate).
+
+## Round 5: unbiased real-code recall and precision (open-source code)
+
+### 29. Stratified recall study (pre-registered estimator)
+
+- **Data:** 48 files, the first 6 eligible files by SHA-256 order from each of 8 MIT-licensed GitHub repos: zod, hono, tRPC, TanStack Query, Excalidraw, Immer, XState, and ky. None of these appear in the corpus.
+- **Run:** the shipped pipeline (HEAD `f67257f24`), packed, 1 seed: 4,918 (file, policy) pairs.
+- **Strata, defined by the shipped outcome:**
+
+| Stratum | Pairs | Sampled | Agreed | Violations |
+| --- | --- | --- | --- | --- |
+| S1 surfaced (`violation`/`review`) | 189 | 120 | 111 | 64 |
+| S2 final `pass` | 505 | 180 | 170 | 21 |
+| S3 no candidate selected | 4,216 | 250 | 250 | 1 |
+| S4 other inconclusive | 8 | 8 | 7 | 1 |
+
+  Two blind labelers per pair; they agree on 538 of 558.
+- **Estimator:** each stratum's violation rate × its size. Recall = S1 violations ÷ all violations; precision = S1 violation rate.
+
+**Results (95% CI, stratified bootstrap):**
+
+| Measure | Estimate | 95% CI |
+| --- | --- | --- |
+| Recall | **0.58** | 0.46–0.71 |
+| Precision | **0.58** | 0.49–0.67 |
+
+- Of about 80 missed violations, about 62 were judged `pass` by the final judge and about 17 never got a candidate.
+- **The final judge is the bottleneck in both directions:** it misses violations and passes false alarms. Candidate selection loses little.
+- All 558 cases were added to `ext-test` as `external-oss-*` (87 violating). Licenses are in `external/<repo>/LICENSE`; THIRD-PARTY-NOTICES is updated.

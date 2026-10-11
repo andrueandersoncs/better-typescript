@@ -16,3 +16,5 @@ The compiler is the public [`typescript-go` fork](https://github.com/andrueander
 The fork contains adapter-generation code in `tools/gen_shims` and initial generated adapters derived from tsgolint at commit `7324ae6a96cacd6284a0d0fb7397073052005c0a`; see `LICENSES/tsgolint-LICENSE`.
 
 The retained `repos/effect` snapshot is [Effect](https://github.com/Effect-TS/effect) package version `4.0.0-rc.111` at commit `648f566dd259898e7697c7fcb796183ccbc474ab`; its MIT license is included at `repos/effect/LICENSE`.
+
+The semantic eval corpus includes unchanged source files from MIT-licensed projects (zod, hono, tRPC, TanStack Query, Excalidraw, Immer, XState, and ky) under `internal/semanticlint/testdata/evals/external/<repo>/`. Each project's license is included there as `LICENSE`, and `internal/semanticlint/testdata/evals/external/sources.txt` records the commits.
