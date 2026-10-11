@@ -568,3 +568,9 @@ Replaying dev seed 4 offline with the shipped code hits the replay cache for eve
 - The verdict rule says *worse*, only because of the cost.
 - On the corpus `test` split, its score was 0.9368 → 0.9341, which counts as worse.
 - **Adopting it needs a maintainer decision:** +11 pp recall on real code, precision not worse, +2.4% tokens, and a small regression on the synthetic corpus.
+
+### 28. Decision: adopt `variant-gepa2` as the default `Final` prompt
+
+- **Maintainer decision (2026-10-11):** real-code results outrank the corpus. `ext-test` is now the primary acceptance gate; corpus splits are a regression check.
+- **Shipped:** recall on real code goes from 0.78 to 0.89, precision is not worse, and cost is +2.4%.
+- Docs updated: `semantic-lint.md` (final question) and `semantic-lint-architecture.md` (acceptance gate).

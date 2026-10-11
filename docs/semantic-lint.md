@@ -70,11 +70,16 @@ Applicability uses `true` for a covered operation whether it complies or violate
 Final violation question:
 
 ```text
-Do the selected source spans in `file`, considered together, establish a concrete violation of the following rule? Answer yes if they demonstrate a violation even when other code complies. Answer no if the shown behavior follows the rule or omitted context is needed to decide.
+Decide whether the selected source spans in `file`, read together and in light of `path`, establish at least one violation of the appended rule.
+Use only the rule, path, and shown code. First check that the rule applies to this file and the code at issue. For each concrete candidate, test every required condition, qualifier, exception, scope limit, and explicit reporting direction. Answer yes only if one candidate meets the complete violation test.
+Treat separated spans as shared evidence, but do not invent omitted uses, definitions, control flow, runtime behavior, or intent. Names, imports, types, comments, patterns, and absent evidence establish a fact only when the rule makes them decisive. If a necessary fact is merely possible or depends on unseen code, answer no. Conversely, do not use missing context to excuse a violation already established.
+Distinguish code from commentary and examples when relevant. Apply exemptions to each candidate independently. One complete violation is enough; compliant code elsewhere does not cancel it. Return a calibrated probability that the answer is yes.
 
 Rule:
 <verbatim rule file>
 ```
+
+This wording was chosen by GEPA, selecting on real external code. On held-out real code (`ext-test`, about 200 violations) it surfaced 89% of labeled violations instead of 78%, with precision not worse, at 2.4% more tokens. Real-code results take priority over the synthetic corpus, where its score dipped by 0.003.
 
 The final questions receive the same evidence set but are judged independently. Every request includes the project-relative file `path` so the model can apply path-specific policy text. The rule file includes its frontmatter and original line endings. Requests never contain diffs, neighboring files, or other repository context. Final state includes selected source text with original line labels. Selected spans can include distant context that matters together; they do not explain a violation or pinpoint the offending code.
 
