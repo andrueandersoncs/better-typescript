@@ -1014,7 +1014,9 @@ var evalMetrics = []evalMetric{
 		})
 	}},
 	{"silentMissRate", false, func(results []evalCaseResult) (float64, bool) {
-		return fraction(results, isViolating, func(result evalCaseResult) bool { return result.Outcome == "inconclusive" })
+		return fraction(results, isViolating, func(result evalCaseResult) bool {
+			return result.Outcome == "inconclusive" || result.Reason == noCandidateReason
+		})
 	}},
 	{"pairAccuracy", true, pairAccuracy},
 	{"auroc", true, func(results []evalCaseResult) (float64, bool) {

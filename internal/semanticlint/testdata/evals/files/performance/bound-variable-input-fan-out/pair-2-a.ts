@@ -12,4 +12,4 @@ const index = (document: SearchDocument): Effect.Effect<void> =>
   }).then(() => undefined))
 
 export const indexAll = (documents: readonly SearchDocument[]): Effect.Effect<void> =>
-  Effect.all(documents.map(index)).pipe(Effect.asVoid)
+  Effect.all(documents.map(index), { concurrency: "unbounded" }).pipe(Effect.asVoid)

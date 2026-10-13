@@ -9,9 +9,11 @@ See [Semantic lint architecture](./semantic-lint-architecture.md) for the implem
 ## Run
 
 ```sh
-export TYPESAFE_API_KEY="..."
+echo 'TYPESAFE_API_KEY=...' >> .env
 npx better-typescript semantic
 ```
+
+The key comes from the environment or, when unset there, from `.env` in the current directory. `TYPESAFE_BASE_URL` is read the same way.
 
 With no target option, the command reads complete changed, staged, and untracked files from the working tree. Deleted files are skipped because they have no current contents.
 
@@ -83,7 +85,9 @@ This wording was chosen by GEPA, selecting on real external code. On held-out re
 
 The final questions receive the same evidence set but are judged independently. Every request includes the project-relative file `path` so the model can apply path-specific policy text. The rule file includes its frontmatter and original line endings. Requests never contain diffs, neighboring files, or other repository context. Final state includes selected source text with original line labels. Selected spans can include distant context that matters together; they do not explain a violation or pinpoint the offending code.
 
-Selection questions over the same span are batched up to the 64,000-byte request limit. Selection spans prefer line boundaries and overlap by a quarter of a span, at most 1,000 source bytes. At most eight requests run concurrently per stage. If no candidate is selected, no evidence block is kept, or the combined evidence set cannot fit one final request, the result is `inconclusive` without a final probability. No source is silently truncated. A policy that leaves no room for source text still causes an error.
+Selection questions over the same span are batched up to the 64,000-byte request limit. Selection spans prefer line boundaries and overlap by a quarter of a span, at most 1,000 source bytes. At most eight requests run concurrently per stage. If no candidate is selected, the policy passes without a final probability: on real files, every such policy also passed a full-file final judgment. If no evidence block is kept or the combined evidence set cannot fit one final request, the result is `inconclusive` without a final probability. No source is silently truncated. A policy that leaves no room for source text still causes an error.
+
+Identical final requests vary by about ±0.05. When a violation probability lands within `0.05` of `--threshold`, the final request is asked four more times and the five answers are averaged, rounded to two decimals, before classification. This keeps borderline findings from flipping between `review` and `violation` across runs.
 
 Live semantic lint sends source spans and policy text to TypeSafe. Do not run it on repositories whose data cannot be sent to that provider. Deterministic lint and semantic `--dry-run` make no TypeSafe request.
 
@@ -265,14 +269,15 @@ Final requests depend on live selection answers, so they are not included in the
 
 | Outcome | Classification | Fails a live run |
 | --- | --- | --- |
-| No candidate, no evidence block selected, or selected context too large | `inconclusive` (no final probability) | No |
+| No candidate selected | `pass` (no final probability) | No |
+| No evidence block selected, or selected context too large | `inconclusive` (no final probability) | No |
 | Final probability `> 0.55`, but applicability below `0.70` | `inconclusive` (no violation probability) | No |
 | Final probability `≤ 0.55` | `pass` | No |
 | Final probability `> 0.55` and below `--threshold`, with applicability at least `0.70` | `review` | No |
 | Final probability at or above `--threshold`, with applicability at least `0.70` | `violation` | Yes |
 
-Text output marks whole-file selections as `[file-wide context]` instead of displaying a full-file line range. Partial selections appear as `[context lines N-M]`; these are leads to inspect, not precise defect locations. JSON findings retain candidate byte and line ranges and add `evidenceScope`: `file` when the selected range covers every source byte, `localized` when it does not, or omitted when no context was selected. They also include applicability probability when evaluated, the final violation probability when available, and a reason for inconclusive results. Candidate and evidence selection are not verdicts. The default violation threshold is `0.70`; the applicability gate stays at `0.70` when `--threshold` changes.
+Text output marks whole-file selections as `[file-wide context]` instead of displaying a full-file line range. Partial selections appear as `[context lines N-M]`; these are leads to inspect, not precise defect locations. JSON findings retain candidate byte and line ranges and add `evidenceScope`: `file` when the selected range covers every source byte, `localized` when it does not, or omitted when no context was selected. They also include applicability probability when evaluated, the final violation probability when available (averaged near the threshold), and a reason for inconclusive results and candidate-free passes. Candidate and evidence selection are not verdicts. The default violation threshold is `0.70`; the applicability gate stays at `0.70` when `--threshold` changes.
 
 The applicability check is a model judgment, not proof of correctness. The service/Layer policy applies only to files with a service definition or Layer construction; the Effect failure policy applies to fallible effectful operations, not pure checks. Review concrete findings; use narrow semantic-mode exclusions for policies that do not apply instead of rewriting correct code to satisfy a false positive.
 
-Live runs exit `0` for pass, review, or inconclusive findings without violations, `1` for violations, and `2` for arguments, Git, file, response, or TypeSafe errors. Reviews remain visible in text and JSON but do not fail a run. The API key remains in the process environment and is sent only in the TypeSafe authorization header.
+Live runs exit `0` for pass, review, or inconclusive findings without violations, `1` for violations, and `2` for arguments, Git, file, response, or TypeSafe errors. Reviews remain visible in text and JSON but do not fail a run. The API key is sent only in the TypeSafe authorization header.

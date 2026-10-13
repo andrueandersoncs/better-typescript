@@ -115,7 +115,7 @@ func Run(ctx context.Context, root string, args []string, output io.Writer) (int
 	if questionCount == 0 {
 		return writeFindingReports(output, nil, options.JSON)
 	}
-	client, err := newTypeSafeClient()
+	client, err := newTypeSafeClient(root)
 	if err != nil {
 		return 2, err
 	}
@@ -229,12 +229,8 @@ func humanReports(reports []FindingReport) string {
 	parts := make([]string, len(reports))
 	for index, report := range reports {
 		counts := make(map[string]int)
-		noCandidateCount := 0
 		for _, finding := range report.Findings {
 			counts[finding.Classification]++
-			if finding.Classification == "inconclusive" && finding.Reason == "no candidate evidence selected" {
-				noCandidateCount++
-			}
 		}
 		summary := make([]string, len(classifications))
 		for position, classification := range classifications {
@@ -246,9 +242,7 @@ func humanReports(reports []FindingReport) string {
 				continue
 			}
 			if finding.Classification == "inconclusive" {
-				if finding.Reason != "no candidate evidence selected" {
-					lines = append(lines, fmt.Sprintf("[inconclusive] %s (%s): %s", finding.RuleTitle, finding.RulePath, finding.Reason))
-				}
+				lines = append(lines, fmt.Sprintf("[inconclusive] %s (%s): %s", finding.RuleTitle, finding.RulePath, finding.Reason))
 				continue
 			}
 			line := fmt.Sprintf("[%s %s] %s (%s)", finding.Classification, strconv.FormatFloat(*finding.ViolationProbability, 'f', -1, 64), finding.RuleTitle, finding.RulePath)
@@ -263,8 +257,6 @@ func humanReports(reports []FindingReport) string {
 		}
 		if counts["violation"]+counts["review"]+counts["inconclusive"] == 0 {
 			lines = append(lines, "No findings.")
-		} else if noCandidateCount == len(report.Findings) {
-			lines = append(lines, "No candidate evidence selected.")
 		}
 		parts[index] = strings.Join(lines, "\n")
 	}

@@ -47,7 +47,7 @@ Status and operational errors go to stderr. Each stdout line is one NDJSON viola
 Use the semantic subcommand only when asked to evaluate engineering policy against a working-tree change, committed Git range, selected current files, or all eligible current files:
 
 ```sh
-export TYPESAFE_API_KEY="..."
+echo 'TYPESAFE_API_KEY=...' >> .env  # or export it; the environment wins
 npx better-typescript semantic
 ```
 

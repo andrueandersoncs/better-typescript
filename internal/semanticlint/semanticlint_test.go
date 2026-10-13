@@ -153,6 +153,27 @@ func TestRunDryRunNeedsNoTypeSafeCredentials(t *testing.T) {
 	}
 }
 
+func TestRunSelectsFilesInRepositoryWithoutCommits(t *testing.T) {
+	root := t.TempDir()
+	runGit(t, root, "init", "-q")
+	writeTestFile(t, root, "src/staged.ts", "export {};\n")
+	writeTestFile(t, root, "src/untracked.ts", "export {};\n")
+	runGit(t, root, "add", "src/staged.ts")
+	for _, args := range [][]string{{"--dry-run"}, {"--dry-run", "--files", "src/*.ts"}} {
+		var output bytes.Buffer
+		if _, err := Run(context.Background(), root, append(args, "--rules", "readonly"), &output); err != nil {
+			t.Fatalf("%v: %v", args, err)
+		}
+		var plan DryRunPlan
+		if err := json.Unmarshal(output.Bytes(), &plan); err != nil {
+			t.Fatal(err)
+		}
+		if len(plan.Files) != 2 || plan.Files[0].Path != "src/staged.ts" || plan.Files[1].Path != "src/untracked.ts" {
+			t.Fatalf("%v: files = %#v", args, plan.Files)
+		}
+	}
+}
+
 func TestRunSelectsCandidateSpansBeforeFinalJudgment(t *testing.T) {
 	root := newSemanticTestRepository(t)
 	source := strings.Repeat("export const safe = 1;\n", 220) + "export const VIOLATION = true;\n"
@@ -373,7 +394,7 @@ func TestRunUsesFinalVerdictRatherThanCandidateScore(t *testing.T) {
 	}
 }
 
-func TestRunReportsNoCandidateAsInconclusiveWithoutFinalJudgment(t *testing.T) {
+func TestRunReportsNoCandidateAsPassWithoutFinalJudgment(t *testing.T) {
 	root := newSemanticTestRepository(t)
 	writeTestFile(t, root, "src/example.ts", "export const value = 1;\n")
 	calls := 0
@@ -406,8 +427,89 @@ func TestRunReportsNoCandidateAsInconclusiveWithoutFinalJudgment(t *testing.T) {
 		t.Fatalf("exit=%d calls=%d reports=%s", exitCode, calls, output.String())
 	}
 	finding := reports[0].Findings[0]
-	if finding.Classification != "inconclusive" || finding.ViolationProbability != nil || finding.EvidenceScope != "" || len(finding.CandidateRanges) != 0 {
+	if finding.Classification != "pass" || finding.Reason != noCandidateReason || finding.ViolationProbability != nil || finding.EvidenceScope != "" || len(finding.CandidateRanges) != 0 {
 		t.Fatalf("finding = %#v", finding)
+	}
+}
+
+func TestFinalScoresNearTheThresholdAreAveraged(t *testing.T) {
+	rule := testRule(t, "comment-evidence", "Explain the -- parsing invariant where it matters.")
+	source := Source{Path: "src/args.ts", Text: "export const parseArgs = (args: string[]) => args.indexOf('--')\n"}
+	for _, test := range []struct {
+		name           string
+		answers        []float64
+		classification string
+		probability    float64
+	}{
+		{"inside margin", []float64{0.72, 0.62, 0.64, 0.66, 0.66}, "review", 0.66},
+		{"margin edge", []float64{0.65, 0.75, 0.75, 0.75, 0.75}, "violation", 0.73},
+		{"outside margin", []float64{0.76}, "violation", 0.76},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var finals atomic.Int32
+			evaluate := evaluatorFunc(func(_ context.Context, request evaluationRequest) (evaluationResponse, error) {
+				answers := make(map[string]answer, len(request.Questions))
+				final := len(request.Questions) == 2
+				call := 0
+				if final {
+					call = int(finals.Add(1)) - 1
+				}
+				for id := range request.Questions {
+					probability := 0.9
+					if final && !strings.HasSuffix(id, "_applies") {
+						probability = test.answers[min(call, len(test.answers)-1)]
+					}
+					answers[id] = answer{Type: "noul", Noul: probability}
+				}
+				return evaluationResponse{Model: "jev-test", Answers: answers}, nil
+			})
+			report, err := evaluateSource(context.Background(), source, []Rule{rule}, Options{Threshold: 0.7}, evaluate)
+			if err != nil {
+				t.Fatal(err)
+			}
+			finding := report.Findings[0]
+			if int(finals.Load()) != len(test.answers) || finding.Classification != test.classification || *finding.ViolationProbability != test.probability {
+				t.Fatalf("finals=%d finding=%#v probability=%v", finals.Load(), finding, *finding.ViolationProbability)
+			}
+		})
+	}
+}
+
+func TestRunReadsTypeSafeSettingsFromDotEnvBelowTheEnvironment(t *testing.T) {
+	for _, test := range []struct {
+		name, environment, want string
+	}{
+		{"dot env only", "", "file-key"},
+		{"environment wins", "env-key", "env-key"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			root := newSemanticTestRepository(t)
+			var authorization atomic.Value
+			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+				authorization.Store(request.Header.Get("Authorization"))
+				var received evaluationRequest
+				if err := json.NewDecoder(request.Body).Decode(&received); err != nil {
+					t.Error(err)
+					return
+				}
+				answers := make(map[string]answer, len(received.Questions))
+				for id := range received.Questions {
+					answers[id] = answer{Type: "noul", Noul: 0.1}
+				}
+				_ = json.NewEncoder(writer).Encode(evaluationResponse{Model: "jev-test", Answers: answers})
+			}))
+			defer server.Close()
+			writeTestFile(t, root, ".env", "# TypeSafe\nexport TYPESAFE_API_KEY=\"file-key\"\nTYPESAFE_BASE_URL="+server.URL+"\n")
+			t.Setenv("TYPESAFE_API_KEY", test.environment)
+			t.Setenv("TYPESAFE_BASE_URL", "")
+			var output bytes.Buffer
+			if _, err := Run(context.Background(), root, []string{"--files", "src/example.ts", "--rules", "readonly", "--json"}, &output); err != nil {
+				t.Fatal(err)
+			}
+			if got := authorization.Load(); got != "Bearer "+test.want {
+				t.Fatalf("authorization = %v", got)
+			}
+		})
 	}
 }
 

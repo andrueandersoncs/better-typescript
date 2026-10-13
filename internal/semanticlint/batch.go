@@ -3,6 +3,7 @@ package semanticlint
 import (
 	"context"
 	"fmt"
+	"math"
 	"strings"
 	"sync"
 	"unicode/utf8"
@@ -14,6 +15,11 @@ const (
 	maximumSegmentBytes             = 4_000
 	maximumConcurrentEvaluations    = 8
 	applicabilityGateReason         = "policy applicability not established"
+	noCandidateReason               = "no candidate evidence selected"
+	// Identical final requests vary by about ±0.05, so scores this close to the threshold are
+	// averaged over marginSamples answers before classification.
+	thresholdMargin = 0.05
+	marginSamples   = 5
 )
 
 // stage names the pipeline step that issued a request.
@@ -357,8 +363,8 @@ func evaluateSource(ctx context.Context, source Source, rules []Rule, options Op
 		windows := evidence[rule.ID]
 		switch {
 		case len(selected[rule.ID]) == 0:
-			finding.Classification = "inconclusive"
-			finding.Reason = "no candidate evidence selected"
+			finding.Classification = "pass"
+			finding.Reason = noCandidateReason
 		case len(windows) == 0:
 			finding.Classification = "inconclusive"
 			finding.Reason = "no evidence selected"
@@ -386,20 +392,32 @@ func evaluateSource(ctx context.Context, source Source, rules []Rule, options Op
 		}
 		report.Findings = append(report.Findings, finding)
 	}
-	for index, result := range evaluatePartitions(ctx, report.nextRound(stageFinal), finalPartitions, evaluator) {
-		if err := addResponse(&report, source.Path, result, index); err != nil {
+	finalResults := evaluatePartitions(ctx, report.nextRound(stageFinal), finalPartitions, evaluator)
+	scores := make([]finalScore, len(finalPartitions))
+	var resamples []requestPartition
+	var owners []int
+	for index, result := range finalResults {
+		if err := scores[index].add(&report, source.Path, result, index, finalPartitions[index].rules[0]); err != nil {
 			return FindingReport{}, err
 		}
-		rule := finalPartitions[index].rules[0]
-		probability, err := probabilityForRule(result.response, rule)
-		if err != nil {
-			return FindingReport{}, err
+		if math.Abs(scores[index].violation-options.Threshold) <= thresholdMargin+1e-9 {
+			for range marginSamples - 1 {
+				resamples = append(resamples, finalPartitions[index])
+				owners = append(owners, index)
+			}
 		}
-		applicability, err := probabilityForRule(result.response, Rule{ID: rule.ID + "_applies", Path: rule.Path})
-		if err != nil {
-			return FindingReport{}, err
+	}
+	if len(resamples) > 0 {
+		for index, result := range evaluatePartitions(ctx, report.nextRound(stageFinal), resamples, evaluator) {
+			owner := owners[index]
+			if err := scores[owner].add(&report, source.Path, result, owner, finalPartitions[owner].rules[0]); err != nil {
+				return FindingReport{}, err
+			}
 		}
-		finding := &report.Findings[finalIndexes[rule.ID]]
+	}
+	for index, partition := range finalPartitions {
+		probability, applicability := scores[index].mean()
+		finding := &report.Findings[finalIndexes[partition.rules[0].ID]]
 		finding.ApplicabilityProbability = &applicability
 		if probability > maximumPassProbability && applicability < minimumApplicabilityProbability {
 			finding.Classification = "inconclusive"
@@ -410,6 +428,40 @@ func evaluateSource(ctx context.Context, source Source, rules []Rule, options Op
 		finding.Classification = classifyProbability(probability, options.Threshold)
 	}
 	return report, nil
+}
+
+// finalScore sums the violation and applicability answers of one policy's final requests.
+type finalScore struct {
+	violation     float64
+	applicability float64
+	samples       int
+}
+
+func (score *finalScore) add(report *FindingReport, sourcePath string, result partitionResult, index int, rule Rule) error {
+	if err := addResponse(report, sourcePath, result, index); err != nil {
+		return err
+	}
+	violation, err := probabilityForRule(result.response, rule)
+	if err != nil {
+		return err
+	}
+	applicability, err := probabilityForRule(result.response, Rule{ID: rule.ID + "_applies", Path: rule.Path})
+	if err != nil {
+		return err
+	}
+	score.violation += violation
+	score.applicability += applicability
+	score.samples++
+	return nil
+}
+
+// mean averages the answers, rounded to the model's two decimals so the shown score decides the class.
+func (score finalScore) mean() (float64, float64) {
+	if score.samples == 1 {
+		return score.violation, score.applicability
+	}
+	count := float64(score.samples)
+	return math.Round(score.violation/count*100) / 100, math.Round(score.applicability/count*100) / 100
 }
 
 func classifyProbability(probability, threshold float64) string {

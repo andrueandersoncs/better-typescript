@@ -41,7 +41,16 @@ func gitSnapshot(ctx context.Context, root, commitRange string) (repositorySnaps
 	if strings.TrimSpace(commitRange) != "" {
 		return gitRangeSnapshot(ctx, root, commitRange)
 	}
-	tracked, err := gitOutput(ctx, root, "diff", "--name-only", "-z", "HEAD", "--")
+	base := "HEAD"
+	if _, err := gitOutput(ctx, root, "rev-parse", "--verify", "--quiet", "HEAD"); err != nil {
+		// A repository without commits compares the working tree with the empty tree.
+		emptyTree, err := gitOutput(ctx, root, "hash-object", "-t", "tree", os.DevNull)
+		if err != nil {
+			return repositorySnapshot{}, fmt.Errorf("could not resolve the empty tree: %w", err)
+		}
+		base = strings.TrimSpace(string(emptyTree))
+	}
+	tracked, err := gitOutput(ctx, root, "diff", "--name-only", "-z", base, "--")
 	if err != nil {
 		return repositorySnapshot{}, fmt.Errorf("could not read tracked changes: %w", err)
 	}

@@ -144,7 +144,7 @@ func newLiveEvalRun(t *testing.T) (evalRun, []evalCase) {
 	}
 	run := evalRun{directory: evalDirectory, rules: rules, options: options, packed: os.Getenv("SEMANTIC_EVAL_PACKED") == "1", cache: os.Getenv("SEMANTIC_EVAL_CACHE")}
 	if os.Getenv("TYPESAFE_API_KEY") != "" {
-		client, err := newTypeSafeClient()
+		client, err := newTypeSafeClient(t.TempDir())
 		if err != nil {
 			t.Fatal(err)
 		}

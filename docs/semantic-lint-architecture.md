@@ -52,7 +52,7 @@ Git paths → complete files → path-matched policies
 
 `command.go: Run` owns the flow. Selection, evidence, and final judgment are separate evaluation stages, each one round of concurrent requests. Final questions are built only after block Nouls produce an evidence set.
 
-Every TypeSafe request includes the selected file's project-relative `path`. Selection requests also provide `file` with a source span and `selection_guide`; evidence requests provide `policy`, `evidence_guide`, and `block_1` … `block_n`; final requests provide labeled original spans under `file`. Text shared by every question of a selection or evidence request lives once in state, because TypeSafe bills state once per request but question text once per question; each question only points at it. The two final questions still carry the policy text themselves: moving it into state saved about 2% but shifted final calibration on real code (`.scratch/semantic-lint-optimization/journal.md`). Two independent Nouls judge applicability and violation over the same evidence set; a review or violation needs applicability of at least 0.70. No source is truncated: an unselected policy, absent evidence set, unestablished applicability, or oversized combined context is inconclusive without a final violation probability.
+Every TypeSafe request includes the selected file's project-relative `path`. Selection requests also provide `file` with a source span and `selection_guide`; evidence requests provide `policy`, `evidence_guide`, and `block_1` … `block_n`; final requests provide labeled original spans under `file`. Text shared by every question of a selection or evidence request lives once in state, because TypeSafe bills state once per request but question text once per question; each question only points at it. The two final questions still carry the policy text themselves: moving it into state saved about 2% but shifted final calibration on real code (`.scratch/semantic-lint-optimization/journal.md`). Two independent Nouls judge applicability and violation over the same evidence set; a review or violation needs applicability of at least 0.70. A violation probability within 0.05 of the threshold triggers one more round that asks the same final request four more times; the five answers are averaged. No source is truncated: an unselected policy passes without a final probability, while an absent evidence set, unestablished applicability, or oversized combined context is inconclusive without a final violation probability.
 Applicability judges whether the policy's subject is present, regardless of compliance; violation separately judges whether selected spans establish a concrete breach. Unrelated compliant code does not negate that breach.
 
 ## Selection
@@ -84,19 +84,20 @@ type evaluator interface {
 }
 ```
 
-`typesafe.go` owns authentication, HTTP, retries, timeouts, and Noul response validation.
+`typesafe.go` owns authentication, `.env` fallback, HTTP, retries, timeouts, and Noul response validation.
 
 ## Classification
 
 | Final probability or selection outcome | Classification |
 | --- | --- |
-| No candidate, no evidence block selected, or selected context exceeds one request | `inconclusive` (no final probability) |
+| No candidate selected | `pass` (no final probability) |
+| No evidence block selected, or selected context exceeds one request | `inconclusive` (no final probability) |
 | Applicability < 0.70 for a potential finding | `inconclusive` (no violation probability) |
 | Final `≤ 0.55` | `pass` |
 | Final `> 0.55` and below `--threshold`, with applicability ≥ 0.70 | `review` |
 | Final at or above `--threshold`, with applicability ≥ 0.70 | `violation` |
 
-The default violation threshold is `0.70`; applicability uses a fixed `0.70` gate. The `0.55` review floor was set from eval reports: reviews scoring `0.40`–`0.55` were real violations 31–43% of the time, those above `0.55` 64–70%. `evidenceScope` is `file` only for a single range covering every source byte; otherwise selected ranges are `localized`. It is absent when no context was selected. Candidate ranges may be distant and are leads, not proven defects or generated rationales. Inconclusive findings do not fail the run; reviews are informational and only violations fail.
+The default violation threshold is `0.70`; applicability uses a fixed `0.70` gate. The `0.55` review floor was set from eval reports: reviews scoring `0.40`–`0.55` were real violations 31–43% of the time, those above `0.55` 64–70%. Identical final requests vary by about ±0.05, so scores within `0.05` of the threshold are the mean of five answers, rounded to two decimals. A candidate-free policy is a `pass`: on four real files, all 254 such policies also passed a full-file final judgment. Evals still count a violating case with no candidate as a silent miss. `evidenceScope` is `file` only for a single range covering every source byte; otherwise selected ranges are `localized`. It is absent when no context was selected. Candidate ranges may be distant and are leads, not proven defects or generated rationales. Inconclusive findings do not fail the run; reviews are informational and only violations fail.
 
 ## File map
 

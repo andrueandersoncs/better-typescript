@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"math/rand/v2"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -24,12 +27,23 @@ type typeSafeClient struct {
 	client  *http.Client
 }
 
-func newTypeSafeClient() (*typeSafeClient, error) {
-	apiKey := strings.TrimSpace(os.Getenv("TYPESAFE_API_KEY"))
-	if apiKey == "" {
-		return nil, fmt.Errorf("TYPESAFE_API_KEY is required for live semantic evaluation")
+// newTypeSafeClient reads settings from the environment, falling back to root/.env.
+func newTypeSafeClient(root string) (*typeSafeClient, error) {
+	dotEnv, err := readDotEnv(filepath.Join(root, ".env"))
+	if err != nil {
+		return nil, err
 	}
-	baseURL := strings.TrimRight(strings.TrimSpace(os.Getenv("TYPESAFE_BASE_URL")), "/")
+	setting := func(key string) string {
+		if value := strings.TrimSpace(os.Getenv(key)); value != "" {
+			return value
+		}
+		return dotEnv[key]
+	}
+	apiKey := setting("TYPESAFE_API_KEY")
+	if apiKey == "" {
+		return nil, fmt.Errorf("TYPESAFE_API_KEY is required for live semantic evaluation; set it in the environment or .env")
+	}
+	baseURL := strings.TrimRight(setting("TYPESAFE_BASE_URL"), "/")
 	if baseURL == "" {
 		baseURL = "https://api.typesafe.ai"
 	}
@@ -37,6 +51,30 @@ func newTypeSafeClient() (*typeSafeClient, error) {
 		apiKey: apiKey, baseURL: baseURL,
 		client: &http.Client{},
 	}, nil
+}
+
+// readDotEnv parses KEY=VALUE lines; a missing file is empty.
+func readDotEnv(path string) (map[string]string, error) {
+	content, err := os.ReadFile(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read %s: %w", path, err)
+	}
+	values := make(map[string]string)
+	for line := range strings.Lines(string(content)) {
+		key, value, found := strings.Cut(strings.TrimPrefix(strings.TrimSpace(line), "export "), "=")
+		if !found || strings.HasPrefix(key, "#") {
+			continue
+		}
+		value = strings.TrimSpace(value)
+		if len(value) >= 2 && (value[0] == '"' || value[0] == '\'') && value[len(value)-1] == value[0] {
+			value = value[1 : len(value)-1]
+		}
+		values[strings.TrimSpace(key)] = value
+	}
+	return values, nil
 }
 
 func (client *typeSafeClient) Evaluate(ctx context.Context, request evaluationRequest) (evaluationResponse, error) {

@@ -39,7 +39,7 @@ With no flags or configuration, the command checks all project files with all ru
 Run semantic policy checks against the current working-tree change:
 
 ```sh
-export TYPESAFE_API_KEY="..."
+echo 'TYPESAFE_API_KEY=...' >> .env
 npx better-typescript semantic
 ```
 

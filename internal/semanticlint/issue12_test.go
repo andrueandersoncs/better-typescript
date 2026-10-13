@@ -88,10 +88,11 @@ func TestPathSpecificPolicyFindsOnlyTheMatchingFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	if code != 1 || len(reports) != 2 ||
-		reports[0].Source != "src/other.ts" || reports[0].Findings[0].Classification != "inconclusive" ||
+		reports[0].Source != "src/other.ts" || reports[0].Findings[0].Classification != "pass" ||
 		reports[1].Source != "src/smoke.ts" || reports[1].Findings[0].Classification != "violation" ||
 		reports[1].Findings[0].EvidenceScope != "file" ||
 		len(reports[1].Findings[0].CandidateRanges) != 1 || reports[1].Findings[0].CandidateRanges[0].StartLine != 1 {
+		t.Fatalf("code=%d reports=%s", code, output.String())
 	}
 }
 
