@@ -636,3 +636,30 @@ Replaying dev seed 4 offline with the shipped code hits the replay cache for eve
 - **The objective fix worked:** recall no longer drops.
 - **The selection gain still did not replicate.** It traded precision instead. With only 32 violating selection cases, picking the best of 36 proposals mostly selects noise.
 - **Next:** more `ext-dev` violations for selection (target ≥ 150), or score candidates with a paired comparison against the seed rather than an absolute mean.
+
+## Round 6: should rules declare their input data?
+
+### 32. Hypothesis: per-rule input declarations raise accuracy and cut cost
+
+- **Hypothesis:** every rule gets the same input (one file, windowed). Rules differ in the data they need, so letting each rule declare its input should raise accuracy and lower cost.
+- **Rule classes (judge, smallest sufficient input; noisy):** span 57, file 31, neighbors 27, repository 8, history 0.
+- **Data:** shipped `ext-test` (`ship4`), deduped. 720 violates/complies cases. Each copied file is byte-identical to its upstream repository file, so neighbors came from the real repositories.
+- **Conditions (same model, same `final` wording, single request):** `F` = whole file. `N` = whole file plus relative-import neighbors (files it imports and up to 4 files that import it; 6 KB each, 24 KB total). The shipped pipeline is the reference.
+- **Test A (does extra data help?):** `N − F` AUROC, policy-cluster bootstrap 95% CI. span [−0.008, 0.009]; file [−0.017, 0.032]; neighbors [−0.044, 0.019]; repository [−0.188, 0.083]. Flip rate is 3–8%, against 2.3% noise on cases with no neighbors. Flips match the labels about half the time.
+- **Test B (does a whole file beat the generic pipeline?):** `pipeline − F` AUROC ≥ 0 in every class (span 0.846 vs 0.827; file 0.845 vs 0.814). Cost: the pipeline uses about 910 tokens per (file, rule) pair because packed candidate requests share file text. `F` uses about 2,640.
+- **Verdict:** not supported as stated. Per-rule input shapes did not improve accuracy. They also break shared batching, which tripled cost.
+- **Limit (construct validity):** labelers saw only one file. So `ext-test` cannot reward evidence from other files. A real gain on neighbors or repository rules would go undetected.
+- **Remaining signal:** repository-class rules have real-code recall of 0.48 and oracle AUROC of 0.70, even with gold lines. Their missing data is not imports. It is copies elsewhere, module boundaries, or callers.
+- **Next:** label 30–50 repository-class cases with repository context. Then rerun A with a matching provider, such as similar-code search for `avoid-repetition`.
+
+### 33. How large is the cross-file blind spot?
+
+- **Question:** the pipeline never sees a second file. How many violations does that hide?
+- **Retriever (generic, no per-policy config):** imports, importers (up to 4), the smallest user of each export, and the top 3 files by IDF-weighted identifier overlap. 6 KB per file, 36 KB total.
+- **Test C (existing eval cases, 285 sampled from 720):** a stronger labeler judged each case with and without repository context. Labels changed 7.4% of the time, against 4.6% noise from repeating the single-file run. Only 7 of 85 violations needed other files. Agreement with gold labels: 0.895 single-file, 0.905 with context.
+- **Test D (unbiased):** 46 random files (2 per repository, 1.5–20 KB), audited against every applicable policy, with context. Of 136 violations, 17 (12.5%) needed other files. 13 of 46 files (28%) had at least one. Repository-class policies: 16 of 20 needed other files. All other classes: 1 of 116.
+- The decisive file came from lexical similarity 14 times, imports 4, and export users 1. This explains Test A: imports are the wrong data.
+- Two spot checks are real: `lit-query` `useIsFetching`/`useIsMutating` and OpenBot's copied `person()` fixture.
+- **Verdict:** the gap is real and invisible to the current evals, which were built from single-file findings. It is concentrated in duplication and single-authority policies (`avoid-repetition`, `keep-each-fact-in-one-authoritative-place`).
+- **Limits:** a single LLM auditor, no second labeler. The retriever mix shapes what can be found. The 55 policies deleted in `d0c0cb7bc` were not audited.
+- **Next:** [`semantic-lint-cross-file-evidence/spec.md`](../semantic-lint-cross-file-evidence/spec.md).
