@@ -38,7 +38,6 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_function_keyword"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_immediate_effect_sync"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_inline_boolean_expressions"
-	"github.com/andrueandersoncs/better-typescript/internal/rules/no_inline_closures"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_instanceof"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_known_value_widening"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_manual_effect_error_tag"
@@ -52,7 +51,6 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_mutable_array_methods"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_mutable_variable_declarations"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_mutation"
-	"github.com/andrueandersoncs/better-typescript/internal/rules/no_nested_calls"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_nested_if_statements"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_new_error"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_non_null_assertion"
@@ -80,7 +78,6 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_unsupported_d1_transactions"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_unused"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_value_aliases"
-	"github.com/andrueandersoncs/better-typescript/internal/rules/no_void_functions"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_weak_map"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/no_widen_then_assert"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/observable_worker_failure"
@@ -118,7 +115,6 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_pipe_function"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_result_concept_names"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_schema_tagged_struct"
-	"github.com/andrueandersoncs/better-typescript/internal/rules/prefer_specific_operation_names"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/process_environment"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/production_sleep_loops"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/raw_fetch_abort_signal"
@@ -135,7 +131,6 @@ import (
 	"github.com/andrueandersoncs/better-typescript/internal/rules/require_lookup_totality_name_consistency"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/require_predicate_name_consistency"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/require_result_cardinality_name_consistency"
-	"github.com/andrueandersoncs/better-typescript/internal/rules/require_result_shape_name_consistency"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/require_safety_comment_for_type_assertion"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/retry_without_jitter"
 	"github.com/andrueandersoncs/better-typescript/internal/rules/schema_error_class"
@@ -199,7 +194,6 @@ var BuiltinRules = []rule.Rule{
 	no_function_keyword.NoFunctionKeywordRule,
 	no_immediate_effect_sync.Rule,
 	no_inline_boolean_expressions.Rule,
-	no_inline_closures.Rule,
 	no_instanceof.Rule,
 	no_known_value_widening.Rule,
 	no_manual_effect_error_tag.Rule,
@@ -213,7 +207,6 @@ var BuiltinRules = []rule.Rule{
 	no_mutable_array_methods.Rule,
 	no_mutable_variable_declarations.Rule,
 	no_mutation.Rule,
-	no_nested_calls.Rule,
 	no_nested_if_statements.Rule,
 	no_new_error.Rule,
 	no_non_null_assertion.Rule,
@@ -241,7 +234,6 @@ var BuiltinRules = []rule.Rule{
 	no_unsupported_d1_transactions.Rule,
 	no_unused.Rule,
 	no_value_aliases.Rule,
-	no_void_functions.Rule,
 	no_weak_map.Rule,
 	no_widen_then_assert.Rule,
 	observable_worker_failure.Rule,
@@ -279,7 +271,6 @@ var BuiltinRules = []rule.Rule{
 	prefer_pipe_function.PreferPipeFunctionRule,
 	prefer_result_concept_names.PreferResultConceptNamesRule,
 	prefer_schema_tagged_struct.PreferSchemaTaggedStructRule,
-	prefer_specific_operation_names.PreferSpecificOperationNamesRule,
 	process_environment.ProcessEnvironmentRule,
 	production_sleep_loops.Rule,
 	raw_fetch_abort_signal.Rule,
@@ -296,7 +287,6 @@ var BuiltinRules = []rule.Rule{
 	require_lookup_totality_name_consistency.Rule,
 	require_predicate_name_consistency.Rule,
 	require_result_cardinality_name_consistency.Rule,
-	require_result_shape_name_consistency.Rule,
 	require_safety_comment_for_type_assertion.Rule,
 	retry_without_jitter.Rule,
 	schema_error_class.SchemaErrorClassRule,

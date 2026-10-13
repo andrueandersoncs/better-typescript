@@ -168,7 +168,7 @@ Retired selectors have no aliases. Update `--rules` and semantic-mode `better-ty
 | `modularity/split-or-merge-based-on-cohesion-and-coupling-not-line-counts` | `simplicity/give-each-function-or-module-one-coherent-responsibility`, `modularity/merge-modules-that-change-together` |
 | `modularity/use-abstractions-at-meaningful-boundaries-not-everywhere` | `simplicity/let-abstractions-emerge-from-concrete-needs` |
 | `readability/make-tests-readable-examples-of-behavior` | `readability/name-tests-after-condition-and-outcome`, `readability/separate-test-setup-action-and-assertions`, `readability/use-test-data-that-makes-behavior-obvious` |
-| `readability/name-complicated-conditions-and-intermediate-results`, `expression-complexity` | `no-nested-calls`, `no-multiple-boolean-operators` (deterministic) |
+| `readability/name-complicated-conditions-and-intermediate-results`, `expression-complexity` | `no-multiple-boolean-operators` (deterministic) |
 | `readability/remove-distractions` | `readability/delete-dead-code`, `readability/keep-comments-current`, `simplicity/do-not-add-speculative-extension-points` |
 | `simplicity/do-not-mutate-inputs-unexpectedly` | `no-mutation`, `no-mutable-array-methods` (deterministic) |
 | `simplicity/keep-control-flow-shallow` | `no-nested-if-statements` (deterministic) |

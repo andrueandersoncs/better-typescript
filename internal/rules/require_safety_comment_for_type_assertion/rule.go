@@ -9,12 +9,6 @@ import (
 	"github.com/andrueandersoncs/typescript-go/scanner"
 )
 
-type comment struct {
-	start int
-	end   int
-	text  string
-}
-
 var safetyMarker = regexp.MustCompile(`(^|[^[:alnum:]_])SAFETY[[:space:]]*:[[:space:]]*\S`)
 var message = rule.RuleMessage{
 	Id:          "require-safety-comment-for-type-assertion",
@@ -22,25 +16,14 @@ var message = rule.RuleMessage{
 	Help:        "State the checked invariant immediately before the assertion or its containing statement, and explain it using `because`.",
 }
 
-func comments(source string) []comment {
-	lex := scanner.NewScanner()
-	lex.SetSkipTrivia(false)
-	lex.SetText(source)
-	var result []comment
-	for kind := lex.Scan(); kind != ast.KindEndOfFile; kind = lex.Scan() {
-		if kind != ast.KindSingleLineCommentTrivia && kind != ast.KindMultiLineCommentTrivia {
-			continue
-		}
-		start, end := lex.TokenStart(), lex.TokenEnd()
-		text := source[start:end]
-		if kind == ast.KindSingleLineCommentTrivia {
-			text = strings.TrimPrefix(text, "//")
-		} else {
-			text = strings.TrimSuffix(strings.TrimPrefix(text, "/*"), "*/")
-		}
-		result = append(result, comment{start: start, end: end, text: text})
+var factory = ast.NewNodeFactory(ast.NodeFactoryHooks{})
+
+func commentText(source string, comment ast.CommentRange) string {
+	text := source[comment.Pos():comment.End()]
+	if comment.Kind == ast.KindSingleLineCommentTrivia {
+		return strings.TrimPrefix(text, "//")
 	}
-	return result
+	return strings.TrimSuffix(strings.TrimPrefix(text, "/*"), "*/")
 }
 
 func constAssertion(node *ast.Node) bool {
@@ -48,24 +31,20 @@ func constAssertion(node *ast.Node) bool {
 	return typeNode != nil && ast.IsTypeReferenceNode(typeNode) && ast.IsIdentifier(typeNode.AsTypeReferenceNode().TypeName) && typeNode.AsTypeReferenceNode().TypeName.Text() == "const"
 }
 
-func leadingSafety(ctx rule.RuleContext, current, assertion *ast.Node, all []comment) bool {
-	source := ctx.SourceFile.Text()
+func leadingSafety(ctx rule.RuleContext, current *ast.Node) bool {
 	start := scanner.GetTokenPosOfNode(current, ctx.SourceFile, false)
-	assertionStart := scanner.GetTokenPosOfNode(assertion, ctx.SourceFile, false)
-	for _, candidate := range all {
-		if candidate.end > assertionStart || candidate.end > start || !safetyMarker.MatchString(candidate.text) {
-			continue
-		}
-		if strings.TrimSpace(source[candidate.end:start]) == "" {
+	trivia := ctx.SourceFile.Text()[current.Pos():start]
+	for comment := range scanner.GetLeadingCommentRanges(factory, trivia, 0) {
+		if safetyMarker.MatchString(commentText(trivia, comment)) && strings.TrimSpace(trivia[comment.End():]) == "" {
 			return true
 		}
 	}
 	return false
 }
 
-func justified(ctx rule.RuleContext, node *ast.Node, all []comment) bool {
+func justified(ctx rule.RuleContext, node *ast.Node) bool {
 	for current := node; current != nil && !ast.IsSourceFile(current); current = current.Parent {
-		if leadingSafety(ctx, current, node, all) {
+		if leadingSafety(ctx, current) {
 			return true
 		}
 		switch current.Kind {
@@ -77,9 +56,8 @@ func justified(ctx rule.RuleContext, node *ast.Node, all []comment) bool {
 }
 
 func run(ctx rule.RuleContext, _ any) rule.RuleListeners {
-	all := comments(ctx.SourceFile.Text())
 	check := func(node *ast.Node) {
-		if !constAssertion(node) && !justified(ctx, node, all) {
+		if !constAssertion(node) && !justified(ctx, node) {
 			ctx.ReportNode(node, message)
 		}
 	}

@@ -38,7 +38,7 @@ var Rule = rule.Rule{Name: "prefer-direct-yield", Run: func(ctx rule.RuleContext
 		if yield.AsteriskToken == nil || yield.Expression != refs[0] {
 			return
 		}
-		ctx.ReportNode(name, rule.RuleMessage{Id: "prefer-direct-yield", Description: "Avoid binding an Effect only to yield* it.", Help: "Write const result = yield* expression (or yield* expression when the result is unused) instead of naming a temporary Effect and yielding that name. Keep extracting nested call arguments into their own consts so no-nested-calls stays satisfied."})
+		ctx.ReportNode(name, rule.RuleMessage{Id: "prefer-direct-yield", Description: "Avoid binding an Effect only to yield* it.", Help: "Write const result = yield* expression (or yield* expression when the result is unused) instead of naming a temporary Effect and yielding that name."})
 	}}
 }}
 

@@ -17,3 +17,7 @@ const pair = [/* SAFETY: This is sound because the first value was parsed. */ in
 void blockValid
 void emptyBlock
 void pair
+
+const templated = `value ${String(1)}`
+// SAFETY: templated is a string because it is a template literal.
+export const afterTemplate = templated as string

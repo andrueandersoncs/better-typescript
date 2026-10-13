@@ -61,7 +61,7 @@ func isCandidate(ctx rule.RuleContext, node *ast.Node) bool {
 func hasThisParameter(node *ast.Node) bool {
 	for _, parameter := range node.Parameters() {
 		name := parameter.Name()
-		if name != nil && name.Text() == "this" {
+		if name != nil && ast.IsIdentifier(name) && name.Text() == "this" {
 			return true
 		}
 	}

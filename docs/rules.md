@@ -1,6 +1,6 @@
 # Built-in rules
 
-The fixed catalog contains these 156 rules:
+The fixed catalog contains these 151 rules:
 
 `prefer-effect-schema-constructor` requires Effect Schema classes to use their static `make` method.
 `no-known-value-widening` analyzes returns in computed-name methods without interrupting the lint run.
@@ -15,7 +15,6 @@ Unary `make`, `create`, `build`, and `construct` functions may use inline generi
 
 Recursive and generic-inference-guiding annotations are retained. Effect Schema constructors may nest declarative calls. Effect SQL raw statements may use `unsafe`. Predicate naming recognizes checker-inferred boolean return types.
 
-`require-result-shape-name-consistency` uses checker-inferred returns when no annotation exists.
 `no-type-specific-equivalence-strict` reports every top-level primitive-specific `Equivalence.strictEqual` binding.
 
 `unbounded-stream-collect` accepts `Stream.take` as a local bound only when its count is a nonnegative finite numeric literal.
@@ -26,7 +25,7 @@ Recursive and generic-inference-guiding annotations are retained. Effect Schema 
 
 Statement spacing separates different syntax kinds. Single-line declarations inside functions stay contiguous only within the same kind; multiline statements retain their surrounding separators.
 
-`parameter-bag` is limited to same-file implemented seams and does not reinterpret cross-module or ambient option contracts. `prefer-effect-schema-constructor` applies raw-literal guidance only to string-tagged protocol variants while retaining Effect Schema class construction checks. `no-callbacks` distinguishes callback-style API declarations from inline callback implementations, and `no-inline-closures` accepts callback arguments whose callee resolves exclusively to external declarations, including standard-library APIs. `raw-fetch-outside-adapter` recognizes direct, sole `fetch` returns from named top-level function bindings while retaining findings for anonymous, nested, method-owned, and multi-statement application calls.
+`parameter-bag` is limited to same-file implemented seams and does not reinterpret cross-module or ambient option contracts. `prefer-effect-schema-constructor` applies raw-literal guidance only to string-tagged protocol variants while retaining Effect Schema class construction checks. `no-callbacks` distinguishes callback-style API declarations from inline callback implementations. `raw-fetch-outside-adapter` recognizes direct, sole `fetch` returns from named top-level function bindings while retaining findings for anonymous, nested, method-owned, and multi-statement application calls.
 
 See [Engineering principles](./engineering-principles.md) for ownership, validation, concurrency, and compatibility boundaries.
 For embedded natural-language policies, see [Semantic lint](./semantic-lint.md); those policies are not part of the fixed built-in catalog.
@@ -68,7 +67,6 @@ For embedded natural-language policies, see [Semantic lint](./semantic-lint.md);
 - [`no-function-keyword`](./rules/no-function-keyword.md)
 - [`no-immediate-effect-sync`](./rules/no-immediate-effect-sync.md)
 - [`no-inline-boolean-expressions`](./rules/no-inline-boolean-expressions.md)
-- [`no-inline-closures`](./rules/no-inline-closures.md)
 - [`no-instanceof`](./rules/no-instanceof.md)
 - [`no-known-value-widening`](./rules/no-known-value-widening.md)
 - [`no-manual-effect-error-tag`](./rules/no-manual-effect-error-tag.md)
@@ -82,7 +80,6 @@ For embedded natural-language policies, see [Semantic lint](./semantic-lint.md);
 - [`no-mutable-array-methods`](./rules/no-mutable-array-methods.md)
 - [`no-mutable-variable-declarations`](./rules/no-mutable-variable-declarations.md)
 - [`no-mutation`](./rules/no-mutation.md)
-- [`no-nested-calls`](./rules/no-nested-calls.md)
 - [`no-nested-if-statements`](./rules/no-nested-if-statements.md)
 - [`no-new-error`](./rules/no-new-error.md)
 - [`no-non-null-assertion`](./rules/no-non-null-assertion.md)
@@ -110,7 +107,6 @@ For embedded natural-language policies, see [Semantic lint](./semantic-lint.md);
 - [`no-unsupported-d1-transactions`](./rules/no-unsupported-d1-transactions.md)
 - [`no-unused`](./rules/no-unused.md)
 - [`no-value-aliases`](./rules/no-value-aliases.md)
-- [`no-void-functions`](./rules/no-void-functions.md)
 - [`no-weak-map`](./rules/no-weak-map.md)
 - [`no-widen-then-assert`](./rules/no-widen-then-assert.md)
 - [`observable-worker-failure`](./rules/observable-worker-failure.md)
@@ -148,7 +144,6 @@ For embedded natural-language policies, see [Semantic lint](./semantic-lint.md);
 - [`prefer-pipe-function`](./rules/prefer-pipe-function.md)
 - [`prefer-result-concept-names`](./rules/prefer-result-concept-names.md)
 - [`prefer-schema-tagged-struct`](./rules/prefer-schema-tagged-struct.md)
-- [`prefer-specific-operation-names`](./rules/prefer-specific-operation-names.md)
 - [`process-environment`](./rules/process-environment.md)
 - [`production-sleep-loops`](./rules/production-sleep-loops.md)
 - [`raw-fetch-abort-signal`](./rules/raw-fetch-abort-signal.md)
@@ -165,7 +160,6 @@ For embedded natural-language policies, see [Semantic lint](./semantic-lint.md);
 - [`require-lookup-totality-name-consistency`](./rules/require-lookup-totality-name-consistency.md)
 - [`require-predicate-name-consistency`](./rules/require-predicate-name-consistency.md)
 - [`require-result-cardinality-name-consistency`](./rules/require-result-cardinality-name-consistency.md)
-- [`require-result-shape-name-consistency`](./rules/require-result-shape-name-consistency.md)
 - [`require-safety-comment-for-type-assertion`](./rules/require-safety-comment-for-type-assertion.md)
 - [`retry-without-jitter`](./rules/retry-without-jitter.md)
 - [`schema-error-class`](./rules/schema-error-class.md)
