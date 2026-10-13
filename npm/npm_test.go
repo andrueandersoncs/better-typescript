@@ -262,7 +262,7 @@ func testResumablePublish(t *testing.T, repository, archive string) {
 	fakeDirectory := t.TempDir()
 	published := filepath.Join(fakeDirectory, "published")
 	fakeNpm := filepath.Join(fakeDirectory, "npm")
-	fake := "#!/usr/bin/env bash\nif [[ $1 == view ]]; then\n  if [[ ${FAKE_NPM_MISSING:-} == 1 ]]; then echo 'npm error code E404' >&2; exit 1; fi\n  printf '%s\\n' \"$FAKE_NPM_INTEGRITY\"\n  exit 0\nfi\ntouch \"$FAKE_NPM_PUBLISHED\"\n"
+	fake := "#!/usr/bin/env bash\nif [[ $1 == view ]]; then\n  if [[ ${FAKE_NPM_MISSING:-} == 1 && $3 == dist.integrity ]]; then echo 'npm error code E404' >&2; exit 1; fi\n  printf '%s\\n' \"$FAKE_NPM_INTEGRITY\"\n  exit 0\nfi\ntouch \"$FAKE_NPM_PUBLISHED\"\n"
 	if err := os.WriteFile(fakeNpm, []byte(fake), 0o755); err != nil {
 		t.Fatal(err)
 	}
