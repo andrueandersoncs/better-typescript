@@ -173,7 +173,7 @@ Retired selectors have no aliases. Update `--rules` and semantic-mode `better-ty
 | `modularity/use-abstractions-at-meaningful-boundaries-not-everywhere` | `simplicity/let-abstractions-emerge-from-concrete-needs` |
 | `readability/make-tests-readable-examples-of-behavior` | `readability/name-tests-after-condition-and-outcome`, `readability/separate-test-setup-action-and-assertions`, `readability/use-test-data-that-makes-behavior-obvious` |
 | `readability/name-complicated-conditions-and-intermediate-results`, `expression-complexity` | `no-multiple-boolean-operators` (deterministic) |
-| `readability/remove-distractions` | `readability/delete-dead-code`, `readability/keep-comments-current`, `simplicity/do-not-add-speculative-extension-points` |
+| `readability/remove-distractions` | `readability/delete-dead-code`, `simplicity/do-not-add-speculative-extension-points` |
 | `simplicity/do-not-mutate-inputs-unexpectedly` | `no-mutation`, `no-mutable-array-methods` (deterministic) |
 | `simplicity/keep-control-flow-shallow` | `no-nested-if-statements` (deterministic) |
 | `simplicity/make-inputs-dependencies-and-side-effects-explicit` | `modularity/make-dependencies-explicit`, `no-mutation`, `no-mutable-variable-declarations`, `no-mutable-array-methods` (deterministic), `abstraction/make-important-consequences-apparent` |
@@ -204,7 +204,6 @@ These policies kept their names but now cover one invariant. Their other invaria
 | `readability/make-interfaces-understandable-at-the-call-site` | `abstraction/do-not-force-variation-through-flags` |
 | `readability/name-things-by-their-purpose` | `readability/avoid-obscure-abbreviations-and-redundant-prefixes`, `readability/avoid-temporaries-that-merely-repeat-an-expression`, `function-naming` |
 | `readability/prefer-straightforward-code-over-clever-code` | `readability/avoid-temporaries-that-merely-repeat-an-expression` |
-| `readability/write-comments-that-explain-what-the-code-cannot` | `readability/do-not-narrate-obvious-code`, `readability/keep-comments-current` |
 | `simplicity/handle-errors-explicitly-and-close-to-the-right-boundary` | `typescript-contracts/decode-external-data-at-the-boundary`, `simplicity/keep-each-fact-in-one-authoritative-place`, `simplicity/preserve-failure-context`, `simplicity/do-not-swallow-failures` |
 | `testing-enforcement/control-test-nondeterminism` | `testing-enforcement/preserve-replay-data-for-generated-failures` |
 | `testing-enforcement/isolate-state-for-each-generated-case` | `testing-enforcement/preserve-original-generated-inputs` |
