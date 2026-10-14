@@ -5,7 +5,7 @@ description: Run Better TypeScript against the current TypeScript project and fi
 
 # Better TypeScript
 
-Better TypeScript is a Go binary with a rule catalog. Each deterministic rule is a direct `typescript-go` AST/checker listener in `internal/rules/<rule_name>`. Semantic policies are Markdown files: an embedded catalog plus project policies under `.better-typescript/rules/`.
+Better TypeScript is a Go binary with a rule catalog. Each deterministic rule is a direct `typescript-go` AST/checker listener in `internal/rules/<rule_name>`. Semantic policies are Markdown files under `.better-typescript/rules/`; none run until `semantic init` copies the default catalog there.
 
 ## Get the binary
 
@@ -47,11 +47,12 @@ Status and operational errors go to stderr. Each stdout line is one NDJSON viola
 Use the semantic subcommand only when asked to evaluate engineering policy against a working-tree change, committed Git range, selected current files, or all eligible current files:
 
 ```sh
+npx better-typescript semantic init  # once per project; copies default policies
 echo 'TYPESAFE_API_KEY=...' >> .env  # or export it; the environment wins
 npx better-typescript semantic
 ```
 
-Run `semantic --range 'origin/main...HEAD'` for committed changes, `--files 'src/**/*.ts'` for selected files, or `--all` for all Git-visible eligible files. `--files` and `--all` cannot be combined; with `--range`, they select matching files from the end commit, such as `--range 'abc123^..abc123' --files src/auth.ts` for one file at one commit. `--rules function-naming,readonly` selects policies; `--rules-dir` adds another policy directory. Range mode uses file contents and configuration from the end commit. Semantic review selects candidate source spans, keeps the whole-line blocks of those spans that could supply evidence, then asks separate applicability and violation Nouls over the combined evidence set. Candidate ranges may be distant and are leads, not generated rationales. In JSON, `evidenceScope: file` means the whole file was selected; `localized` means only part. Neither scope pinpoints a defect. Only violations fail the run; reviews remain visible. Semantic exits `1` for violations and `2` for argument, Git, file, or TypeSafe errors. Requests use `jev-latest` unless `--model` overrides it. Use `--dry-run` to inspect selection requests without an API call; evidence and final requests depend on live answers. See `docs/semantic-lint.md` for details.
+Run `semantic --range 'origin/main...HEAD'` for committed changes, `--files 'src/**/*.ts'` for selected files, or `--all` for all Git-visible eligible files. `--files` and `--all` cannot be combined; with `--range`, they select matching files from the end commit, such as `--range 'abc123^..abc123' --files src/auth.ts` for one file at one commit. `--rules function-naming,readonly` selects policies; `--rules-dir` replaces the policy directory. Range mode uses file contents and configuration from the end commit. Semantic review selects candidate source spans, keeps the whole-line blocks of those spans that could supply evidence, then asks separate applicability and violation Nouls over the combined evidence set. Candidate ranges may be distant and are leads, not generated rationales. In JSON, `evidenceScope: file` means the whole file was selected; `localized` means only part. Neither scope pinpoints a defect. Only violations fail the run; reviews remain visible. Semantic exits `1` for violations and `2` for argument, Git, file, or TypeSafe errors. Requests use `jev-latest` unless `--model` overrides it. Use `--dry-run` to inspect selection requests without an API call; evidence and final requests depend on live answers. See `docs/semantic-lint.md` for details.
 
 ## Handle results
 

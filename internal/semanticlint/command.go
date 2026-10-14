@@ -12,11 +12,15 @@ import (
 )
 
 const usage = `Usage: better-typescript semantic [options]
+       better-typescript semantic init [--rules-dir <path>]
+
+Policies load only from the rules directory. ` + "`semantic init`" + ` copies the default
+policies there and keeps files that already exist.
 
 Options:
   --threshold <number>     Violation probability threshold (default: 0.7)
   --model <name>           TypeSafe model override (default: jev-latest)
-  --rules-dir <path>       Additional Markdown rules (default: .better-typescript/rules)
+  --rules-dir <path>       Markdown policies directory (default: .better-typescript/rules)
   --range <from>..<to>     Analyze complete files from a committed Git range endpoint
   --files <glob>           Analyze selected files; repeat or comma-separate
   --all                    Analyze all eligible files
@@ -50,6 +54,9 @@ type sourceEvaluation struct {
 
 // Run executes the semantic lint subcommand from a repository root.
 func Run(ctx context.Context, root string, args []string, output io.Writer) (int, error) {
+	if len(args) > 0 && args[0] == "init" {
+		return runInit(root, args[1:], output)
+	}
 	options, help, err := parseOptions(args)
 	if err != nil {
 		return 2, err
@@ -133,8 +140,31 @@ func Run(ctx context.Context, root string, args []string, output io.Writer) (int
 	return writeFindingReports(output, reports, options.JSON)
 }
 
+func runInit(root string, args []string, output io.Writer) (int, error) {
+	directory := defaultRulesDirectory
+	flags := flag.NewFlagSet("semantic init", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	flags.StringVar(&directory, "rules-dir", directory, "")
+	help := false
+	flags.BoolVar(&help, "help", false, "")
+	if err := flags.Parse(args); err != nil {
+		return 2, err
+	}
+	if flags.NArg() != 0 {
+		return 2, fmt.Errorf("unexpected arguments: %s", strings.Join(flags.Args(), " "))
+	}
+	if help {
+		_, err := io.WriteString(output, usage)
+		return 0, err
+	}
+	if err := initRules(root, directory, output); err != nil {
+		return 2, err
+	}
+	return 0, nil
+}
+
 func parseOptions(args []string) (Options, bool, error) {
-	options := Options{Threshold: defaultThreshold, Model: defaultModel, RulesDirectory: ".better-typescript/rules"}
+	options := Options{Threshold: defaultThreshold, Model: defaultModel, RulesDirectory: defaultRulesDirectory}
 	var filePatterns, ruleNames stringListFlag
 	flags := flag.NewFlagSet("semantic", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)

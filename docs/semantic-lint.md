@@ -2,13 +2,14 @@
 
 `better-typescript semantic` asks whether selected files violate natural-language engineering policies.
 
-The command embeds the default policy catalog. Add project policies under `.better-typescript/rules/`.
+Policies are off by default. The command reads only Markdown policies under `.better-typescript/rules/`. Opt in to the default catalog with `better-typescript semantic init`, which copies every default policy there and keeps files that already exist. Edit or delete the copies freely.
 
 See [Semantic lint architecture](./semantic-lint-architecture.md) for the implementation flow.
 
 ## Run
 
 ```sh
+npx better-typescript semantic init   # once: copy the default policies
 echo 'TYPESAFE_API_KEY=...' >> .env
 npx better-typescript semantic
 ```
@@ -96,7 +97,7 @@ Live semantic lint sends source spans and policy text to TypeSafe. Do not run it
 ```text
 --threshold <number>     Violation probability threshold (default: 0.7)
 --model <name>           TypeSafe model override (default: jev-latest)
---rules-dir <path>       Additional Markdown rules
+--rules-dir <path>       Markdown policies directory (default: .better-typescript/rules)
 --range <from>..<to>     Analyze complete files from a committed range endpoint
 --files <glob>           Analyze selected files; repeat or comma-separate
 --all                    Analyze all eligible files
@@ -135,9 +136,9 @@ Rule names are Markdown basenames without `.md`. Catalog-relative paths also wor
 
 ## Default policy cutover
 
-The embedded policies distinguish shared behavior from similar-looking code, keep pure calculations outside Effect, and avoid copying a growing accumulator with one-pass construction. Converting already decoded data into a result stays a plain function, even when its caller uses Effect. Local mutable builders require explicit exclusions from the mutation rules.
+The default policies distinguish shared behavior from similar-looking code, keep pure calculations outside Effect, and avoid copying a growing accumulator with one-pass construction. Converting already decoded data into a result stays a plain function, even when its caller uses Effect. Local mutable builders require explicit exclusions from the mutation rules.
 
-Each embedded policy states one invariant: one property a file either keeps or breaks. Policies that combined several invariants were split; an invariant that several policies repeated has one owner, and where a top-level project rule (`function-naming`, `avoid-repetition`) overlapped an imported policy, the project rule owns it. Invariants a deterministic rule can check have no semantic policy.
+Each default policy states one invariant: one property a file either keeps or breaks. Policies that combined several invariants were split; an invariant that several policies repeated has one owner, and where a top-level project rule (`function-naming`, `avoid-repetition`) overlapped an imported policy, the project rule owns it. Invariants a deterministic rule can check have no semantic policy.
 
 Retired selectors have no aliases. Update `--rules` and semantic-mode `better-typescript.json` commands:
 
@@ -248,7 +249,7 @@ globs:
 Remove debugger statements.
 ```
 
-Files under `.better-typescript/rules/` are discovered recursively. `--rules-dir` selects another additional directory. Invalid or empty policy files stop the run.
+Files under `.better-typescript/rules/` are discovered recursively. `--rules-dir` selects another directory for both `semantic` and `semantic init`. A missing or empty directory, or an invalid policy file, stops the run.
 
 The complete policy file is sent verbatim. Write policies whose violations can be demonstrated from one file. Policies that require proving a global absence or comparing distant regions may be inconclusive when selected spans do not supply enough context.
 

@@ -66,7 +66,7 @@ Applicability judges whether the policy's subject is present, regardless of comp
 
 Deleted files are skipped. Every retained path is read completely.
 
-`rules.go` loads embedded and project policies, preserves the complete Markdown source, parses frontmatter globs, and applies ordered semantic-mode configuration commands per file.
+`rules.go` copies the embedded defaults on `semantic init`, loads project policies, preserves the complete Markdown source, parses frontmatter globs, and applies ordered semantic-mode configuration commands per file.
 
 ## Requests
 

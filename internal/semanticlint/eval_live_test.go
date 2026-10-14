@@ -116,7 +116,7 @@ func TestSemanticEvalCompare(t *testing.T) {
 // test with a message starting "variant rejected:", so optimizers can tell it from other failures.
 func newLiveEvalRun(t *testing.T) (evalRun, []evalCase) {
 	t.Helper()
-	rules, err := loadRules(t.TempDir(), "")
+	rules, err := defaultRules()
 	if err != nil {
 		t.Fatal(err)
 	}

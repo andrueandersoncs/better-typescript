@@ -15,6 +15,7 @@ const (
 	maximumRequestBytes    = 64_000
 	defaultHTTPTimeout     = 10 * time.Second
 	maximumHTTPRetries     = 2
+	defaultRulesDirectory  = ".better-typescript/rules"
 )
 
 func modelOrDefault(model string) string {

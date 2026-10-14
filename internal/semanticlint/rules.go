@@ -3,6 +3,7 @@ package semanticlint
 import (
 	"embed"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -31,18 +32,18 @@ type semanticRuleCommand struct {
 
 var ruleFrontmatterPattern = regexp.MustCompile(`(?s)^---\r?\n(.*?)\r?\n---(?:\r?\n|$)`)
 
-func loadRules(root, localDirectory string) ([]Rule, error) {
-	sources, err := embeddedRuleSources()
+func loadRules(root, directory string) ([]Rule, error) {
+	sources, err := localRuleSources(root, directory)
 	if err != nil {
 		return nil, err
 	}
-	if localDirectory != "" {
-		local, err := localRuleSources(root, localDirectory)
-		if err != nil {
-			return nil, err
-		}
-		sources = append(sources, local...)
+	if len(sources) == 0 {
+		return nil, fmt.Errorf("no semantic rules in %s; run `better-typescript semantic init` to copy the default policies there", directory)
 	}
+	return parseRules(sources)
+}
+
+func parseRules(sources []ruleSource) ([]Rule, error) {
 	sort.Slice(sources, func(i, j int) bool { return sources[i].path < sources[j].path })
 	rules := make([]Rule, 0, len(sources))
 	for index, item := range sources {
@@ -53,10 +54,47 @@ func loadRules(root, localDirectory string) ([]Rule, error) {
 		rule.ID = fmt.Sprintf("rule_%d", index+1)
 		rules = append(rules, rule)
 	}
-	if len(rules) == 0 {
-		return nil, fmt.Errorf("no semantic rule files found")
-	}
 	return rules, nil
+}
+
+// initRules copies the default policies into directory, keeping existing files.
+func initRules(root, directory string, output io.Writer) error {
+	if !filepath.IsAbs(directory) {
+		directory = filepath.Join(root, directory)
+	}
+	sources, err := embeddedRuleSources()
+	if err != nil {
+		return err
+	}
+	for _, item := range sources {
+		path := filepath.Join(directory, filepath.FromSlash(strings.TrimPrefix(item.path, "rules/")))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			return err
+		}
+		file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+		status := "created"
+		if os.IsExist(err) {
+			status = "kept"
+		} else if err != nil {
+			return err
+		} else {
+			_, err = io.WriteString(file, item.source)
+			if closeErr := file.Close(); err == nil {
+				err = closeErr
+			}
+			if err != nil {
+				return err
+			}
+		}
+		relative, err := filepath.Rel(root, path)
+		if err != nil {
+			relative = path
+		}
+		if _, err := fmt.Fprintf(output, "%s %s\n", status, filepath.ToSlash(relative)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func selectSemanticRules(rules []Rule, names []string) ([]Rule, error) {
@@ -175,7 +213,7 @@ func localRuleSources(root, directory string) ([]ruleSource, error) {
 		absolute = filepath.Join(root, directory)
 	}
 	info, err := os.Stat(absolute)
-	if os.IsNotExist(err) && directory == ".better-typescript/rules" {
+	if os.IsNotExist(err) {
 		return nil, nil
 	}
 	if err != nil {

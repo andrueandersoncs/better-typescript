@@ -28,7 +28,7 @@ Statement spacing separates different syntax kinds. Single-line declarations ins
 `parameter-bag` is limited to same-file implemented seams and does not reinterpret cross-module or ambient option contracts. `prefer-effect-schema-constructor` applies raw-literal guidance only to string-tagged protocol variants while retaining Effect Schema class construction checks. `no-callbacks` distinguishes callback-style API declarations from inline callback implementations. `raw-fetch-outside-adapter` recognizes direct, sole `fetch` returns from named top-level function bindings while retaining findings for anonymous, nested, method-owned, and multi-statement application calls.
 
 See [Engineering principles](./engineering-principles.md) for ownership, validation, concurrency, and compatibility boundaries.
-For embedded natural-language policies, see [Semantic lint](./semantic-lint.md); those policies are not part of the fixed built-in catalog.
+For opt-in natural-language policies, see [Semantic lint](./semantic-lint.md); those policies are not part of the fixed built-in catalog.
 
 - [`boundary-schema-decode`](./rules/boundary-schema-decode.md)
 - [`bounded-retry-schedule`](./rules/bounded-retry-schedule.md)

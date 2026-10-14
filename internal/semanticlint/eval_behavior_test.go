@@ -10,7 +10,7 @@ import (
 )
 
 func TestEvalCorpusIsValid(t *testing.T) {
-	rules, err := loadRules(t.TempDir(), "")
+	rules, err := defaultRules()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -20,7 +20,7 @@ func TestEvalCorpusIsValid(t *testing.T) {
 }
 
 func TestCheckVariantRejectsLongMalformedOrCorpusQuotingPrompts(t *testing.T) {
-	rules, err := loadRules(t.TempDir(), "")
+	rules, err := defaultRules()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +143,7 @@ func TestCompareEvalReportsRequiresConfidentImprovement(t *testing.T) {
 }
 
 func TestEvalRunBillsOnlyRequestsSentToTypeSafe(t *testing.T) {
-	rules, err := loadRules(t.TempDir(), "")
+	rules, err := defaultRules()
 	if err != nil {
 		t.Fatal(err)
 	}

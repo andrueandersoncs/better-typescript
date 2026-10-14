@@ -19,7 +19,7 @@ func TestEvaluateSourceDoesNotReportViolationWhenPolicyDoesNotApply(t *testing.T
 		{"uncertain applicability", "effect/convert-thrown-exceptions-at-external-boundaries", "export const verifyOutcome = (passed: boolean) => ({ passed })\n", 0.69},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			rules, err := loadRules(t.TempDir(), "")
+			rules, err := defaultRules()
 			if err != nil {
 				t.Fatal(err)
 			}

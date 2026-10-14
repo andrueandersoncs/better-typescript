@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -214,6 +215,7 @@ func TestRunDryRunNeedsNoTypeSafeCredentials(t *testing.T) {
 func TestRunSelectsFilesInRepositoryWithoutCommits(t *testing.T) {
 	root := t.TempDir()
 	runGit(t, root, "init", "-q")
+	installDefaultRules(t, root)
 	writeTestFile(t, root, "src/staged.ts", "export {};\n")
 	writeTestFile(t, root, "src/untracked.ts", "export {};\n")
 	runGit(t, root, "add", "src/staged.ts")
@@ -616,7 +618,7 @@ func TestRunDoesNotJudgeTruncatedCandidateContext(t *testing.T) {
 }
 
 func TestRemovedSemanticPolicySelectorsRejectStaleConfiguration(t *testing.T) {
-	rules, err := loadRules(t.TempDir(), "")
+	rules, err := defaultRules()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -663,6 +665,46 @@ func testEvidenceAnswer(request evaluationRequest, key string, markers ...string
 	return answer{Type: "noul", Noul: 0.1}
 }
 
+func TestRunWithoutProjectPoliciesPointsToInit(t *testing.T) {
+	root := t.TempDir()
+	runGit(t, root, "init", "-q")
+	writeTestFile(t, root, "src/example.ts", "export {};\n")
+	runGit(t, root, "add", ".")
+	_, err := Run(context.Background(), root, []string{"--dry-run"}, io.Discard)
+	if err == nil || !strings.Contains(err.Error(), "better-typescript semantic init") {
+		t.Fatalf("err = %v, want init hint", err)
+	}
+}
+
+func TestInitCopiesDefaultPoliciesAndKeepsEditedFiles(t *testing.T) {
+	root := t.TempDir()
+	edited := "---\nglobs:\n  - \"**/*.ts\"\n---\n# Edited\n\nKeep this.\n"
+	writeTestFile(t, root, ".better-typescript/rules/readonly.md", edited)
+	var output bytes.Buffer
+	if code, err := Run(context.Background(), root, []string{"init"}, &output); err != nil || code != 0 {
+		t.Fatalf("code = %d, err = %v", code, err)
+	}
+	if !strings.Contains(output.String(), "kept .better-typescript/rules/readonly.md\n") ||
+		!strings.Contains(output.String(), "created .better-typescript/rules/effect/separate-service-interfaces-from-layer-construction.md\n") {
+		t.Fatalf("output = %q", output.String())
+	}
+	content, err := os.ReadFile(filepath.Join(root, ".better-typescript/rules/readonly.md"))
+	if err != nil || string(content) != edited {
+		t.Fatalf("readonly.md = %q, err = %v", content, err)
+	}
+	rules, err := loadRules(root, defaultRulesDirectory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defaults, err := defaultRules()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rules) != len(defaults) {
+		t.Fatalf("loaded %d policies, want %d", len(rules), len(defaults))
+	}
+}
+
 func newSemanticTestRepository(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
@@ -670,9 +712,27 @@ func newSemanticTestRepository(t *testing.T) string {
 	runGit(t, root, "config", "user.email", "test@example.com")
 	runGit(t, root, "config", "user.name", "Test")
 	writeTestFile(t, root, "src/example.ts", "export {};\n")
+	installDefaultRules(t, root)
 	runGit(t, root, "add", ".")
 	runGit(t, root, "commit", "-qm", "initial")
 	return root
+}
+
+// installDefaultRules opts root into the default policies without making them lint targets.
+func installDefaultRules(t *testing.T, root string) {
+	t.Helper()
+	if err := initRules(root, defaultRulesDirectory, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, root, ".git/info/exclude", ".better-typescript/\n")
+}
+
+func defaultRules() ([]Rule, error) {
+	sources, err := embeddedRuleSources()
+	if err != nil {
+		return nil, err
+	}
+	return parseRules(sources)
 }
 
 func writeTestFile(t *testing.T, root, path, content string) {
