@@ -18,8 +18,8 @@ Options:
   --model <name>           TypeSafe model override (default: jev-latest)
   --rules-dir <path>       Additional Markdown rules (default: .better-typescript/rules)
   --range <from>..<to>     Analyze complete files from a committed Git range endpoint
-  --files <glob>           Analyze selected current files; repeat or comma-separate
-  --all                    Analyze all eligible current files
+  --files <glob>           Analyze selected files; repeat or comma-separate
+  --all                    Analyze all eligible files
   --rules <name>           Run selected semantic rules; repeat or comma-separate
   --json                   Print machine-readable results
   --dry-run                Inspect files, rules, request partitions, and bytes without API calls
@@ -157,18 +157,8 @@ func parseOptions(args []string) (Options, bool, error) {
 	}
 	options.FilePatterns = append([]string(nil), filePatterns...)
 	options.RuleNames = append([]string(nil), ruleNames...)
-	targetModes := 0
-	if strings.TrimSpace(options.CommitRange) != "" {
-		targetModes++
-	}
-	if len(options.FilePatterns) > 0 {
-		targetModes++
-	}
-	if options.AllFiles {
-		targetModes++
-	}
-	if targetModes > 1 {
-		return Options{}, false, fmt.Errorf("--range, --files, and --all cannot be combined")
+	if len(options.FilePatterns) > 0 && options.AllFiles {
+		return Options{}, false, fmt.Errorf("--files and --all cannot be combined")
 	}
 	if math.IsNaN(options.Threshold) || math.IsInf(options.Threshold, 0) {
 		return Options{}, false, fmt.Errorf("threshold must be a finite number")

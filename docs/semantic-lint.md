@@ -15,7 +15,7 @@ npx better-typescript semantic
 
 The key comes from the environment or, when unset there, from `.env` in the current directory. `TYPESAFE_BASE_URL` is read the same way.
 
-With no target option, the command reads complete changed, staged, and untracked files from the working tree. Deleted files are skipped because they have no current contents.
+With no target option, the command reads complete changed, staged, and untracked files from the working tree. Deleted files, symlinks, and submodules are skipped because they have no source of their own.
 
 For every selected file:
 
@@ -98,15 +98,15 @@ Live semantic lint sends source spans and policy text to TypeSafe. Do not run it
 --model <name>           TypeSafe model override (default: jev-latest)
 --rules-dir <path>       Additional Markdown rules
 --range <from>..<to>     Analyze complete files from a committed range endpoint
---files <glob>           Analyze selected current files; repeat or comma-separate
---all                    Analyze all eligible current files
+--files <glob>           Analyze selected files; repeat or comma-separate
+--all                    Analyze all eligible files
 --rules <name>           Run selected policies; repeat or comma-separate
 --json                   Print machine-readable results
 --dry-run                Inspect files, policies, partitions, and bytes without API calls
 --help                    Show help
 ```
 
-`--range`, `--files`, and `--all` are mutually exclusive.
+`--files` and `--all` cannot be combined. Either one can be combined with `--range`.
 
 ## Current files
 
@@ -123,7 +123,7 @@ Use `--all` for every eligible current file:
 npx better-typescript semantic --all
 ```
 
-`--all` lists tracked and non-ignored untracked files from Git in the current directory, skips files deleted from the working tree, then keeps supported extensions, including `.ts` and `.tsx`. Its dry run lists every selected file even if no policy matches it. `--files` narrows that same Git-visible file set; it does not include ignored files.
+`--all` lists tracked and non-ignored untracked files from Git in the current directory, skips deleted files, symlinks, and submodules, then keeps supported extensions, including `.ts` and `.tsx`. Its dry run lists every selected file even if no policy matches it. `--files` narrows that same Git-visible file set; it does not include ignored files.
 
 Use `--rules` to limit policies:
 
@@ -227,7 +227,13 @@ npx better-typescript semantic --range 'release..HEAD'
 npx better-typescript semantic --range 'origin/main...HEAD'
 ```
 
-Range mode selects paths changed by the range and reads each complete file from the range's end commit. Deleted files are skipped. It also reads `better-typescript.json` from the end commit. Untracked and working-tree contents are excluded.
+Range mode selects paths changed by the range and reads each complete file from the range's end commit. Deleted files, symlinks, and submodules are skipped. It also reads `better-typescript.json` from the end commit. Untracked and working-tree contents are excluded.
+
+With `--files` or `--all`, the range only names the commit to read: the command selects matching files from the end commit, whether or not the range changed them. This checks one file as it was at an earlier commit:
+
+```sh
+npx better-typescript semantic --range 'abc123^..abc123' --files src/auth.ts
+```
 
 ## Project policies
 

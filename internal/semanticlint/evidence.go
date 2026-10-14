@@ -3,11 +3,12 @@ package semanticlint
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -62,20 +63,37 @@ func gitSnapshot(ctx context.Context, root, commitRange string) (repositorySnaps
 	if err != nil {
 		return repositorySnapshot{}, fmt.Errorf("could not read repository files: %w", err)
 	}
-	deleted, err := gitOutput(ctx, root, "ls-files", "--deleted", "-z")
+	current, err := regularWorkingTreePaths(root, uniquePaths(nullSeparatedPaths(repository)))
 	if err != nil {
-		return repositorySnapshot{}, fmt.Errorf("could not read deleted files: %w", err)
-	}
-	missing := make(map[string]bool)
-	for _, path := range nullSeparatedPaths(deleted) {
-		missing[path] = true
+		return repositorySnapshot{}, err
 	}
 	return repositorySnapshot{
-		changedPaths: uniquePaths(append(nullSeparatedPaths(tracked), nullSeparatedPaths(untracked)...)),
-		repositoryPaths: slices.DeleteFunc(uniquePaths(nullSeparatedPaths(repository)), func(path string) bool {
-			return missing[path]
-		}),
+		changedPaths:    uniquePaths(append(nullSeparatedPaths(tracked), nullSeparatedPaths(untracked)...)),
+		repositoryPaths: current,
 	}, nil
+}
+
+// regularWorkingTreePaths drops eligible paths that are not regular files now:
+// deleted files, symlinks, and submodules have no source to read.
+func regularWorkingTreePaths(root string, paths []string) ([]string, error) {
+	result := paths[:0]
+	for _, path := range paths {
+		if !repositoryExtensions[filepath.Ext(path)] {
+			result = append(result, path)
+			continue
+		}
+		info, err := os.Lstat(filepath.Join(root, filepath.FromSlash(path)))
+		if errors.Is(err, fs.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("read %s: %w", path, err)
+		}
+		if info.Mode().IsRegular() {
+			result = append(result, path)
+		}
+	}
+	return result, nil
 }
 
 func selectCurrentFiles(root string, snapshot repositorySnapshot, filePatterns []string, all bool) (repositorySnapshot, error) {
@@ -142,13 +160,13 @@ func gitRangeSnapshot(ctx context.Context, root, value string) (repositorySnapsh
 	if err != nil {
 		return repositorySnapshot{}, fmt.Errorf("could not read range changes: %w", err)
 	}
-	repository, err := gitOutput(ctx, root, "ls-tree", "-r", "--name-only", "-z", rightCommit)
+	repository, err := gitOutput(ctx, root, "ls-tree", "-r", "-z", rightCommit)
 	if err != nil {
 		return repositorySnapshot{}, fmt.Errorf("could not read range repository files: %w", err)
 	}
 	return repositorySnapshot{
 		changedPaths:    uniquePaths(nullSeparatedPaths(changed)),
-		repositoryPaths: uniquePaths(nullSeparatedPaths(repository)),
+		repositoryPaths: uniquePaths(regularTreePaths(repository)),
 		revision:        rightCommit,
 	}, nil
 }
@@ -164,6 +182,19 @@ func splitCommitRange(value string) (string, string, string, error) {
 		return "", "", "", fmt.Errorf("commit range must have the form <from>..<to> or <from>...<to>")
 	}
 	return strings.TrimSpace(parts[0]), separator, strings.TrimSpace(parts[1]), nil
+}
+
+// regularTreePaths keeps regular blobs from `git ls-tree -r -z` output,
+// skipping symlinks (mode 120000) and submodules (mode 160000).
+func regularTreePaths(output []byte) []string {
+	var result []string
+	for entry := range bytes.SplitSeq(output, []byte{0}) {
+		metadata, path, found := bytes.Cut(entry, []byte{'\t'})
+		if found && bytes.HasPrefix(metadata, []byte("100")) {
+			result = append(result, filepath.ToSlash(string(path)))
+		}
+	}
+	return result
 }
 
 func resolveCommit(ctx context.Context, root, revision string) (string, error) {

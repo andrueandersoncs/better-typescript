@@ -120,6 +120,64 @@ func TestWorkingTreeSkipsUnstagedDeletedFiles(t *testing.T) {
 	}
 }
 
+func TestSelectionSkipsTrackedSymlinks(t *testing.T) {
+	root := newSemanticTestRepository(t)
+	if err := os.Symlink("../node_modules/missing.js", filepath.Join(root, "src/link.js")); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, root, "add", ".")
+	runGit(t, root, "commit", "-qm", "link")
+	head := strings.TrimSpace(runGit(t, root, "rev-parse", "HEAD"))
+
+	changes, err := gitSnapshot(context.Background(), root, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	all, err := selectCurrentFiles(root, changes, nil, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	committed, err := gitRangeSnapshot(context.Background(), root, head+"~1.."+head)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, snapshot := range map[string]repositorySnapshot{"all": all, "range": committed} {
+		sources, err := loadSelectedSources(context.Background(), root, snapshot)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		for _, source := range sources {
+			if source.Path == "src/link.js" {
+				t.Fatalf("%s selected symlink %q", name, source.Text)
+			}
+		}
+	}
+}
+
+func TestRangeWithFilesReadsSelectedFilesAtEndCommit(t *testing.T) {
+	root := newSemanticTestRepository(t)
+	committed := "const value = 'committed';\n"
+	writeTestFile(t, root, "src/example.ts", committed)
+	runGit(t, root, "commit", "-qam", "edit")
+	writeTestFile(t, root, "src/other.ts", "export {};\n")
+	runGit(t, root, "add", ".")
+	runGit(t, root, "commit", "-qm", "unrelated")
+	writeTestFile(t, root, "src/example.ts", "const value = 'working tree, longer';\n")
+
+	var output bytes.Buffer
+	exitCode, err := Run(context.Background(), root, []string{"--dry-run", "--range", "HEAD~1..HEAD", "--files", "src/example.ts", "--rules", "readonly"}, &output)
+	if err != nil || exitCode != 0 {
+		t.Fatalf("exit code = %d, err = %v", exitCode, err)
+	}
+	var plan DryRunPlan
+	if err := json.Unmarshal(output.Bytes(), &plan); err != nil {
+		t.Fatal(err)
+	}
+	if len(plan.Files) != 1 || plan.Files[0].Path != "src/example.ts" || plan.Files[0].FileBytes != len(committed) {
+		t.Fatalf("plan = %#v", plan)
+	}
+}
+
 func TestClassifyProbabilityUsesPassReviewAndViolationBoundaries(t *testing.T) {
 	cases := map[float64]string{0: "pass", 0.55: "pass", 0.5501: "review", 0.6999: "review", 0.7: "violation", 1: "violation"}
 	for probability, want := range cases {
