@@ -86,7 +86,7 @@ This wording was chosen by GEPA, selecting on real external code. On held-out re
 
 The final questions receive the same evidence set but are judged independently. Every request includes the project-relative file `path` so the model can apply path-specific policy text. The rule file includes its frontmatter and original line endings. Requests never contain diffs, neighboring files, or other repository context. Final state includes selected source text with original line labels. Selected spans can include distant context that matters together; they do not explain a violation or pinpoint the offending code.
 
-Selection questions over the same span are batched up to the 64,000-byte request limit. Selection spans prefer line boundaries and overlap by a quarter of a span, at most 1,000 source bytes. At most eight requests run concurrently per stage. If no candidate is selected, the policy passes without a final probability: on real files, every such policy also passed a full-file final judgment. If no evidence block is kept or the combined evidence set cannot fit one final request, the result is `inconclusive` without a final probability. No source is silently truncated. A policy that leaves no room for source text still causes an error.
+Selection questions over the same span are batched up to the 64,000-byte request limit. Selection spans prefer line boundaries and overlap by a quarter of a span, at most 1,000 source bytes. At most eight requests run concurrently per stage. If no candidate is selected, the policy passes without a final probability: on real files, every such policy also passed a full-file final judgment. If no evidence block is kept, the result is `inconclusive` without a final probability. An evidence set too large for one final request is split into chunks that each fit, cutting at line ends where possible; each chunk is judged and the most severe chunk verdict wins. No source is truncated. A policy that leaves no room for source text still causes an error.
 
 Identical final requests vary by about ±0.05. When a violation probability lands within `0.05` of `--threshold`, the final request is asked four more times and the five answers are averaged, rounded to two decimals, before classification. This keeps borderline findings from flipping between `review` and `violation` across runs.
 
@@ -276,7 +276,7 @@ Final requests depend on live selection answers, so they are not included in the
 | Outcome | Classification | Fails a live run |
 | --- | --- | --- |
 | No candidate selected | `pass` (no final probability) | No |
-| No evidence block selected, or selected context too large | `inconclusive` (no final probability) | No |
+| No evidence block selected | `inconclusive` (no final probability) | No |
 | Final probability `> 0.55`, but applicability below `0.70` | `inconclusive` (no violation probability) | No |
 | Final probability `≤ 0.55` | `pass` | No |
 | Final probability `> 0.55` and below `--threshold`, with applicability at least `0.70` | `review` | No |

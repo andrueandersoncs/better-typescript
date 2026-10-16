@@ -31,7 +31,7 @@ const (
 var (
 	evalLabels    = map[string]bool{"violates": true, "complies": true, "not-applicable": true, "ambiguous": true}
 	evalOrigins   = map[string]bool{"contrast": true, "planted": true, "real": true, "regression": true}
-	evalSplits    = map[string]bool{"train": true, "val": true, "test": true, "ext-dev": true, "ext-test": true}
+	evalSplits    = map[string]bool{"train": true, "val": true, "test": true, "ext-dev": true, "ext-test": true, "ext-large": true}
 	evalLeakWords = []string{"violat", "complian", "fixme"}
 )
 

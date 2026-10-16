@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -573,21 +574,33 @@ func TestRunReadsTypeSafeSettingsFromDotEnvBelowTheEnvironment(t *testing.T) {
 	}
 }
 
-func TestRunDoesNotJudgeTruncatedCandidateContext(t *testing.T) {
+func TestRunJudgesOversizedEvidenceInChunks(t *testing.T) {
 	root := newSemanticTestRepository(t)
 	source := strings.Repeat("export const relevant = true;\n", 2_800)
 	writeTestFile(t, root, "src/example.ts", source)
-	var calls atomic.Int32
+	label := regexp.MustCompile(`(?m)^\[source lines \d+-\d+\]\n`)
+	var mutex sync.Mutex
+	finalBytes, finalCalls := 0, 0
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		body, err := io.ReadAll(request.Body)
+		if err != nil {
+			t.Error(err)
+			return
+		}
 		var received evaluationRequest
-		if err := json.NewDecoder(request.Body).Decode(&received); err != nil {
+		if err := json.Unmarshal(body, &received); err != nil {
 			t.Error(err)
 			return
 		}
 		if len(received.Questions) == 2 {
-			t.Error("final judgment ran with truncated context")
+			if len(body) > maximumRequestBytes {
+				t.Errorf("final request has %d bytes", len(body))
+			}
+			mutex.Lock()
+			finalCalls++
+			finalBytes += len(label.ReplaceAllString(received.State["file"], ""))
+			mutex.Unlock()
 		}
-		calls.Add(1)
 		answers := make(map[string]answer, len(received.Questions))
 		for id := range received.Questions {
 			answers[id] = answer{Type: "noul", Noul: 0.9}
@@ -606,12 +619,11 @@ func TestRunDoesNotJudgeTruncatedCandidateContext(t *testing.T) {
 	if err := json.Unmarshal(output.Bytes(), &reports); err != nil {
 		t.Fatal(err)
 	}
-	if exitCode != 0 || calls.Load() < 2 || len(reports) != 1 || len(reports[0].Findings) != 1 {
-		t.Fatalf("exit=%d calls=%d reports=%s", exitCode, calls.Load(), output.String())
+	if exitCode != 1 || finalCalls < 2 || finalBytes != len(source) || len(reports) != 1 || len(reports[0].Findings) != 1 {
+		t.Fatalf("exit=%d finalCalls=%d finalBytes=%d reports=%s", exitCode, finalCalls, finalBytes, output.String())
 	}
 	finding := reports[0].Findings[0]
-	if finding.Classification != "inconclusive" || finding.ViolationProbability != nil ||
-		finding.Reason != "selected context exceeds the TypeSafe request limit" ||
+	if finding.Classification != "violation" || finding.ViolationProbability == nil ||
 		len(finding.CandidateRanges) != 1 || finding.CandidateRanges[0].EndByte != len(source) {
 		t.Fatalf("finding = %#v", finding)
 	}

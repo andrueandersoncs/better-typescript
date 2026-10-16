@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 	"sync"
 	"unicode/utf8"
@@ -356,8 +357,8 @@ func evaluateSource(ctx context.Context, source Source, rules []Rule, options Op
 	if err != nil {
 		return FindingReport{}, err
 	}
-	finalPartitions := make([]requestPartition, 0, len(rules))
-	finalIndexes := make(map[string]int, len(rules))
+	var finalPartitions []requestPartition
+	var findingIndexes []int
 	for _, rule := range rules {
 		finding := Finding{RulePath: rule.Path, RuleTitle: rule.Title}
 		windows := evidence[rule.ID]
@@ -374,20 +375,13 @@ func evaluateSource(ctx context.Context, source Source, rules []Rule, options Op
 			if len(windows) == 1 && windows[0].start == 0 && windows[0].end == len(source.Text) {
 				finding.EvidenceScope = "file"
 			}
-			selectedBytes := 0
-			for _, candidate := range finding.CandidateRanges {
-				selectedBytes += candidate.EndByte - candidate.StartByte
+			chunks, err := finalChunks(source, rule, windows, settings, maximumRequestBytes)
+			if err != nil {
+				return FindingReport{}, err
 			}
-			var request evaluationRequest
-			if selectedBytes < maximumRequestBytes {
-				request = finalRequest(source, rule, windows, finding.CandidateRanges, settings)
-			}
-			if selectedBytes >= maximumRequestBytes || requestSize(request) > maximumRequestBytes {
-				finding.Classification = "inconclusive"
-				finding.Reason = "selected context exceeds the TypeSafe request limit"
-			} else {
-				finalIndexes[rule.ID] = len(report.Findings)
-				finalPartitions = append(finalPartitions, requestPartition{request: request, rules: []Rule{rule}})
+			for _, chunk := range chunks {
+				findingIndexes = append(findingIndexes, len(report.Findings))
+				finalPartitions = append(finalPartitions, requestPartition{request: finalRequest(source, rule, chunk, candidateRanges(source, chunk), settings), rules: []Rule{rule}})
 			}
 		}
 		report.Findings = append(report.Findings, finding)
@@ -415,19 +409,72 @@ func evaluateSource(ctx context.Context, source Source, rules []Rule, options Op
 			}
 		}
 	}
-	for index, partition := range finalPartitions {
+	for index := range finalPartitions {
 		probability, applicability := scores[index].mean()
-		finding := &report.Findings[finalIndexes[partition.rules[0].ID]]
-		finding.ApplicabilityProbability = &applicability
+		verdict := Finding{ApplicabilityProbability: &applicability}
 		if probability > maximumPassProbability && applicability < minimumApplicabilityProbability {
-			finding.Classification = "inconclusive"
-			finding.Reason = applicabilityGateReason
-			continue
+			verdict.Classification, verdict.Reason = "inconclusive", applicabilityGateReason
+		} else {
+			verdict.ViolationProbability = &probability
+			verdict.Classification = classifyProbability(probability, options.Threshold)
 		}
-		finding.ViolationProbability = &probability
-		finding.Classification = classifyProbability(probability, options.Threshold)
+		finding := &report.Findings[findingIndexes[index]]
+		if finding.Classification == "" || moreSevere(verdict, *finding) {
+			finding.Classification, finding.Reason = verdict.Classification, verdict.Reason
+			finding.ViolationProbability, finding.ApplicabilityProbability = verdict.ViolationProbability, verdict.ApplicabilityProbability
+		}
 	}
 	return report, nil
+}
+
+// finalChunks splits a policy's evidence set into groups that each fit one final request. A range
+// too large for one request is cut, at a line end when possible; no source byte is dropped.
+func finalChunks(source Source, rule Rule, windows []sourceWindow, settings requestSettings, maximumBytes int) ([][]sourceWindow, error) {
+	fits := func(chunk []sourceWindow) bool {
+		return requestSize(finalRequest(source, rule, chunk, candidateRanges(source, chunk), settings)) <= maximumBytes
+	}
+	budget := maximumBytes - requestSize(finalRequest(source, rule, nil, nil, settings))
+	if budget <= 0 {
+		return nil, fmt.Errorf("rule %s leaves no room for evidence within the %d-byte TypeSafe request limit", rule.Path, maximumBytes)
+	}
+	var chunks [][]sourceWindow
+	var current []sourceWindow
+	for _, window := range windows {
+		for window.start < window.end {
+			if fits(append(current[:len(current):len(current)], window)) {
+				current = append(current, window)
+				break
+			}
+			if len(current) > 0 {
+				chunks, current = append(chunks, current), nil
+				continue
+			}
+			end := min(encodedPrefixEnd(source.Text, window.start, budget), window.end)
+			end = preferLineEnd(source.Text, window.start, end)
+			for end > window.start && !fits([]sourceWindow{{start: window.start, end: end}}) {
+				_, width := utf8.DecodeLastRuneInString(source.Text[window.start:end])
+				end -= width
+			}
+			if end == window.start {
+				return nil, fmt.Errorf("rule %s leaves no room for evidence within the %d-byte TypeSafe request limit", rule.Path, maximumBytes)
+			}
+			chunks = append(chunks, []sourceWindow{{start: window.start, end: end}})
+			window.start = end
+		}
+	}
+	if len(current) > 0 {
+		chunks = append(chunks, current)
+	}
+	return chunks, nil
+}
+
+// moreSevere orders chunk verdicts by classification, then by violation probability.
+func moreSevere(candidate, current Finding) bool {
+	candidateRank, currentRank := slices.Index(classifications, candidate.Classification), slices.Index(classifications, current.Classification)
+	if candidateRank != currentRank {
+		return candidateRank < currentRank
+	}
+	return candidate.ViolationProbability != nil && current.ViolationProbability != nil && *candidate.ViolationProbability > *current.ViolationProbability
 }
 
 // finalScore sums the violation and applicability answers of one policy's final requests.

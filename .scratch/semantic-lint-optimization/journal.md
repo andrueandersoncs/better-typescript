@@ -663,3 +663,12 @@ Replaying dev seed 4 offline with the shipped code hits the replay cache for eve
 - **Verdict:** the gap is real and invisible to the current evals, which were built from single-file findings. It is concentrated in duplication and single-authority policies (`avoid-repetition`, `keep-each-fact-in-one-authoritative-place`).
 - **Limits:** a single LLM auditor, no second labeler. The retriever mix shapes what can be found. The 55 policies deleted in `d0c0cb7bc` were not audited.
 - **Next:** [`semantic-lint-cross-file-evidence/spec.md`](../semantic-lint-cross-file-evidence/spec.md).
+
+### 34. Chunked final judgment for oversized evidence
+
+- **Change:** an evidence set too large for one final request was `inconclusive`. `finalChunks` now splits it into chunks that fit; the most severe chunk verdict wins.
+- **Workload (shared replay cache, old vs new):** 56 size-limit inconclusives → 0. New verdicts: 13 violation, 23 review, 18 pass, 2 inconclusive (applicability). Input tokens +13.9%. `ext-test` and `test` unchanged: no case hit the limit.
+- **Labels:** the 56 pairs, two blind labelers each, became split `ext-large`. Agreement 55/56. Gold: 48 violates, 7 complies, 1 ambiguous.
+- **Pipeline vs gold (workload run):** all 13 violations and 23 reviews are true violations; 12 violations passed (misses); complying pairs passed (5) or stayed inconclusive (2). No false positives.
+- **Live `ext-large` eval:** score 0.855, AUROC 0.932, violation precision 1.0, surface recall 0.771. The old code would have scored every pair inconclusive.
+- **Caveat:** large files with style policies are violation-heavy (48/55), so this split tests recall more than precision.

@@ -428,6 +428,6 @@ complete file → overlapping source spans
               → pure: classify final answers
 ```
 
-Selection questions share one span as state, and can be batched within the request-size limit. Their scores choose *candidate context*, not findings. Only the final answer classifies a policy that has candidates; a policy with no candidate passes. If the combined context is too large for one request, the result is inconclusive.
+Selection questions share one span as state, and can be batched within the request-size limit. Their scores choose *candidate context*, not findings. Only the final answer classifies a policy that has candidates; a policy with no candidate passes. If the combined context is too large for one request, it is judged in chunks that each fit, and the most severe chunk verdict wins.
 
 Because selected source text determines the final request, `--dry-run` can show the selection plan but cannot predict final partitions. This is a real dependency, not transport partitioning. The original source offsets stay with each candidate so findings can point to the context evaluated. Model judgments remain probabilistic; selection does not establish correctness or score stability.
